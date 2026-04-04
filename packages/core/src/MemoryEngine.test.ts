@@ -1,18 +1,45 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'bun:test';
 import { MemoryEngine } from './MemoryEngine';
 import type { Observation, Session, Prompt } from './types';
+import { mkdirSync, rmSync, existsSync } from 'fs';
+import { join } from 'path';
 
 describe('MemoryEngine', () => {
   let engine: MemoryEngine;
   let testDbPath: string;
+  const testDir = join(process.cwd(), 'test-data');
+
+  beforeAll(() => {
+    if (existsSync(testDir)) {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+    mkdirSync(testDir, { recursive: true });
+  });
+
+  afterAll(() => {
+    if (existsSync(testDir)) {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+  });
 
   beforeEach(() => {
-    testDbPath = `/tmp/test-memento-${Date.now()}.db`;
+    testDbPath = join(testDir, `test-${Date.now()}-${Math.random().toString(36).slice(7)}.db`);
     engine = new MemoryEngine(testDbPath);
   });
 
   afterEach(() => {
     engine.close();
+  });
+
+  describe('Database Path Management', () => {
+    it('should create database in specified path', () => {
+      expect(existsSync(testDbPath)).toBe(true);
+    });
+
+    it('should return the database path', () => {
+      const path = engine.getDatabasePath();
+      expect(path).toBe(testDbPath);
+    });
   });
 
   describe('Session Management', () => {
@@ -277,7 +304,7 @@ describe('MemoryEngine', () => {
       const result = await engine.search({ projectId: 'search-project' });
 
       expect(result.observations.length).toBeGreaterThanOrEqual(3);
-      result.observations.forEach((obs) => {
+      result.observations.forEach((obs: any) => {
         expect(obs.projectId).toBe('search-project');
       });
     });
@@ -301,8 +328,8 @@ describe('MemoryEngine', () => {
 
       expect(firstPage.observations.length).toBe(2);
       if (secondPage.observations.length > 0) {
-        const firstIds = firstPage.observations.map((o) => o.id);
-        const secondIds = secondPage.observations.map((o) => o.id);
+        const firstIds = firstPage.observations.map((o: any) => o.id);
+        const secondIds = secondPage.observations.map((o: any) => o.id);
         expect(firstIds).not.toEqual(secondIds);
       }
     });
@@ -389,6 +416,41 @@ describe('MemoryEngine', () => {
       });
 
       expect(updated.metadata).toEqual({ version: 2, changed: true });
+    });
+  });
+
+  describe('Cross-Session Persistence', () => {
+    it('should persist observations across sessions', async () => {
+      const session1 = await engine.createSession({
+        projectId: 'persist-test',
+        endedAt: null,
+        metadata: {},
+      });
+
+      const obs = await engine.createObservation({
+        sessionId: session1.id,
+        title: 'Persistent Note',
+        content: 'This should persist',
+        type: 'note',
+        topicKey: 'test',
+        projectId: 'persist-test',
+        metadata: {},
+      });
+
+      await engine.endSession(session1.id);
+
+      const session2 = await engine.createSession({
+        projectId: 'persist-test',
+        endedAt: null,
+        metadata: {},
+      });
+
+      const searchResult = await engine.search({
+        projectId: 'persist-test',
+      });
+
+      expect(searchResult.total).toBe(1);
+      expect(searchResult.observations[0].id).toBe(obs.id);
     });
   });
 });

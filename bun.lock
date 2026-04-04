@@ -49,7 +49,7 @@
     },
     "packages/core": {
       "name": "@slorenzot/memento-core",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "devDependencies": {
         "@types/node": "^20.11.0",
         "typescript": "^5.3.3",
@@ -57,13 +57,13 @@
     },
     "packages/mcp-server": {
       "name": "@slorenzot/memento-mcp-server",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "bin": {
         "memento-mcp": "dist/index.js",
       },
       "dependencies": {
         "@modelcontextprotocol/sdk": "^1.25.1",
-        "@slorenzot/memento-core": "^0.3.0",
+        "@slorenzot/memento-core": "^0.4.0",
         "zod": "^3.22.4",
       },
       "devDependencies": {

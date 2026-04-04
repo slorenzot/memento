@@ -2,13 +2,31 @@ import * as crypto from 'crypto';
 import type { Observation, Session, Prompt } from './types.js';
 
 import { Database } from 'bun:sqlite';
+import { mkdirSync } from 'fs';
+import { join, dirname } from 'path';
 
 export class MemoryEngine {
   private db: any;
+  private dbPath: string;
 
   constructor(dbPath: string = './data/memento.db') {
+    this.dbPath = dbPath;
+    const dbDir = dirname(dbPath);
+
+    try {
+      mkdirSync(dbDir, { recursive: true });
+    } catch (error: any) {
+      if (error?.code !== 'EEXIST') {
+        throw error;
+      }
+    }
+
     this.db = new Database(dbPath, { create: true });
     this.initializeDatabase();
+  }
+
+  getDatabasePath(): string {
+    return this.dbPath;
   }
 
   private initializeDatabase(): void {
