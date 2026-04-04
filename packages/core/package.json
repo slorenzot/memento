@@ -1,0 +1,20 @@
+{
+  "name": "@memento/core",
+  "version": "0.1.0",
+  "description": "Core memory engine for Memento",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.22.4",
+    "nanoid": "^5.0.4"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@memento/mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server implementation for Memento",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "tsc",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@memento/core": "workspace:*",
+    "@modelcontextprotocol/sdk": "^0.4.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}
