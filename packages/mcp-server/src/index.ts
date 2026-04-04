@@ -391,7 +391,17 @@ server.tool('mem_health', 'Check system health.', {}, async () => {
   };
 });
 
-server.tool('mem_config', 'Get server configuration.', {}, async () => {
+server.tool('mem_config', 'Get current memento configuration and system status.', {}, async () => {
+  const searchResult = await engine.search({});
+  const dbPath = engine.getDatabasePath();
+
+  const byType: Record<string, number> = {};
+  for (const o of searchResult.observations) {
+    byType[o.type] = (byType[o.type] || 0) + 1;
+  }
+
+  const dbStats = getDatabaseStats(dbPath);
+
   return {
     content: [
       {
@@ -399,9 +409,31 @@ server.tool('mem_config', 'Get server configuration.', {}, async () => {
         text: JSON.stringify(
           {
             name: 'memento-mcp-server',
-            version: '0.4.0',
-            storage: 'sqlite-persistent',
-            tools: 13,
+            version: '0.5.0',
+            config: {
+              storagePath: dbPath,
+              projectId: projectId,
+              projectRoot: process.cwd(),
+              hasConfigFile: existsSync(join(process.cwd(), '.mementorc')),
+            },
+            storage: {
+              type: 'SQLite Persistent',
+              method: 'bun:sqlite',
+              databasePath: dbPath,
+              walEnabled: true,
+            },
+            diskUsage: dbStats,
+            statistics: {
+              totalObservations: searchResult.total,
+              byType,
+              activeSession: activeSessionId,
+            },
+            environment: {
+              nodeVersion: process.version,
+              platform: process.platform,
+              arch: process.arch,
+              bunVersion: process.versions?.bun || 'unknown',
+            },
           },
           null,
           2
@@ -411,10 +443,90 @@ server.tool('mem_config', 'Get server configuration.', {}, async () => {
   };
 });
 
+function getDatabaseStats(dbPath: string) {
+  const path = require('path');
+  const fs = require('fs');
+
+  let totalSize = 0;
+  let walSize = 0;
+  let shmSize = 0;
+
+  try {
+    const mainDb = fs.statSync(dbPath);
+    totalSize += mainDb.size;
+  } catch (e) {
+    totalSize += 0;
+  }
+
+  try {
+    const walFile = fs.statSync(`${dbPath}-wal`);
+    walSize = walFile.size;
+    totalSize += walSize;
+  } catch (e) {
+    walSize = 0;
+  }
+
+  try {
+    const shmFile = fs.statSync(`${dbPath}-shm`);
+    shmSize = shmFile.size;
+    totalSize += shmSize;
+  } catch (e) {
+    shmSize = 0;
+  }
+
+  return {
+    totalBytes: totalSize,
+    totalSizeHuman: formatBytes(totalSize),
+    mainDbBytes: totalSize - walSize - shmSize,
+    mainDbSizeHuman: formatBytes(totalSize - walSize - shmSize),
+    walBytes: walSize,
+    walSizeHuman: formatBytes(walSize),
+    shmBytes: shmSize,
+    shmSizeHuman: formatBytes(shmSize),
+  };
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const m = k * 1024;
+  const g = m * 1024;
+
+  if (bytes < k) return `${bytes} B`;
+  if (bytes < m) return `${(bytes / k).toFixed(2)} KB`;
+  if (bytes < g) return `${(bytes / m).toFixed(2)} MB`;
+  return `${(bytes / g).toFixed(2)} GB`;
+}
+
+const BANNER = `
+ ╔═════════════════════════════════════════════════════════╗
+ ║                                                               ║
+ ║     ██╗    ██╗███████╗██╗   ██╗██╗███╗   ███████╗               ║
+ ║     ██║    ██║██╔════╝██║   ██║██║██╔██╗ ██╔════╝               ║
+ ║     ██║ █╗ ██║█████╗  ██║   ██║██║███████║███████╗                ║
+ ║     ╚███╔╝██╚════██╗██║   ██║██║╚════██║╚════██║                ║
+ ║      ╚══╝ ╚███████╔╝╚█████╔╝╚█████╔╝ ╚███████╔╝               ║
+ ║                  ╚═════╝     ╚═════╝     ╚═════╝                ║
+ ║                                                               ║
+ ║              ╔═══════════════════════════════════════╗   ║
+ ║              ║                                           ║   ║
+ ║              ║    MEMENTO - Persistent Memory System      ║   ║
+ ║              ║                                           ║   ║
+ ║              ║    Version: 0.5.0                         ║   ║
+ ║              ║    Storage: SQLite Persistent              ║   ║
+ ║              ╚═══════════════════════════════════════╝   ║
+ ╚═════════════════════════════════════════════════════════╝
+`;
+
 async function main() {
+  console.error(BANNER);
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('Memento MCP Server v0.4.0 started (SQLite persistent storage)');
+  console.error('\n✓ Memento MCP Server started successfully');
+  console.error(`  Database: ${dbPath}`);
+  console.error(`  Project: ${projectId}`);
+  console.error(`  Ready to accept connections...\n`);
 }
 
 main().catch((err) => {

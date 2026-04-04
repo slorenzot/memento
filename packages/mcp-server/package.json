@@ -1,8 +1,8 @@
 {
   "name": "@slorenzot/memento-mcp-server",
-  "version": "0.5.0",
-  "description": "MCP server implementation for Memento with SQLite, flexible config via .mementorc",
-  "keywords": ["mcp", "memento", "memory", "model-context-protocol", "sqlite", "config", "mementorc"],
+  "version": "0.6.0",
+  "description": "MCP server implementation for Memento with SQLite, flexible config via .mementorc, and ASCII banner",
+  "keywords": ["mcp", "memento", "memory", "model-context-protocol", "sqlite", "config", "mementorc", "banner"],
   "license": "CC-BY-NC-ND-4.0",
   "author": "Soulberto Lorenzo",
   "type": "commonjs",
