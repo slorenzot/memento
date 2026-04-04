@@ -1,20 +1,33 @@
-import Database from 'bun:sqlite';
-import { nanoid } from 'nanoid';
-import type { Observation, Session, Prompt } from './types';
+import * as crypto from "crypto";
+import type { Observation, Session, Prompt } from "./types.js";
+
+// Use better-sqlite3 for Node.js compatibility
+let Database: any;
+try {
+  Database = require("better-sqlite3");
+} catch {
+  try {
+    Database = require("bun:sqlite");
+  } catch {
+    throw new Error(
+      "No SQLite driver found. Install better-sqlite3: npm install better-sqlite3"
+    );
+  }
+}
 
 export class MemoryEngine {
-  private db: Database;
+  private db: any;
 
-  constructor(dbPath: string = './data/memento.db') {
-    this.db = new Database(dbPath, { create: true });
+  constructor(dbPath: string = "./data/memento.db") {
+    this.db = new Database(dbPath);
     this.initializeDatabase();
   }
 
   private initializeDatabase(): void {
-    this.db.exec(`
-      PRAGMA journal_mode = WAL;
-      PRAGMA foreign_keys = ON;
+    this.db.pragma("journal_mode = WAL");
+    this.db.pragma("foreign_keys = ON");
 
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         uuid TEXT UNIQUE NOT NULL,
@@ -83,113 +96,60 @@ export class MemoryEngine {
   }
 
   private deserialize(value: string | null): Record<string, unknown> {
-    if (!value) {
-      return {};
-    }
-    try {
-      return JSON.parse(value);
-    } catch {
-      return {};
-    }
+    if (!value) return {};
+    try { return JSON.parse(value); } catch { return {}; }
   }
 
   async createObservation(data: {
     sessionId: number;
     title: string;
     content: string;
-    type: Observation['type'];
+    type: Observation["type"];
     topicKey: string | null;
     projectId: string;
     metadata: Record<string, unknown>;
   }): Promise<Observation> {
-    const uuid = nanoid();
+    const uuid = crypto.randomUUID();
     const createdAt = new Date();
     const metadata = this.serialize(data.metadata);
 
-    const stmt = this.db.prepare(
-      `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`
-    );
+    const result = this.db.prepare(
+      `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(uuid, data.sessionId, data.title, data.content, data.type, data.topicKey ?? null, data.projectId, createdAt.getTime(), metadata);
 
-    const result = stmt.get(
-      uuid,
-      data.sessionId,
-      data.title,
-      data.content,
-      data.type,
-      data.topicKey ?? null,
-      data.projectId,
-      createdAt.getTime(),
-      metadata
-    ) as { id: number };
-
-    if (!result) {
-      throw new Error('Failed to create observation');
-    }
-
-    const observation = await this.getObservationById(result.id);
-    if (!observation) {
-      throw new Error('Failed to retrieve created observation');
-    }
-
+    const id = typeof result.lastInsertRowid === "bigint" ? Number(result.lastInsertRowid) : result.lastInsertRowid;
+    const observation = await this.getObservationById(id);
+    if (!observation) throw new Error("Failed to retrieve created observation");
     return observation;
   }
 
-  async updateObservation(
-    id: number,
-    updates: {
-      title?: string;
-      content?: string;
-      type?: Observation['type'];
-      topicKey?: string | null;
-      metadata?: Record<string, unknown>;
-    }
-  ): Promise<Observation> {
+  async updateObservation(id: number, updates: {
+    title?: string; content?: string; type?: Observation["type"]; topicKey?: string | null; metadata?: Record<string, unknown>;
+  }): Promise<Observation> {
     const current = await this.getObservationById(id);
-    if (!current) {
-      throw new Error('Observation not found');
-    }
+    if (!current) throw new Error("Observation not found");
 
     const fields: string[] = [];
     const values: (string | number | null)[] = [];
 
-    if (updates.title !== undefined) {
-      fields.push('title = ?');
-      values.push(updates.title);
-    }
-    if (updates.content !== undefined) {
-      fields.push('content = ?');
-      values.push(updates.content);
-    }
-    if (updates.type !== undefined) {
-      fields.push('type = ?');
-      values.push(updates.type);
-    }
-    if (updates.topicKey !== undefined) {
-      fields.push('topic_key = ?');
-      values.push(updates.topicKey || '');
-    }
-    if (updates.metadata !== undefined) {
-      fields.push('metadata = ?');
-      values.push(this.serialize(updates.metadata));
-    }
+    if (updates.title !== undefined) { fields.push("title = ?"); values.push(updates.title); }
+    if (updates.content !== undefined) { fields.push("content = ?"); values.push(updates.content); }
+    if (updates.type !== undefined) { fields.push("type = ?"); values.push(updates.type); }
+    if (updates.topicKey !== undefined) { fields.push("topic_key = ?"); values.push(updates.topicKey || ""); }
+    if (updates.metadata !== undefined) { fields.push("metadata = ?"); values.push(this.serialize(updates.metadata)); }
 
-    if (fields.length === 0) {
-      return current;
-    }
+    if (fields.length === 0) return current;
 
     values.push(id);
-    this.db.prepare(`UPDATE observations SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+    this.db.prepare(`UPDATE observations SET ${fields.join(", ")} WHERE id = ?`).run(...values);
 
     const updated = await this.getObservationById(id);
-    if (!updated) {
-      throw new Error('Failed to update observation');
-    }
-
+    if (!updated) throw new Error("Failed to update observation");
     return updated;
   }
 
   async deleteObservation(id: number): Promise<void> {
-    this.db.prepare('DELETE FROM observations WHERE id = ?').run(id);
+    this.db.prepare("DELETE FROM observations WHERE id = ?").run(id);
   }
 
   async getObservation(id: number): Promise<Observation | null> {
@@ -197,99 +157,58 @@ export class MemoryEngine {
   }
 
   async search(params: {
-    query?: string;
-    type?: Observation['type'];
-    projectId?: string;
-    topicKey?: string;
-    limit?: number;
-    offset?: number;
+    query?: string; type?: Observation["type"]; projectId?: string; topicKey?: string; limit?: number; offset?: number;
   }): Promise<{ observations: Observation[]; total: number }> {
     const { query, type, projectId, topicKey, limit = 100, offset = 0 } = params;
-
-    let sql = 'SELECT * FROM observations WHERE 1=1';
+    let sql = "SELECT * FROM observations WHERE 1=1";
     const values: (string | number | null)[] = [];
 
     if (query) {
-      sql += ' AND observations_fts MATCH ?';
+      sql = "SELECT observations.* FROM observations JOIN observations_fts ON observations.id = observations_fts.rowid WHERE observations_fts MATCH ?";
       values.push(query);
+      if (type) { sql += " AND observations.type = ?"; values.push(type); }
+      if (projectId) { sql += " AND observations.project_id = ?"; values.push(projectId); }
+      if (topicKey) { sql += " AND observations.topic_key = ?"; values.push(topicKey); }
+    } else {
+      if (type) { sql += " AND type = ?"; values.push(type); }
+      if (projectId) { sql += " AND project_id = ?"; values.push(projectId); }
+      if (topicKey) { sql += " AND topic_key = ?"; values.push(topicKey); }
     }
 
-    if (type) {
-      sql += ' AND type = ?';
-      values.push(type);
-    }
+    const countSql = sql.replace(/SELECT.*?FROM/, "SELECT COUNT(*) as count FROM");
+    const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;
+    const total = countResult ? countResult.count : 0;
 
-    if (projectId) {
-      sql += ' AND project_id = ?';
-      values.push(projectId);
-    }
-
-    if (topicKey) {
-      sql += ' AND topic_key = ?';
-      values.push(topicKey);
-    }
-
-    const countSql = sql.replace('SELECT *', 'SELECT COUNT(*) as count');
-    const countResult = this.db.query(countSql).get(...values);
-    const total = countResult ? (countResult as { count: number }).count : 0;
-
-    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    sql += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
     values.push(limit, offset);
 
-    const stmt = this.db.query(sql);
-    const rows = stmt.all(...values);
-    const observations = rows.map((row) => this.mapObservation(row as Record<string, unknown>));
-
+    const rows = this.db.prepare(sql).all(...values);
+    const observations = (rows as Record<string, unknown>[]).map((row) => this.mapObservation(row));
     return { observations, total };
   }
 
-  async createSession(data: {
-    projectId: string;
-    endedAt: Date | null;
-    metadata: Record<string, unknown>;
-  }): Promise<Session> {
-    const uuid = nanoid();
+  async createSession(data: { projectId: string; endedAt: Date | null; metadata: Record<string, unknown>; }): Promise<Session> {
+    const uuid = crypto.randomUUID();
     const startedAt = new Date();
     const metadata = this.serialize(data.metadata);
 
-    const stmt = this.db.prepare(
-      `INSERT INTO sessions (uuid, project_id, started_at, ended_at, metadata) VALUES (?, ?, ?, ?, ?) RETURNING id`
-    );
+    const result = this.db.prepare(
+      `INSERT INTO sessions (uuid, project_id, started_at, ended_at, metadata) VALUES (?, ?, ?, ?, ?)`
+    ).run(uuid, data.projectId, startedAt.getTime(), data.endedAt?.getTime() ?? null, metadata);
 
-    const result = stmt.get(
-      uuid,
-      data.projectId,
-      startedAt.getTime(),
-      data.endedAt?.getTime() ?? null,
-      metadata
-    ) as { id: number };
-
-    if (!result) {
-      throw new Error('Failed to create session');
-    }
-
-    const session = await this.getSessionById(result.id);
-    if (!session) {
-      throw new Error('Failed to retrieve created session');
-    }
-
+    const id = typeof result.lastInsertRowid === "bigint" ? Number(result.lastInsertRowid) : result.lastInsertRowid;
+    const session = await this.getSessionById(id);
+    if (!session) throw new Error("Failed to retrieve created session");
     return session;
   }
 
   async endSession(id: number): Promise<Session> {
     const session = await this.getSessionById(id);
-    if (!session) {
-      throw new Error('Session not found');
-    }
-
+    if (!session) throw new Error("Session not found");
     const endedAt = new Date();
-    this.db.prepare('UPDATE sessions SET ended_at = ? WHERE id = ?').run(endedAt.getTime(), id);
-
+    this.db.prepare("UPDATE sessions SET ended_at = ? WHERE id = ?").run(endedAt.getTime(), id);
     const updated = await this.getSessionById(id);
-    if (!updated) {
-      throw new Error('Failed to update session');
-    }
-
+    if (!updated) throw new Error("Failed to update session");
     return updated;
   }
 
@@ -297,143 +216,52 @@ export class MemoryEngine {
     return await this.getSessionById(id);
   }
 
-  async savePrompt(data: {
-    sessionId: number;
-    content: string;
-    projectId: string;
-    metadata: Record<string, unknown>;
-  }): Promise<Prompt> {
-    const uuid = nanoid();
+  async savePrompt(data: { sessionId: number; content: string; projectId: string; metadata: Record<string, unknown>; }): Promise<Prompt> {
+    const uuid = crypto.randomUUID();
     const createdAt = new Date();
     const metadata = this.serialize(data.metadata);
 
-    const stmt = this.db.prepare(
-      `INSERT INTO prompts (uuid, session_id, content, project_id, created_at, metadata) VALUES (?, ?, ?, ?, ?, ?) RETURNING id`
-    );
+    const result = this.db.prepare(
+      `INSERT INTO prompts (uuid, session_id, content, project_id, created_at, metadata) VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(uuid, data.sessionId, data.content, data.projectId, createdAt.getTime(), metadata);
 
-    const result = stmt.get(
-      uuid,
-      data.sessionId,
-      data.content,
-      data.projectId,
-      createdAt.getTime(),
-      metadata
-    ) as { id: number };
-
-    if (!result) {
-      throw new Error('Failed to save prompt');
-    }
-
-    const prompt = await this.getPromptById(result.id);
-
-    if (!prompt) {
-      throw new Error('Failed to retrieve saved prompt');
-    }
-
+    const id = typeof result.lastInsertRowid === "bigint" ? Number(result.lastInsertRowid) : result.lastInsertRowid;
+    const prompt = await this.getPromptById(id);
+    if (!prompt) throw new Error("Failed to retrieve saved prompt");
     return prompt;
   }
 
   private async getObservationById(id: number): Promise<Observation | null> {
-    const stmt = this.db.prepare('SELECT * FROM observations WHERE id = ?');
-    const row = stmt.get(id);
-
-    if (!row) {
-      return null;
-    }
-
+    const row = this.db.prepare("SELECT * FROM observations WHERE id = ?").get(id);
+    if (!row) return null;
     return this.mapObservation(row as Record<string, unknown>);
   }
 
   private async getSessionById(id: number): Promise<Session | null> {
-    const stmt = this.db.prepare('SELECT * FROM sessions WHERE id = ?');
-    const row = stmt.get(id);
-
-    if (!row) {
-      return null;
-    }
-
+    const row = this.db.prepare("SELECT * FROM sessions WHERE id = ?").get(id);
+    if (!row) return null;
     return this.mapSession(row as Record<string, unknown>);
   }
 
   private async getPromptById(id: number): Promise<Prompt | null> {
-    const stmt = this.db.prepare('SELECT * FROM prompts WHERE id = ?');
-    const row = stmt.get(id);
-
-    if (!row) {
-      return null;
-    }
-
+    const row = this.db.prepare("SELECT * FROM prompts WHERE id = ?").get(id);
+    if (!row) return null;
     return this.mapPrompt(row as Record<string, unknown>);
   }
 
   private mapObservation(row: Record<string, unknown>): Observation {
-    const r = row as {
-      id: number;
-      uuid: string;
-      session_id: number;
-      title: string;
-      content: string;
-      type: Observation['type'];
-      topic_key: string | null;
-      project_id: string;
-      created_at: number;
-      metadata: string | null;
-    };
-
-    return {
-      id: r.id,
-      uuid: r.uuid,
-      sessionId: r.session_id,
-      title: r.title,
-      content: r.content,
-      type: r.type,
-      topicKey: r.topic_key,
-      projectId: r.project_id,
-      createdAt: new Date(r.created_at),
-      metadata: this.deserialize(r.metadata),
-    };
+    const r = row as { id: number; uuid: string; session_id: number; title: string; content: string; type: Observation["type"]; topic_key: string | null; project_id: string; created_at: number; metadata: string | null; };
+    return { id: r.id, uuid: r.uuid, sessionId: r.session_id, title: r.title, content: r.content, type: r.type, topicKey: r.topic_key, projectId: r.project_id, createdAt: new Date(r.created_at), metadata: this.deserialize(r.metadata) };
   }
 
   private mapSession(row: Record<string, unknown>): Session {
-    const r = row as {
-      id: number;
-      uuid: string;
-      project_id: string;
-      started_at: number;
-      ended_at: number | null;
-      metadata: string | null;
-    };
-
-    return {
-      id: r.id,
-      uuid: r.uuid,
-      projectId: r.project_id,
-      startedAt: new Date(r.started_at),
-      endedAt: r.ended_at ? new Date(r.ended_at) : null,
-      metadata: this.deserialize(r.metadata),
-    };
+    const r = row as { id: number; uuid: string; project_id: string; started_at: number; ended_at: number | null; metadata: string | null; };
+    return { id: r.id, uuid: r.uuid, projectId: r.project_id, startedAt: new Date(r.started_at), endedAt: r.ended_at ? new Date(r.ended_at) : null, metadata: this.deserialize(r.metadata) };
   }
 
   private mapPrompt(row: Record<string, unknown>): Prompt {
-    const r = row as {
-      id: number;
-      uuid: string;
-      session_id: number;
-      content: string;
-      project_id: string;
-      created_at: number;
-      metadata: string | null;
-    };
-
-    return {
-      id: r.id,
-      uuid: r.uuid,
-      sessionId: r.session_id,
-      content: r.content,
-      projectId: r.project_id,
-      createdAt: new Date(r.created_at),
-      metadata: this.deserialize(r.metadata),
-    };
+    const r = row as { id: number; uuid: string; session_id: number; content: string; project_id: string; created_at: number; metadata: string | null; };
+    return { id: r.id, uuid: r.uuid, sessionId: r.session_id, content: r.content, projectId: r.project_id, createdAt: new Date(r.created_at), metadata: this.deserialize(r.metadata) };
   }
 
   close(): void {
