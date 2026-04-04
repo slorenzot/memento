@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-blue.svg)](https://www.typescriptlang.org/)
 [![Bun](https://img.shields.io/badge/Bun-1.0+-black.svg)](https://bun.sh)
 [![MCP](https://img.shields.io/badge/MCP-Protocol-green.svg)](https://modelcontextprotocol.io)
-[![NPM Version](https://img.shields.io/npm/v/@memento/core.svg)](https://www.npmjs.com/package/@memento/core)
+[![NPM Version](https://img.shields.io/npm/v/@slorenzot/memento-core.svg)](https://www.npmjs.com/package/@slorenzot/memento-core)
 
 **Memento** es un sistema de memoria persistente diseñado específicamente para agentes de codificación de IA. Resuelve el problema del olvido proporcionando un cerebro persistente que permite a los agentes mantener contexto, aprender y mejorar a través del tiempo.
 
@@ -54,11 +54,11 @@ bun test
 
 ## 📦 Paquetes NPM
 
-- [`@memento/core`](https://www.npmjs.com/package/@memento/core) - Motor de memoria central
-- [`@memento/mcp-server`](https://www.npmjs.com/package/@memento/mcp-server) - Servidor MCP
-- [`@memento/cli`](https://www.npmjs.com/package/@memento/cli) - CLI interface
-- [`@memento/api`](https://www.npmjs.com/package/@memento/api) - API HTTP
-- [`@memento/web-ui`](https://www.npmjs.com/package/@memento/web-ui) - Interfaz web React
+- [`@slorenzot/memento-core`](https://www.npmjs.com/package/@slorenzot/memento-core) - Motor de memoria central
+- [`@slorenzot/memento-mcp-server`](https://www.npmjs.com/package/@slorenzot/memento-mcp-server) - Servidor MCP
+- [`@slorenzot/memento-cli`](https://www.npmjs.com/package/@slorenzot/memento-cli) - CLI interface
+- [`@slorenzot/memento-api`](https://www.npmjs.com/package/@slorenzot/memento-api) - API HTTP
+- [`@slorenzot/memento-web-ui`](https://www.npmjs.com/package/@slorenzot/memento-web-ui) - Interfaz web React
 
 ## 📦 Uso
 
@@ -66,7 +66,7 @@ bun test
 
 ```bash
 # Instalar globalmente
-bun add -g @memento/mcp-server
+bun add -g @slorenzot/memento-mcp-server
 
 # Iniciar servidor MCP
 memento-server
@@ -96,7 +96,7 @@ memento-server
 
 ```bash
 # Instalar globalmente
-bun add -g @memento/cli
+bun add -g @slorenzot/memento-cli
 
 # Búsqueda en memoria
 memento search "consulta de búsqueda"
@@ -118,7 +118,7 @@ memento timeline
 
 ```bash
 # Instalar
-bun add @memento/api
+bun add @slorenzot/memento-api
 
 # Iniciar servidor API
 memento-api
@@ -135,7 +135,7 @@ curl -X POST http://localhost:3000/api/observations \
 
 ```bash
 # Instalar
-bun add @memento/web-ui
+bun add @slorenzot/memento-web-ui
 
 # Iniciar interfaz web
 memento-web-ui
