@@ -1,8 +1,14 @@
 {
   "name": "@slorenzot/memento-core",
-  "version": "0.2.0",
-  "description": "Core memory engine for Memento with SQLite FTS5 search",
-  "keywords": ["memento", "memory", "sqlite", "fts5"],
+  "version": "0.3.0",
+  "description": "Core memory engine for Memento with bun:sqlite and FTS5 search",
+  "keywords": [
+    "memento",
+    "memory",
+    "sqlite",
+    "fts5",
+    "bun"
+  ],
   "license": "CC-BY-NC-ND-4.0",
   "author": "Soulberto Lorenzo",
   "type": "commonjs",
@@ -12,12 +18,11 @@
     "build": "tsc",
     "prepare": "npm run build"
   },
-  "dependencies": {
-    "better-sqlite3": "^11.0.0"
-  },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.8",
     "@types/node": "^20.11.0",
     "typescript": "^5.3.3"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
   }
 }
