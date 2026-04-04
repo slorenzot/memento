@@ -2,29 +2,27 @@
   "name": "@slorenzot/memento-mcp-server",
   "version": "0.3.0",
   "description": "MCP server implementation for Memento",
-  "main": "src/index.js",
-  "types": "src/index.d.ts",
+  "keywords": ["mcp", "memento", "memory", "model-context-protocol"],
+  "license": "CC-BY-NC-ND-4.0",
+  "author": "Soulberto Lorenzo",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
-    "memento-mcp": "src/index.js"
+    "memento-mcp": "dist/index.js"
   },
-  "files": [
-    "src/**/*",
-    "README.md"
-  ],
   "scripts": {
-    "build": "bun tsc --declaration --declarationMap --outDir ./dist",
-    "start": "node src/index.js",
-    "test": "bun test",
-    "typecheck": "bun tsc --noEmit"
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch",
+    "prepare": "npm run build"
   },
   "dependencies": {
-    "@slorenzot/memento-core": "^0.1.3",
-    "@modelcontextprotocol/sdk": "^0.4.0",
+    "@modelcontextprotocol/sdk": "^1.25.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "bun-types": "^1.3.11"
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
   }
-}
-}
 }
