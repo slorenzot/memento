@@ -1,8 +1,14 @@
 {
   "name": "@slorenzot/memento-mcp-server",
-  "version": "0.3.0",
-  "description": "MCP server implementation for Memento",
-  "keywords": ["mcp", "memento", "memory", "model-context-protocol"],
+  "version": "0.4.0",
+  "description": "MCP server implementation for Memento with SQLite persistent storage",
+  "keywords": [
+    "mcp",
+    "memento",
+    "memory",
+    "model-context-protocol",
+    "sqlite"
+  ],
   "license": "CC-BY-NC-ND-4.0",
   "author": "Soulberto Lorenzo",
   "type": "commonjs",
@@ -19,10 +25,14 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",
+    "@slorenzot/memento-core": "^0.3.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "typescript": "^5.3.3"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
   }
 }
