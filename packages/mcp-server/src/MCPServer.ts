@@ -5,8 +5,8 @@ import {
   ListToolsRequestSchema,
   type CallToolResult,
 } from '@modelcontextprotocol/sdk/types.js';
-import { MemoryEngine } from '@memento/core';
-import type { Observation, Session } from '@memento/core';
+import { MemoryEngine } from '@slorenzot/memento-core';
+import type { Observation, Session } from '@slorenzot/memento-core';
 
 export class MCPServer {
   private server: Server;
@@ -248,7 +248,7 @@ export class MCPServer {
         }
 
         case 'mem_delete': {
-          await this.memory.deleteObservation(args.id as number, args.soft as boolean ?? true);
+          await this.memory.deleteObservation(args.id as number);
           result = { id: args.id, success: true };
           break;
         }

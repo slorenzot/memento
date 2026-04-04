@@ -10,7 +10,7 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-server.start().catch((error) => {
+server.start().catch((error: Error) => {
   console.error('Failed to start API server:', error);
   process.exit(1);
 });

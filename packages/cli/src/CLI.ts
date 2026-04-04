@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { MemoryEngine } from '@memento/core';
-import type { Observation } from '@memento/core';
+import { MemoryEngine } from '@slorenzot/memento-core';
+import type { Observation } from '@slorenzot/memento-core';
 
 // @ts-ignore
 export class CLI {

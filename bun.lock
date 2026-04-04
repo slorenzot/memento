@@ -14,10 +14,10 @@
       },
     },
     "packages/api": {
-      "name": "@memento/api",
+      "name": "@slorenzot/memento-api",
       "version": "0.1.0",
       "dependencies": {
-        "@memento/core": "workspace:*",
+        "@slorenzot/memento-core": "workspace:*",
         "cors": "^2.8.5",
         "dotenv": "^16.4.1",
         "express": "^4.18.2",
@@ -30,17 +30,17 @@
         "@types/cors": "^2.8.17",
         "@types/express": "^4.17.21",
         "@types/jsonwebtoken": "^9.0.5",
-        "bun-types": "latest",
+        "bun-types": "^1.3.11",
       },
     },
     "packages/cli": {
-      "name": "@memento/cli",
+      "name": "@slorenzot/memento-cli",
       "version": "0.1.0",
       "bin": {
         "memento": "./dist/cli.js",
       },
       "dependencies": {
-        "@memento/core": "workspace:*",
+        "@slorenzot/memento-core": "workspace:*",
         "chalk": "^5.3.0",
         "commander": "^12.0.0",
         "dotenv": "^16.4.1",
@@ -50,34 +50,34 @@
       },
       "devDependencies": {
         "@types/node": "^20.11.0",
-        "bun-types": "latest",
+        "bun-types": "^1.3.11",
       },
     },
     "packages/core": {
-      "name": "@memento/core",
+      "name": "@slorenzot/memento-core",
       "version": "0.1.0",
       "dependencies": {
         "nanoid": "^5.0.4",
         "zod": "^3.22.4",
       },
       "devDependencies": {
-        "bun-types": "latest",
+        "bun-types": "^1.3.11",
       },
     },
     "packages/mcp-server": {
-      "name": "@memento/mcp-server",
+      "name": "@slorenzot/memento-mcp-server",
       "version": "0.1.0",
       "dependencies": {
-        "@memento/core": "workspace:*",
         "@modelcontextprotocol/sdk": "^0.4.0",
+        "@slorenzot/memento-core": "workspace:*",
         "zod": "^3.22.4",
       },
       "devDependencies": {
-        "bun-types": "latest",
+        "bun-types": "^1.3.11",
       },
     },
     "packages/web-ui": {
-      "name": "@memento/web-ui",
+      "name": "@slorenzot/memento-web-ui",
       "version": "0.1.0",
       "dependencies": {
         "@tanstack/react-query": "^5.17.19",
@@ -94,7 +94,7 @@
         "@types/react-dom": "^18.2.18",
         "@vitejs/plugin-react": "^4.2.1",
         "autoprefixer": "^10.4.17",
-        "bun-types": "latest",
+        "bun-types": "^1.3.11",
         "postcss": "^8.4.33",
         "tailwindcss": "^3.4.1",
         "typescript": "^5.3.3",
@@ -215,16 +215,6 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@memento/api": ["@memento/api@workspace:packages/api"],
-
-    "@memento/cli": ["@memento/cli@workspace:packages/cli"],
-
-    "@memento/core": ["@memento/core@workspace:packages/core"],
-
-    "@memento/mcp-server": ["@memento/mcp-server@workspace:packages/mcp-server"],
-
-    "@memento/web-ui": ["@memento/web-ui@workspace:packages/web-ui"],
-
     "@modelcontextprotocol/sdk": ["@modelcontextprotocol/sdk@0.4.0", "", { "dependencies": { "content-type": "^1.0.5", "raw-body": "^3.0.0", "zod": "^3.23.8" } }, "sha512-79gx8xh4o9YzdbtqMukOe5WKzvEZpvBA1x8PAgJWL7J5k06+vJx8NK2kWzOazPgqnfDego7cNEO8tjai/nOPAA=="],
 
     "@nodelib/fs.scandir": ["@nodelib/fs.scandir@2.1.5", "", { "dependencies": { "@nodelib/fs.stat": "2.0.5", "run-parallel": "^1.1.9" } }, "sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g=="],
@@ -284,6 +274,16 @@
     "@rollup/rollup-win32-x64-gnu": ["@rollup/rollup-win32-x64-gnu@4.60.1", "", { "os": "win32", "cpu": "x64" }, "sha512-k+600V9Zl1CM7eZxJgMyTUzmrmhB/0XZnF4pRypKAlAgxmedUA+1v9R+XOFv56W4SlHEzfeMtzujLJD22Uz5zg=="],
 
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.60.1", "", { "os": "win32", "cpu": "x64" }, "sha512-lWMnixq/QzxyhTV6NjQJ4SFo1J6PvOX8vUx5Wb4bBPsEb+8xZ89Bz6kOXpfXj9ak9AHTQVQzlgzBEc1SyM27xQ=="],
+
+    "@slorenzot/memento-api": ["@slorenzot/memento-api@workspace:packages/api"],
+
+    "@slorenzot/memento-cli": ["@slorenzot/memento-cli@workspace:packages/cli"],
+
+    "@slorenzot/memento-core": ["@slorenzot/memento-core@workspace:packages/core"],
+
+    "@slorenzot/memento-mcp-server": ["@slorenzot/memento-mcp-server@workspace:packages/mcp-server"],
+
+    "@slorenzot/memento-web-ui": ["@slorenzot/memento-web-ui@workspace:packages/web-ui"],
 
     "@tanstack/query-core": ["@tanstack/query-core@5.96.2", "", {}, "sha512-hzI6cTVh4KNRk8UtoIBS7Lv9g6BnJPXvBKsvYH1aGWvv0347jT3BnSvztOE+kD76XGvZnRC/t6qdW1CaIfwCeA=="],
 
