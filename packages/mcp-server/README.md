@@ -34,10 +34,10 @@ const server = new MCPServer('./data/memento.db');
 ### Shell/Bun
 ```bash
 # Ejecutar servidor MCP (usualmente llamado por clientes MCP)
-bunx @slorenzot/memento-mcp-server
+npm run --package @slorenzot/memento-mcp-server start
 
-# O directamente con bun
-bun run node_modules/@slorenzot/memento-mcp-server/dist/index.js
+# O usando npx
+npx -p @slorenzot/memento-mcp-server node mcp.js
 ```
 
 ## 🔧 API Esencial
