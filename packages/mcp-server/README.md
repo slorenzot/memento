@@ -33,11 +33,14 @@ const server = new MCPServer('./data/memento.db');
 
 ### Shell/Bun
 ```bash
-# Ejecutar servidor MCP (usualmente llamado por clientes MCP)
-npm run --package @slorenzot/memento-mcp-server start
+# Ejecutar servidor MCP (recomendado)
+npx -p @slorenzot/memento-mcp-server
 
-# O usando npx
-npx -p @slorenzot/memento-mcp-server node mcp.js
+# O usando bunx (si está instalado globalmente)
+bunx @slorenzot/memento-mcp-server
+
+# Usar con variable de entorno para base de datos personalizada
+MEMENTO_DB_PATH=/custom/path/database.db npx -p @slorenzot/memento-mcp-server
 ```
 
 ## 🔧 API Esencial
