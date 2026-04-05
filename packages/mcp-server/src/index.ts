@@ -3,69 +3,12 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { MemoryEngine } from '@slorenzot/memento-core';
-import { readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { homedir } from 'os';
-
-interface MementoConfig {
-  storagePath: string;
-  projectId?: string;
-}
-
-const DEFAULT_CONFIG: MementoConfig = {
-  storagePath: 'database/storage',
-};
-
-function loadJSONFile<T>(path: string): T | null {
-  if (!existsSync(path)) return null;
-  try {
-    return JSON.parse(readFileSync(path, 'utf-8')) as T;
-  } catch {
-    return null;
-  }
-}
-
-function findProjectConfig(startDir: string = process.cwd()): MementoConfig | null {
-  let currentDir = startDir;
-  for (let depth = 0; depth < 10; depth++) {
-    const configPath = join(currentDir, '.mementorc');
-    if (existsSync(configPath)) {
-      const config = loadJSONFile<MementoConfig>(configPath);
-      if (config) return config;
-    }
-    const parentDir = dirname(currentDir);
-    if (parentDir === currentDir) break;
-    currentDir = parentDir;
-  }
-  return null;
-}
-
-function loadConfig(): MementoConfig {
-  let config: MementoConfig = { ...DEFAULT_CONFIG };
-  const projectConfig = findProjectConfig();
-  if (projectConfig) config = { ...config, ...projectConfig };
-  const globalConfig = loadJSONFile<MementoConfig>(join(homedir(), '.memento', 'config'));
-  if (globalConfig) config = { ...config, ...globalConfig };
-  if (process.env.MEMENTO_STORAGE_PATH) config.storagePath = process.env.MEMENTO_STORAGE_PATH;
-  if (process.env.MEMENTO_PROJECT_ID) config.projectId = process.env.MEMENTO_PROJECT_ID;
-  return config;
-}
-
-function resolveStoragePath(config: MementoConfig): string {
-  if (config.storagePath.startsWith('/')) return config.storagePath;
-  if (config.storagePath.startsWith('~/')) return join(homedir(), config.storagePath.slice(2));
-  return join(process.cwd(), config.storagePath);
-}
-
-function getProjectId(config: MementoConfig): string {
-  if (config.projectId) return config.projectId;
-  const packageJson = loadJSONFile<{ name?: string }>(join(process.cwd(), 'package.json'));
-  return packageJson?.name || 'default';
-}
+import { MemoryEngine, loadConfig, resolveDbPath, getProjectId } from '@slorenzot/memento-core';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
 const config = loadConfig();
-const dbPath = resolveStoragePath(config);
+const dbPath = resolveDbPath(config);
 const projectId = getProjectId(config);
 
 const engine = new MemoryEngine(dbPath);
@@ -276,7 +219,7 @@ server.tool(
       limit: limit || 20,
     });
 
-    const uniqueSessions = new Set(result.observations.map((o) => o.sessionId));
+    const uniqueSessions = new Set(result.observations.map((o: any) => o.sessionId));
     const sessions = await Promise.all(
       Array.from(uniqueSessions).map((id) => engine.getSession(id))
     );

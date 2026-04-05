@@ -1,10 +1,7 @@
-# Memento Configuration File
-
-# Example .mementorc for project-specific Memento configuration
-# Place this file in your project root directory
-
 {
+  "storageMethod": "database",
+  "dbPath": ".memento/db/memento.db",
   "storagePath": "database/storage",
-
   "projectId": "my-awesome-project"
 }
+

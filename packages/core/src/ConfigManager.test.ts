@@ -18,6 +18,8 @@ beforeAll(() => {
     join(configDir, '.mementorc'),
     JSON.stringify(
       {
+        storageMethod: 'database',
+        dbPath: '.memento/db/memento.db',
         storagePath: 'database/storage',
         projectId: 'test-project',
       },
@@ -53,13 +55,21 @@ describe('ConfigManager', () => {
     it('should use default config when no .mementorc found', () => {
       const { loadConfig } = require('../src/ConfigManager');
       const { join } = require('path');
+      const { mkdirSync } = require('fs');
+
+      const noConfigDir = join(testDir, 'no-config-isolated');
+      mkdirSync(noConfigDir, { recursive: true });
 
       const originalCwd = process.cwd;
-      process.cwd = () => join(testDir, 'no-config');
+      // Use /tmp which should not have .mementorc
+      process.cwd = () => '/tmp';
 
       try {
         const config = loadConfig();
+        expect(config.storageMethod).toBe('database');
+        expect(config.dbPath).toBe('.memento/db/memento.db');
         expect(config.storagePath).toBe('database/storage');
+        // projectId will be undefined when no .mementorc and no package.json
         expect(config.projectId).toBeUndefined();
       } finally {
         process.cwd = originalCwd;
@@ -70,11 +80,15 @@ describe('ConfigManager', () => {
       const { loadConfig } = require('../src/ConfigManager');
 
       const originalEnv = { ...process.env };
+      process.env.MEMENTO_STORAGE_METHOD = 'storage';
+      process.env.MEMENTO_DB_PATH = '/custom/db/memento.db';
       process.env.MEMENTO_STORAGE_PATH = '/custom/storage';
       process.env.MEMENTO_PROJECT_ID = 'env-project';
 
       try {
         const config = loadConfig();
+        expect(config.storageMethod).toBe('storage');
+        expect(config.dbPath).toBe('/custom/db/memento.db');
         expect(config.storagePath).toBe('/custom/storage');
         expect(config.projectId).toBe('env-project');
       } finally {
@@ -117,6 +131,61 @@ describe('ConfigManager', () => {
       try {
         const resolved = resolveStoragePath(config);
         expect(resolved).toBe('/project/root/database/storage');
+      } finally {
+        process.cwd = originalCwd;
+      }
+    });
+  });
+
+  describe('resolveDbPath()', () => {
+    it('should resolve absolute paths', () => {
+      const { resolveDbPath } = require('../src/ConfigManager');
+      const config = { dbPath: '/absolute/path/memento.db', projectId: 'test' };
+      const resolved = resolveDbPath(config);
+      expect(resolved).toBe('/absolute/path/memento.db');
+    });
+
+    it('should resolve ~ to home directory', () => {
+      const { resolveDbPath } = require('../src/ConfigManager');
+      const { homedir } = require('os');
+      const config = { dbPath: '~/.memento/db/memento.db', projectId: 'test' };
+
+      const originalCwd = process.cwd;
+      process.cwd = () => '/some/working/dir';
+
+      try {
+        const resolved = resolveDbPath(config);
+        expect(resolved).toBe(join(homedir(), '.memento/db/memento.db'));
+      } finally {
+        process.cwd = originalCwd;
+      }
+    });
+
+    it('should resolve relative paths from working directory', () => {
+      const { resolveDbPath } = require('../src/ConfigManager');
+      const config = { dbPath: '.memento/db/memento.db', projectId: 'test' };
+
+      const originalCwd = process.cwd;
+      process.cwd = () => '/project/root';
+
+      try {
+        const resolved = resolveDbPath(config);
+        expect(resolved).toBe('/project/root/.memento/db/memento.db');
+      } finally {
+        process.cwd = originalCwd;
+      }
+    });
+
+    it('should use default dbPath when not specified', () => {
+      const { resolveDbPath } = require('../src/ConfigManager');
+      const config = { projectId: 'test' };
+
+      const originalCwd = process.cwd;
+      process.cwd = () => '/project/root';
+
+      try {
+        const resolved = resolveDbPath(config);
+        expect(resolved).toBe('/project/root/.memento/db/memento.db');
       } finally {
         process.cwd = originalCwd;
       }
