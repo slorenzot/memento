@@ -7,6 +7,34 @@ import { MemoryEngine, loadConfig, resolveDbPath, getProjectId } from '@slorenzo
 import { existsSync } from 'fs';
 import { join } from 'path';
 
+// Helper function to handle errors in tool execution
+function handleToolError(error: any): any {
+  console.error('Tool execution error:', error.message);
+
+  let hint = 'An error occurred during operation';
+  if (!engine.isHealthy()) {
+    const initError = engine.getInitError();
+    hint = `Database initialization failed: ${initError?.message || 'Unknown error'}. Check configuration and permissions.`;
+  }
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify(
+          {
+            success: false,
+            error: error.message,
+            hint,
+          },
+          null,
+          2
+        ),
+      },
+    ],
+  };
+}
+
 const config = loadConfig();
 const dbPath = resolveDbPath(config);
 const projectId = getProjectId(config);
@@ -34,36 +62,40 @@ server.tool(
     metadata: z.record(z.unknown()).optional().describe('Additional metadata'),
   },
   async ({ title, content, type, topic_key, project_id, metadata }) => {
-    let sessionId = activeSessionId;
+    try {
+      let sessionId = activeSessionId;
 
-    if (!sessionId) {
-      const session = await engine.createSession({
+      if (!sessionId) {
+        const session = await engine.createSession({
+          projectId,
+          endedAt: null,
+          metadata: {},
+        });
+        sessionId = session.id;
+        activeSessionId = sessionId;
+      }
+
+      const obs = await engine.createObservation({
+        sessionId,
+        title,
+        content,
+        type: (type as any) || 'note',
+        topicKey: topic_key || null,
         projectId,
-        endedAt: null,
-        metadata: {},
+        metadata: metadata || {},
       });
-      sessionId = session.id;
-      activeSessionId = sessionId;
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({ id: obs.id, uuid: obs.uuid, success: true }, null, 2),
+          },
+        ],
+      };
+    } catch (error: any) {
+      return handleToolError(error);
     }
-
-    const obs = await engine.createObservation({
-      sessionId,
-      title,
-      content,
-      type: (type as any) || 'note',
-      topicKey: topic_key || null,
-      projectId,
-      metadata: metadata || {},
-    });
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({ id: obs.id, uuid: obs.uuid, success: true }, null, 2),
-        },
-      ],
-    };
   }
 );
 
@@ -79,23 +111,27 @@ server.tool(
     offset: z.number().optional(),
   },
   async ({ query, type, project_id, topic_key, limit, offset }) => {
-    const result = await engine.search({
-      query,
-      type: type as any,
-      projectId: project_id,
-      topicKey: topic_key,
-      limit,
-      offset,
-    });
+    try {
+      const result = await engine.search({
+        query,
+        type: type as any,
+        projectId: project_id,
+        topicKey: topic_key,
+        limit,
+        offset,
+      });
 
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(result, null, 2),
-        },
-      ],
-    };
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error: any) {
+      return handleToolError(error);
+    }
   }
 );
 
@@ -310,28 +346,36 @@ server.tool('mem_stats', 'Get memory statistics.', {}, async () => {
 });
 
 server.tool('mem_health', 'Check system health.', {}, async () => {
-  const result = await engine.search({});
+  try {
+    const isHealthy = engine.isHealthy();
+    const result = isHealthy ? await engine.search({}) : { total: 0, observations: [] };
+    const initError = engine.getInitError();
 
-  return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(
-          {
-            status: 'healthy',
-            version: '0.5.0',
-            storage: 'sqlite-persistent',
-            databasePath: dbPath,
-            projectId: projectId,
-            observations: result.total,
-            activeSession: activeSessionId,
-          },
-          null,
-          2
-        ),
-      },
-    ],
-  };
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            {
+              status: isHealthy ? 'healthy' : 'unhealthy',
+              version: '0.7.0',
+              storage: 'sqlite-persistent',
+              databasePath: dbPath,
+              projectId: projectId,
+              databaseHealth: isHealthy ? 'ok' : 'failed',
+              ...(initError && { initError: initError.message }),
+              observations: result.total,
+              activeSession: activeSessionId,
+            },
+            null,
+            2
+          ),
+        },
+      ],
+    };
+  } catch (error: any) {
+    return handleToolError(error);
+  }
 });
 
 server.tool('mem_config', 'Get current memento configuration and system status.', {}, async () => {
@@ -464,15 +508,31 @@ const BANNER = `
 async function main() {
   console.error(BANNER);
 
+  // Check database health and show warnings if needed
+  if (!engine.isHealthy()) {
+    const initError = engine.getInitError();
+    console.error('\n⚠️  WARNING: Database initialization failed');
+    console.error(`   Error: ${initError?.message || 'Unknown error'}`);
+    console.error(`   Database path: ${dbPath}`);
+    console.error('\n   The server will start, but database operations will fail.');
+    console.error('   Please check:');
+    console.error('   - Directory permissions');
+    console.error('   - Disk space');
+    console.error('   - Path configuration in .mementorc\n');
+  }
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
+
   console.error('\n✓ Memento MCP Server started successfully');
   console.error(`  Database: ${dbPath}`);
   console.error(`  Project: ${projectId}`);
+  console.error(`  Health: ${engine.isHealthy() ? '✓ Healthy' : '✗ Unhealthy'}`);
   console.error(`  Ready to accept connections...\n`);
 }
 
 main().catch((err) => {
-  console.error('Fatal error:', err);
+  console.error('Fatal error during server startup:', err);
+  console.error('\nThe server failed to start. Please check the error above.');
   process.exit(1);
 });

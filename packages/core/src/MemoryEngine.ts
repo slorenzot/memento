@@ -8,21 +8,52 @@ import { join, dirname } from 'path';
 export class MemoryEngine {
   private db: any;
   private dbPath: string;
+  private initError: Error | null = null;
 
   constructor(dbPath: string = './data/memento.db') {
     this.dbPath = dbPath;
-    const dbDir = dirname(dbPath);
 
     try {
-      mkdirSync(dbDir, { recursive: true });
-    } catch (error: any) {
-      if (error?.code !== 'EEXIST') {
-        throw error;
-      }
-    }
+      const dbDir = dirname(dbPath);
 
-    this.db = new Database(dbPath, { create: true });
-    this.initializeDatabase();
+      // Create directory structure if it doesn't exist
+      mkdirSync(dbDir, { recursive: true });
+
+      // Create database connection
+      this.db = new Database(dbPath, { create: true });
+      this.initializeDatabase();
+
+      console.error(`✓ Database initialized successfully at: ${dbPath}`);
+    } catch (error: any) {
+      this.initError = error;
+      console.error(`✗ Failed to initialize database at ${dbPath}:`, error.message);
+      console.error(
+        '  The server will start but database operations will fail until this is resolved.'
+      );
+
+      // Create a mock database object to prevent null reference errors
+      this.db = this.createMockDatabase();
+    }
+  }
+
+  private createMockDatabase(): any {
+    const throwError = () => {
+      throw new Error(`Database not initialized: ${this.initError?.message || 'Unknown error'}`);
+    };
+
+    return {
+      prepare: throwError,
+      exec: throwError,
+      close: () => {},
+    };
+  }
+
+  isHealthy(): boolean {
+    return this.initError === null;
+  }
+
+  getInitError(): Error | null {
+    return this.initError;
   }
 
   getDatabasePath(): string {
@@ -110,6 +141,12 @@ export class MemoryEngine {
     }
   }
 
+  private checkHealth(): void {
+    if (!this.isHealthy()) {
+      throw this.initError || new Error('Database not initialized');
+    }
+  }
+
   async createObservation(data: {
     sessionId: number;
     title: string;
@@ -119,6 +156,7 @@ export class MemoryEngine {
     projectId: string;
     metadata: Record<string, unknown>;
   }): Promise<Observation> {
+    this.checkHealth();
     const uuid = crypto.randomUUID();
     const createdAt = new Date();
     const metadata = this.serialize(data.metadata);

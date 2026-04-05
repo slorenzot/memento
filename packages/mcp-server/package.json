@@ -1,6 +1,6 @@
 {
   "name": "@slorenzot/memento-mcp-server",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "MCP server implementation for Memento with SQLite, flexible config via .mementorc, and ASCII banner",
   "keywords": ["mcp", "memento", "memory", "model-context-protocol", "sqlite", "config", "mementorc", "banner"],
   "license": "CC-BY-NC-ND-4.0",
@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",
-    "@slorenzot/memento-core": "^0.5.0",
+    "@slorenzot/memento-core": "^0.6.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
