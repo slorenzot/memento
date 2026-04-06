@@ -1,0 +1,6 @@
+{
+  "storageMethod": "database",
+  "dbPath": ".memento/db/memento.db",
+  "storagePath": "database/storage",
+  "projectId": "memento"
+}

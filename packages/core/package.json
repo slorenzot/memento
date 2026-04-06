@@ -2,7 +2,15 @@
   "name": "@slorenzot/memento-core",
   "version": "0.6.0",
   "description": "Core memory engine for Memento with bun:sqlite, FTS5 search, and flexible config",
-  "keywords": ["memento", "memory", "sqlite", "fts5", "bun", "config", "mementorc"],
+  "keywords": [
+    "memento",
+    "memory",
+    "sqlite",
+    "fts5",
+    "bun",
+    "config",
+    "mementorc"
+  ],
   "license": "CC-BY-NC-ND-4.0",
   "author": "Soulberto Lorenzo",
   "type": "commonjs",
@@ -20,5 +28,4 @@
   "engines": {
     "bun": ">=1.0.0"
   }
-}
 }

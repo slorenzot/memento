@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { MemoryEngine, loadConfig, resolveDbPath, getProjectId } from '@slorenzot/memento-core';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import * as fs from 'fs';
 
 // Helper function to handle errors in tool execution
 function handleToolError(error: any): any {
@@ -63,11 +64,12 @@ server.tool(
   },
   async ({ title, content, type, topic_key, project_id, metadata }) => {
     try {
+      const currentProjectId = project_id || projectId;
       let sessionId = activeSessionId;
 
       if (!sessionId) {
         const session = await engine.createSession({
-          projectId,
+          projectId: currentProjectId,
           endedAt: null,
           metadata: {},
         });
@@ -81,7 +83,7 @@ server.tool(
         content,
         type: (type as any) || 'note',
         topicKey: topic_key || null,
-        projectId,
+        projectId: currentProjectId,
         metadata: metadata || {},
       });
 
@@ -431,9 +433,6 @@ server.tool('mem_config', 'Get current memento configuration and system status.'
 });
 
 function getDatabaseStats(dbPath: string) {
-  const path = require('path');
-  const fs = require('fs');
-
   let totalSize = 0;
   let walSize = 0;
   let shmSize = 0;

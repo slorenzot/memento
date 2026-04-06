@@ -3,7 +3,7 @@ import type { Observation, Session, Prompt } from './types.js';
 
 import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'fs';
-import { join, dirname } from 'path';
+import { dirname } from 'path';
 
 export class MemoryEngine {
   private db: any;

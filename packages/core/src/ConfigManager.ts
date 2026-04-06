@@ -1,7 +1,6 @@
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
-import { fileURLToPath } from 'url';
 
 export interface MementoConfig {
   storageMethod?: 'database' | 'storage';

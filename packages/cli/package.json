@@ -21,7 +21,7 @@
     "prepare": "npm run build"
   },
   "dependencies": {
-    "@slorenzot/memento-core": "^0.2.0",
+    "@slorenzot/memento-core": "^0.6.0",
     "commander": "^12.0.0"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { MemoryEngine } from '@slorenzot/memento-core';
+import { MemoryEngine, loadConfig, resolveDbPath, getProjectId } from '@slorenzot/memento-core';
 import type { Observation } from '@slorenzot/memento-core';
 
 // @ts-ignore
@@ -7,8 +7,13 @@ export class CLI {
   private program: Command;
   private memory: MemoryEngine;
   private activeSessionId: number | null = null;
+  private projectId: string;
 
-  constructor(dbPath: string = './data/memento.db') {
+  constructor() {
+    const config = loadConfig();
+    const dbPath = resolveDbPath(config);
+    this.projectId = getProjectId(config);
+
     this.program = new Command();
     this.memory = new MemoryEngine(dbPath);
     this.setupCommands();
@@ -73,7 +78,7 @@ export class CLI {
       .description('Save an observation')
       .option('-t, --type <type>', 'Observation type', 'note')
       .option('-k, --topic <topic>', 'Topic key')
-      .option('-p, --project <project>', 'Project ID', 'default')
+      .option('-p, --project <project>', 'Project ID', this.projectId)
       .action(async (title, content, options) => {
         const sessionId = await this.getOrCreateSessionId(options.project as string);
         const observation = await this.memory.createObservation({
