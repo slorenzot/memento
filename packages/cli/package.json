@@ -1,6 +1,6 @@
 {
   "name": "@slorenzot/memento-cli",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "CLI interface for Memento memory system",
   "keywords": [
     "memento",

@@ -1,6 +1,6 @@
 {
   "name": "@slorenzot/memento-api",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "HTTP REST API for Memento memory system",
   "keywords": [
     "memento",
