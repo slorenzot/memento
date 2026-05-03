@@ -975,6 +975,200 @@ export class MemoryEngine {
     };
   }
 
+  // ─── TUI Explorer API ──────────────────────────────────────
+
+  async listSessions(params: {
+    projectId?: string;
+    activeOnly?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ sessions: Session[]; total: number }> {
+    this.checkHealth();
+
+    const { projectId, activeOnly = false, limit = 50, offset = 0 } = params;
+
+    let sql = 'SELECT * FROM sessions WHERE 1=1';
+    const values: (string | number)[] = [];
+
+    if (projectId) {
+      sql += ' AND project_id = ?';
+      values.push(projectId);
+    }
+    if (activeOnly) {
+      sql += ' AND ended_at IS NULL';
+    }
+
+    // Count
+    const countSql = sql.replace(/SELECT.*?FROM/, 'SELECT COUNT(*) as count FROM');
+    const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;
+    const total = countResult?.count ?? 0;
+
+    // Fetch (id DESC as tiebreaker for same-millisecond timestamps)
+    sql += ' ORDER BY started_at DESC, id DESC LIMIT ? OFFSET ?';
+    values.push(limit, offset);
+
+    const rows = this.db.prepare(sql).all(...values);
+    const sessions = (rows as Record<string, unknown>[]).map((row) => this.mapSession(row));
+
+    return { sessions, total };
+  }
+
+  async listProjects(): Promise<
+    Array<{
+      name: string;
+      activeCount: number;
+      deletedCount: number;
+      lastActivity: Date | null;
+      byType: Record<string, number>;
+    }>
+  > {
+    this.checkHealth();
+
+    // Get all distinct project_ids with their stats
+    const rows = this.db
+      .prepare(
+        `
+      SELECT
+        project_id,
+        SUM(CASE WHEN deleted_at IS NULL THEN 1 ELSE 0 END) as active_count,
+        SUM(CASE WHEN deleted_at IS NOT NULL THEN 1 ELSE 0 END) as deleted_count,
+        MAX(created_at) as last_activity,
+        MAX(id) as max_id
+      FROM observations
+      GROUP BY project_id
+      ORDER BY last_activity DESC, max_id DESC
+    `
+      )
+      .all();
+
+    const projects = (rows as Record<string, unknown>[]).map((row) => {
+      const projectId = row.project_id as string;
+
+      // Get type distribution for this project
+      const typeRows = this.db
+        .prepare(
+          `
+        SELECT type, COUNT(*) as count
+        FROM observations
+        WHERE project_id = ?
+        GROUP BY type
+      `
+        )
+        .all(projectId) as Record<string, unknown>[];
+
+      const byType: Record<string, number> = {
+        decision: 0,
+        bug: 0,
+        discovery: 0,
+        note: 0,
+      };
+      for (const tr of typeRows) {
+        byType[tr.type as string] = tr.count as number;
+      }
+
+      return {
+        name: projectId,
+        activeCount: row.active_count as number,
+        deletedCount: row.deleted_count as number,
+        lastActivity: row.last_activity ? new Date(row.last_activity as number) : null,
+        byType,
+      };
+    });
+
+    return projects;
+  }
+
+  async getDashboardStats(): Promise<{
+    totalObservations: number;
+    activeObservations: number;
+    deletedObservations: number;
+    byType: Record<string, number>;
+    byProject: Record<string, number>;
+    activeSessions: number;
+    recentObservations: Observation[];
+  }> {
+    this.checkHealth();
+
+    // Total counts
+    const countRow = this.db
+      .prepare(
+        `
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN deleted_at IS NULL THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN deleted_at IS NOT NULL THEN 1 ELSE 0 END) as deleted
+      FROM observations
+    `
+      )
+      .get() as Record<string, unknown>;
+
+    // By type
+    const typeRows = this.db
+      .prepare(
+        `
+      SELECT type, COUNT(*) as count
+      FROM observations
+      WHERE deleted_at IS NULL
+      GROUP BY type
+    `
+      )
+      .all() as Record<string, unknown>[];
+
+    const byType: Record<string, number> = { decision: 0, bug: 0, discovery: 0, note: 0 };
+    for (const tr of typeRows) {
+      byType[tr.type as string] = tr.count as number;
+    }
+
+    // By project (active only)
+    const projectRows = this.db
+      .prepare(
+        `
+      SELECT project_id, COUNT(*) as count
+      FROM observations
+      WHERE deleted_at IS NULL
+      GROUP BY project_id
+      ORDER BY count DESC
+    `
+      )
+      .all() as Record<string, unknown>[];
+
+    const byProject: Record<string, number> = {};
+    for (const pr of projectRows) {
+      byProject[pr.project_id as string] = pr.count as number;
+    }
+
+    // Active sessions
+    const sessionRow = this.db
+      .prepare('SELECT COUNT(*) as count FROM sessions WHERE ended_at IS NULL')
+      .get() as { count: number };
+
+    // Recent 5 observations (active only)
+    const recentRows = this.db
+      .prepare(
+        `
+      SELECT * FROM observations
+      WHERE deleted_at IS NULL
+      ORDER BY created_at DESC, id DESC
+      LIMIT 5
+    `
+      )
+      .all();
+
+    const recentObservations = (recentRows as Record<string, unknown>[]).map((row) =>
+      this.mapObservation(row)
+    );
+
+    return {
+      totalObservations: (countRow.total as number) ?? 0,
+      activeObservations: (countRow.active as number) ?? 0,
+      deletedObservations: (countRow.deleted as number) ?? 0,
+      byType,
+      byProject,
+      activeSessions: sessionRow.count,
+      recentObservations,
+    };
+  }
+
   close(): void {
     this.db.close();
   }
