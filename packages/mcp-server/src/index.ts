@@ -4,6 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { MemoryEngine, loadConfig, resolveDbPath, getProjectId } from '@slorenzot/memento-core';
+import type { ExportFormat, MergeStrategy } from '@slorenzot/memento-core';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import * as fs from 'fs';
@@ -22,15 +23,7 @@ function handleToolError(error: any): any {
     content: [
       {
         type: 'text',
-        text: JSON.stringify(
-          {
-            success: false,
-            error: error.message,
-            hint,
-          },
-          null,
-          2
-        ),
+        text: JSON.stringify({ success: false, error: error.message, hint }, null, 2),
       },
     ],
   };
@@ -44,21 +37,26 @@ const engine = new MemoryEngine(dbPath);
 let activeSessionId: number | null = null;
 
 const server = new McpServer({
-  name: 'memento-mcp-server',
-  version: '0.4.0',
+  name: 'memento',
+  version: '1.0.0',
 });
 
+// ─── Observation Tools ──────────────────────────────────────
+
 server.tool(
-  'mem_save',
-  'Save an observation to memory. Types: decision, bug, discovery, note.',
+  'memento_mem_save',
+  'Save an observation to persistent memory. Types: decision, bug, discovery, note. Call this PROACTIVELY after making decisions, fixing bugs, or discovering something non-obvious.',
   {
-    title: z.string().describe('Title of observation'),
-    content: z.string().describe('Content of observation'),
+    title: z.string().describe('Short, searchable title (e.g. "Fixed N+1 in UserList")'),
+    content: z.string().describe('Structured content: What/Why/Where/Learned format'),
     type: z
       .enum(['decision', 'bug', 'discovery', 'note'])
       .optional()
       .describe('Type of observation (default: note)'),
-    topic_key: z.string().optional().describe('Topic key for grouping'),
+    topic_key: z
+      .string()
+      .optional()
+      .describe('Stable topic key for grouping (e.g. "architecture/auth-model")'),
     project_id: z.string().optional().describe('Project identifier'),
     metadata: z.record(z.unknown()).optional().describe('Additional metadata'),
   },
@@ -102,32 +100,123 @@ server.tool(
 );
 
 server.tool(
-  'mem_search',
-  'Search observations using text matching.',
+  'memento_mem_search',
+  'Search observations using full-text search (FTS5). Start with small limits and expand only if needed.',
   {
-    query: z.string().optional().describe('Search query'),
+    query: z.string().optional().describe('Search query (FTS5 syntax)'),
     type: z.enum(['decision', 'bug', 'discovery', 'note']).optional(),
     project_id: z.string().optional(),
     topic_key: z.string().optional(),
-    limit: z.number().optional(),
+    limit: z.number().optional().describe('Max results (default: 10)'),
     offset: z.number().optional(),
+    include_deleted: z.boolean().optional().describe('Include soft-deleted observations'),
   },
-  async ({ query, type, project_id, topic_key, limit, offset }) => {
+  async ({ query, type, project_id, topic_key, limit, offset, include_deleted }) => {
     try {
       const result = await engine.search({
         query,
         type: type as any,
         projectId: project_id,
         topicKey: topic_key,
-        limit,
+        limit: limit || 10,
         offset,
+        includeDeleted: include_deleted,
       });
 
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (error: any) {
+      return handleToolError(error);
+    }
+  }
+);
+
+server.tool(
+  'memento_mem_get_observation',
+  'Get full content of a specific observation by ID.',
+  {
+    id: z.number().describe('Observation ID'),
+  },
+  async ({ id }) => {
+    try {
+      const obs = await engine.getObservation(id);
+      if (!obs) throw new Error(`Observation ${id} not found`);
+      return {
+        content: [{ type: 'text', text: JSON.stringify(obs, null, 2) }],
+      };
+    } catch (error: any) {
+      return handleToolError(error);
+    }
+  }
+);
+
+server.tool(
+  'memento_mem_update',
+  'Update an existing observation.',
+  {
+    id: z.number().describe('Observation ID'),
+    title: z.string().optional(),
+    content: z.string().optional(),
+    type: z.enum(['decision', 'bug', 'discovery', 'note']).optional(),
+    topic_key: z.string().optional(),
+  },
+  async ({ id, title, content, type, topic_key }) => {
+    try {
+      const updated = await engine.updateObservation(id, {
+        title,
+        content,
+        type: type as any,
+        topicKey: topic_key,
+      });
+      return {
+        content: [
+          { type: 'text', text: JSON.stringify({ id: updated.id, success: true }, null, 2) },
+        ],
+      };
+    } catch (error: any) {
+      return handleToolError(error);
+    }
+  }
+);
+
+// ─── Soft Delete / Restore / Purge ──────────────────────────
+
+server.tool(
+  'memento_mem_delete',
+  'Soft-delete an observation. The record is hidden from searches but can be restored with memento_mem_restore. Use memento_mem_purge for permanent deletion.',
+  {
+    id: z.number().describe('Observation ID to soft-delete'),
+    reason: z.string().optional().describe('Reason for deletion (stored in metadata)'),
+  },
+  async ({ id, reason }) => {
+    try {
+      await engine.deleteObservation(id, reason);
+      return {
+        content: [
+          { type: 'text', text: JSON.stringify({ id, deleted: true, success: true }, null, 2) },
+        ],
+      };
+    } catch (error: any) {
+      return handleToolError(error);
+    }
+  }
+);
+
+server.tool(
+  'memento_mem_restore',
+  'Restore a soft-deleted observation back to active state.',
+  {
+    id: z.number().describe('Observation ID to restore'),
+  },
+  async ({ id }) => {
+    try {
+      const restored = await engine.restoreObservation(id);
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(result, null, 2),
+            text: JSON.stringify({ id: restored.id, restored: true, success: true }, null, 2),
           },
         ],
       };
@@ -138,162 +227,283 @@ server.tool(
 );
 
 server.tool(
-  'mem_get_observation',
-  'Get a specific observation by ID.',
+  'memento_mem_purge',
+  'PERMANENTLY delete soft-deleted observations. This is IRREVERSIBLE. Requires confirm: true.',
   {
-    id: z.number().describe('Observation ID'),
+    confirm: z.boolean().describe('Must be true to execute purge'),
+    project_id: z.string().optional().describe('Purge all deleted obs in this project'),
+    observation_ids: z
+      .array(z.number())
+      .optional()
+      .describe('Specific soft-deleted observation IDs to purge'),
   },
-  async ({ id }) => {
-    const obs = await engine.getObservation(id);
-    if (!obs) throw new Error(`Observation ${id} not found`);
-    return {
-      content: [{ type: 'text', text: JSON.stringify(obs, null, 2) }],
-    };
+  async ({ confirm, project_id, observation_ids }) => {
+    try {
+      if (!confirm) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                { success: false, error: 'confirm must be true to execute purge' },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      const result = await engine.purgeObservations({
+        projectId: project_id,
+        observationIds: observation_ids,
+      });
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ ...result, success: true }, null, 2) }],
+      };
+    } catch (error: any) {
+      return handleToolError(error);
+    }
   }
 );
 
 server.tool(
-  'mem_update',
-  'Update an existing observation.',
+  'memento_mem_list_deleted',
+  'List soft-deleted observations that can be restored or purged.',
   {
-    id: z.number().describe('Observation ID'),
-    title: z.string().optional(),
-    content: z.string().optional(),
+    project_id: z.string().optional(),
+    limit: z.number().optional().describe('Max results (default: 20)'),
+  },
+  async ({ project_id, limit }) => {
+    try {
+      const result = await engine.listDeleted({ projectId: project_id, limit });
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (error: any) {
+      return handleToolError(error);
+    }
+  }
+);
+
+// ─── Merge ──────────────────────────────────────────────────
+
+server.tool(
+  'memento_mem_merge',
+  'Merge related observations into a single synthesized record. Identifies candidates automatically by topic_key or content similarity (Jaccard > 0.85). Use dry_run to preview without executing.',
+  {
+    project_id: z.string().describe('Project to merge observations in (required)'),
+    topic_key: z.string().optional().describe('Merge all observations with this topic_key'),
+    observation_ids: z
+      .array(z.number())
+      .optional()
+      .describe('Specific observation IDs to merge (overrides auto-detection)'),
+    strategy: z
+      .enum(['by_topic', 'by_similarity', 'by_ids'])
+      .optional()
+      .describe('Merge strategy (default: by_topic)'),
+    dry_run: z.boolean().optional().describe('If true, returns candidates without executing merge'),
+  },
+  async ({ project_id, topic_key, observation_ids, strategy, dry_run }) => {
+    try {
+      const results = await engine.mergeObservations({
+        projectId: project_id,
+        topicKey: topic_key,
+        observationIds: observation_ids,
+        strategy: (strategy as MergeStrategy) || 'by_topic',
+        dryRun: dry_run,
+      });
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                success: true,
+                dryRun: dry_run || false,
+                mergeCount: results.length,
+                results: results.map((r) => ({
+                  mergedObservationId: r.mergedObservation.id,
+                  deletedIds: r.deletedIds,
+                  originalCount: r.originalCount,
+                  strategy: r.strategy,
+                })),
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } catch (error: any) {
+      return handleToolError(error);
+    }
+  }
+);
+
+// ─── Export ──────────────────────────────────────────────────
+
+server.tool(
+  'memento_mem_export',
+  'Export observations to JSON, XML, or TXT format. Use filters to reduce scope.',
+  {
+    format: z.enum(['json', 'xml', 'txt']).optional().describe('Export format (default: json)'),
+    project_id: z.string().optional().describe('Filter by project'),
     type: z.enum(['decision', 'bug', 'discovery', 'note']).optional(),
     topic_key: z.string().optional(),
+    date_from: z.string().optional().describe('ISO date string — export from this date'),
+    date_to: z.string().optional().describe('ISO date string — export until this date'),
+    include_deleted: z.boolean().optional().describe('Include soft-deleted observations'),
   },
-  async ({ id, title, content, type, topic_key }) => {
-    const updated = await engine.updateObservation(id, {
-      title,
-      content,
-      type: type as any,
-      topicKey: topic_key,
-    });
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({ id: updated.id, success: true }, null, 2),
-        },
-      ],
-    };
+  async ({ format, project_id, type, topic_key, date_from, date_to, include_deleted }) => {
+    try {
+      const result = await engine.exportObservations({
+        format: (format as ExportFormat) || 'json',
+        projectId: project_id,
+        type: type as any,
+        topicKey: topic_key,
+        dateFrom: date_from ? new Date(date_from) : undefined,
+        dateTo: date_to ? new Date(date_to) : undefined,
+        includeDeleted: include_deleted,
+      });
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                success: true,
+                format: result.format,
+                recordCount: result.recordCount,
+                exportedAt: result.exportedAt.toISOString(),
+                content: result.content,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } catch (error: any) {
+      return handleToolError(error);
+    }
   }
 );
 
-server.tool(
-  'mem_delete',
-  'Delete an observation.',
-  {
-    id: z.number().describe('Observation ID'),
-  },
-  async ({ id }) => {
-    await engine.deleteObservation(id);
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({ id, success: true }, null, 2),
-        },
-      ],
-    };
-  }
-);
+// ─── Session Tools ──────────────────────────────────────────
 
 server.tool(
-  'mem_session_start',
-  'Start a new memory session.',
+  'memento_mem_session_start',
+  'Start a new memory session for tracking a coding conversation.',
   {
     project_id: z.string().describe('Project identifier'),
     metadata: z.record(z.unknown()).optional(),
   },
   async ({ project_id, metadata }) => {
-    const session = await engine.createSession({
-      projectId: project_id,
-      endedAt: null,
-      metadata: metadata || {},
-    });
-    activeSessionId = session.id;
+    try {
+      const session = await engine.createSession({
+        projectId: project_id,
+        endedAt: null,
+        metadata: metadata || {},
+      });
+      activeSessionId = session.id;
 
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({ id: session.id, uuid: session.uuid, success: true }, null, 2),
-        },
-      ],
-    };
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({ id: session.id, uuid: session.uuid, success: true }, null, 2),
+          },
+        ],
+      };
+    } catch (error: any) {
+      return handleToolError(error);
+    }
   }
 );
 
-server.tool('mem_session_end', 'End current active session.', {}, async () => {
-  if (!activeSessionId) throw new Error('No active session');
-  const ended = await engine.endSession(activeSessionId);
-  activeSessionId = null;
-
-  return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(
-          { id: ended.id, uuid: ended.uuid, endedAt: ended.endedAt, success: true },
-          null,
-          2
-        ),
-      },
-    ],
-  };
-});
-
-server.tool(
-  'mem_list_sessions',
-  'List all sessions.',
-  {
-    project_id: z.string().optional(),
-    limit: z.number().optional(),
-  },
-  async ({ project_id, limit }) => {
-    const result = await engine.search({
-      projectId: project_id,
-      limit: limit || 20,
-    });
-
-    const uniqueSessions = new Set(result.observations.map((o: any) => o.sessionId));
-    const sessions = await Promise.all(
-      Array.from(uniqueSessions).map((id) => engine.getSession(id))
-    );
+server.tool('memento_mem_session_end', 'End current active session.', {}, async () => {
+  try {
+    if (!activeSessionId) throw new Error('No active session');
+    const ended = await engine.endSession(activeSessionId);
+    activeSessionId = null;
 
     return {
       content: [
         {
           type: 'text',
           text: JSON.stringify(
-            { sessions: sessions.filter(Boolean), total: sessions.length },
+            { id: ended.id, uuid: ended.uuid, endedAt: ended.endedAt, success: true },
             null,
             2
           ),
         },
       ],
     };
+  } catch (error: any) {
+    return handleToolError(error);
+  }
+});
+
+server.tool(
+  'memento_mem_list_sessions',
+  'List all sessions.',
+  {
+    project_id: z.string().optional(),
+    limit: z.number().optional(),
+  },
+  async ({ project_id, limit }) => {
+    try {
+      const result = await engine.search({ projectId: project_id, limit: limit || 20 });
+      const uniqueSessions = new Set(result.observations.map((o: any) => o.sessionId));
+      const sessions = await Promise.all(
+        Array.from(uniqueSessions).map((id) => engine.getSession(id))
+      );
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              { sessions: sessions.filter(Boolean), total: sessions.length },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } catch (error: any) {
+      return handleToolError(error);
+    }
   }
 );
 
 server.tool(
-  'mem_get_session',
+  'memento_mem_get_session',
   'Get a specific session by ID.',
   {
     id: z.number().describe('Session ID'),
   },
   async ({ id }) => {
-    const s = await engine.getSession(id);
-    if (!s) throw new Error(`Session ${id} not found`);
-    return {
-      content: [{ type: 'text', text: JSON.stringify(s, null, 2) }],
-    };
+    try {
+      const s = await engine.getSession(id);
+      if (!s) throw new Error(`Session ${id} not found`);
+      return {
+        content: [{ type: 'text', text: JSON.stringify(s, null, 2) }],
+      };
+    } catch (error: any) {
+      return handleToolError(error);
+    }
   }
 );
 
+// ─── Utility Tools ──────────────────────────────────────────
+
 server.tool(
-  'mem_timeline',
+  'memento_mem_timeline',
   'Get chronological timeline of observations.',
   {
     project_id: z.string().optional(),
@@ -301,53 +511,53 @@ server.tool(
     offset: z.number().optional(),
   },
   async ({ project_id, limit, offset }) => {
-    const result = await engine.search({
-      projectId: project_id,
-      limit,
-      offset,
-    });
+    try {
+      const result = await engine.search({ projectId: project_id, limit, offset });
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (error: any) {
+      return handleToolError(error);
+    }
+  }
+);
+
+server.tool('memento_mem_stats', 'Get memory statistics.', {}, async () => {
+  try {
+    const result = await engine.search({});
+    const deleted = await engine.listDeleted({});
+    const byType: Record<string, number> = {};
+    const byProject: Record<string, number> = {};
+
+    for (const o of result.observations) {
+      byType[o.type] = (byType[o.type] || 0) + 1;
+      byProject[o.projectId] = (byProject[o.projectId] || 0) + 1;
+    }
 
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(result, null, 2),
+          text: JSON.stringify(
+            {
+              totalObservations: result.total,
+              deletedObservations: deleted.total,
+              byType,
+              byProject,
+              activeSessionId,
+            },
+            null,
+            2
+          ),
         },
       ],
     };
+  } catch (error: any) {
+    return handleToolError(error);
   }
-);
-
-server.tool('mem_stats', 'Get memory statistics.', {}, async () => {
-  const result = await engine.search({});
-  const byType: Record<string, number> = {};
-  const byProject: Record<string, number> = {};
-
-  for (const o of result.observations) {
-    byType[o.type] = (byType[o.type] || 0) + 1;
-    byProject[o.projectId] = (byProject[o.projectId] || 0) + 1;
-  }
-
-  return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(
-          {
-            totalObservations: result.total,
-            byType,
-            byProject,
-            activeSessionId,
-          },
-          null,
-          2
-        ),
-      },
-    ],
-  };
 });
 
-server.tool('mem_health', 'Check system health.', {}, async () => {
+server.tool('memento_mem_health', 'Check system health.', {}, async () => {
   try {
     const isHealthy = engine.isHealthy();
     const result = isHealthy ? await engine.search({}) : { total: 0, observations: [] };
@@ -360,7 +570,7 @@ server.tool('mem_health', 'Check system health.', {}, async () => {
           text: JSON.stringify(
             {
               status: isHealthy ? 'healthy' : 'unhealthy',
-              version: '0.7.0',
+              version: '1.0.0',
               storage: 'sqlite-persistent',
               databasePath: dbPath,
               projectId: projectId,
@@ -380,57 +590,88 @@ server.tool('mem_health', 'Check system health.', {}, async () => {
   }
 });
 
-server.tool('mem_config', 'Get current memento configuration and system status.', {}, async () => {
-  const searchResult = await engine.search({});
-  const dbPath = engine.getDatabasePath();
+server.tool(
+  'memento_mem_config',
+  'Get current memento configuration and system status.',
+  {},
+  async () => {
+    try {
+      const searchResult = await engine.search({});
+      const currentDbPath = engine.getDatabasePath();
 
-  const byType: Record<string, number> = {};
-  for (const o of searchResult.observations) {
-    byType[o.type] = (byType[o.type] || 0) + 1;
-  }
+      const byType: Record<string, number> = {};
+      for (const o of searchResult.observations) {
+        byType[o.type] = (byType[o.type] || 0) + 1;
+      }
 
-  const dbStats = getDatabaseStats(dbPath);
+      const dbStats = getDatabaseStats(currentDbPath);
 
-  return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(
+      return {
+        content: [
           {
-            name: 'memento-mcp-server',
-            version: '0.5.0',
-            config: {
-              storagePath: dbPath,
-              projectId: projectId,
-              projectRoot: process.cwd(),
-              hasConfigFile: existsSync(join(process.cwd(), '.mementorc')),
-            },
-            storage: {
-              type: 'SQLite Persistent',
-              method: 'bun:sqlite',
-              databasePath: dbPath,
-              walEnabled: true,
-            },
-            diskUsage: dbStats,
-            statistics: {
-              totalObservations: searchResult.total,
-              byType,
-              activeSession: activeSessionId,
-            },
-            environment: {
-              nodeVersion: process.version,
-              platform: process.platform,
-              arch: process.arch,
-              bunVersion: process.versions?.bun || 'unknown',
-            },
+            type: 'text',
+            text: JSON.stringify(
+              {
+                name: 'memento',
+                version: '1.0.0',
+                config: {
+                  storagePath: currentDbPath,
+                  projectId: projectId,
+                  projectRoot: process.cwd(),
+                  hasConfigFile: existsSync(join(process.cwd(), '.mementorc')),
+                },
+                storage: {
+                  type: 'SQLite Persistent',
+                  method: 'bun:sqlite',
+                  databasePath: currentDbPath,
+                  walEnabled: true,
+                },
+                diskUsage: dbStats,
+                statistics: {
+                  totalObservations: searchResult.total,
+                  byType,
+                  activeSession: activeSessionId,
+                },
+                environment: {
+                  nodeVersion: process.version,
+                  platform: process.platform,
+                  arch: process.arch,
+                  bunVersion: (process as any).versions?.bun || 'unknown',
+                },
+                tools: [
+                  'memento_mem_save',
+                  'memento_mem_search',
+                  'memento_mem_get_observation',
+                  'memento_mem_update',
+                  'memento_mem_delete',
+                  'memento_mem_restore',
+                  'memento_mem_purge',
+                  'memento_mem_list_deleted',
+                  'memento_mem_merge',
+                  'memento_mem_export',
+                  'memento_mem_session_start',
+                  'memento_mem_session_end',
+                  'memento_mem_list_sessions',
+                  'memento_mem_get_session',
+                  'memento_mem_timeline',
+                  'memento_mem_stats',
+                  'memento_mem_health',
+                  'memento_mem_config',
+                ],
+              },
+              null,
+              2
+            ),
           },
-          null,
-          2
-        ),
-      },
-    ],
-  };
-});
+        ],
+      };
+    } catch (error: any) {
+      return handleToolError(error);
+    }
+  }
+);
+
+// ─── Helpers ────────────────────────────────────────────────
 
 function getDatabaseStats(dbPath: string) {
   let totalSize = 0;
@@ -438,26 +679,21 @@ function getDatabaseStats(dbPath: string) {
   let shmSize = 0;
 
   try {
-    const mainDb = fs.statSync(dbPath);
-    totalSize += mainDb.size;
-  } catch (e) {
-    totalSize += 0;
+    totalSize += fs.statSync(dbPath).size;
+  } catch {
+    /* empty */
   }
-
   try {
-    const walFile = fs.statSync(`${dbPath}-wal`);
-    walSize = walFile.size;
+    walSize = fs.statSync(`${dbPath}-wal`).size;
     totalSize += walSize;
-  } catch (e) {
-    walSize = 0;
+  } catch {
+    /* empty */
   }
-
   try {
-    const shmFile = fs.statSync(`${dbPath}-shm`);
-    shmSize = shmFile.size;
+    shmSize = fs.statSync(`${dbPath}-shm`).size;
     totalSize += shmSize;
-  } catch (e) {
-    shmSize = 0;
+  } catch {
+    /* empty */
   }
 
   return {
@@ -467,8 +703,6 @@ function getDatabaseStats(dbPath: string) {
     mainDbSizeHuman: formatBytes(totalSize - walSize - shmSize),
     walBytes: walSize,
     walSizeHuman: formatBytes(walSize),
-    shmBytes: shmSize,
-    shmSizeHuman: formatBytes(shmSize),
   };
 }
 
@@ -477,47 +711,36 @@ function formatBytes(bytes: number): string {
   const k = 1024;
   const m = k * 1024;
   const g = m * 1024;
-
   if (bytes < k) return `${bytes} B`;
   if (bytes < m) return `${(bytes / k).toFixed(2)} KB`;
   if (bytes < g) return `${(bytes / m).toFixed(2)} MB`;
   return `${(bytes / g).toFixed(2)} GB`;
 }
 
+// ─── Server Startup ─────────────────────────────────────────
+
 const BANNER = `
- ╔═════════════════════════════════════════════════════════╗
- ║                                                               ║
- ║     ██╗    ██╗███████╗██╗   ██╗██╗███╗   ███████╗               ║
- ║     ██║    ██║██╔════╝██║   ██║██║██╔██╗ ██╔════╝               ║
- ║     ██║ █╗ ██║█████╗  ██║   ██║██║███████║███████╗                ║
- ║     ╚███╔╝██╚════██╗██║   ██║██║╚════██║╚════██║                ║
- ║      ╚══╝ ╚███████╔╝╚█████╔╝╚█████╔╝ ╚███████╔╝               ║
- ║                  ╚═════╝     ╚═════╝     ╚═════╝                ║
- ║                                                               ║
- ║              ╔═══════════════════════════════════════╗   ║
- ║              ║                                           ║   ║
- ║              ║    MEMENTO - Persistent Memory System      ║   ║
- ║              ║                                           ║   ║
- ║              ║    Version: 0.5.0                         ║   ║
- ║              ║    Storage: SQLite Persistent              ║   ║
- ║              ╚═══════════════════════════════════════╝   ║
- ╚═════════════════════════════════════════════════════════╝
+ ╔══════════════════════════════════════════════════╗
+ ║                                                  ║
+ ║     MEMENTO — Persistent Memory System           ║
+ ║                                                  ║
+ ║     Version: 1.0.0                               ║
+ ║     MCP Server: memento                          ║
+ ║     Storage: SQLite Persistent                   ║
+ ║     Tools: memento_mem_*                         ║
+ ║                                                  ║
+ ╚══════════════════════════════════════════════════╝
 `;
 
 async function main() {
   console.error(BANNER);
 
-  // Check database health and show warnings if needed
   if (!engine.isHealthy()) {
     const initError = engine.getInitError();
     console.error('\n⚠️  WARNING: Database initialization failed');
     console.error(`   Error: ${initError?.message || 'Unknown error'}`);
     console.error(`   Database path: ${dbPath}`);
     console.error('\n   The server will start, but database operations will fail.');
-    console.error('   Please check:');
-    console.error('   - Directory permissions');
-    console.error('   - Disk space');
-    console.error('   - Path configuration in .mementorc\n');
   }
 
   const transport = new StdioServerTransport();
@@ -527,11 +750,11 @@ async function main() {
   console.error(`  Database: ${dbPath}`);
   console.error(`  Project: ${projectId}`);
   console.error(`  Health: ${engine.isHealthy() ? '✓ Healthy' : '✗ Unhealthy'}`);
+  console.error(`  Tools: 18 (memento_mem_*)`);
   console.error(`  Ready to accept connections...\n`);
 }
 
 main().catch((err) => {
   console.error('Fatal error during server startup:', err);
-  console.error('\nThe server failed to start. Please check the error above.');
   process.exit(1);
 });
