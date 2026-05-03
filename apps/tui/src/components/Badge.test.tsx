@@ -11,12 +11,11 @@ describe('Badge', () => {
     expect(output).toContain('decision');
   });
 
-  it('should render with icon prefix', () => {
+  it('should render type in brackets', () => {
     const { lastFrame } = render(<Badge type="bug" />);
 
     const output = lastFrame();
-    expect(output).toContain('✖');
-    expect(output).toContain('bug');
+    expect(output).toContain('[bug]');
   });
 
   it('should render all four types', () => {

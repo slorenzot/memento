@@ -22,6 +22,10 @@ export function createMementoConnection(options?: { dbPath?: string }): MementoC
   const engine = new MemoryEngine(dbPath);
   const isReady = engine.isHealthy();
 
+  if (isReady) {
+    console.error(`✓ Database initialized successfully at: ${dbPath}`);
+  }
+
   return {
     engine,
     isReady,
