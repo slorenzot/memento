@@ -21,13 +21,13 @@ You have access to **Memento**, a persistent memory system that survives across 
 
 Memento is your PERSISTENT BRAIN. Without it, you forget everything when a session ends. With it, you accumulate knowledge, decisions, discoveries, and patterns that make you increasingly effective over time.
 
-All tools use the prefix `memento_mem_`.
+All tools use the prefix `mem_`.
 
 ---
 
 ## PROACTIVE SAVE TRIGGERS (mandatory — do NOT wait to be asked)
 
-Call `memento_mem_save` IMMEDIATELY and WITHOUT BEING ASKED after any of these events:
+Call `mem_save` IMMEDIATELY and WITHOUT BEING ASKED after any of these events:
 
 - Architecture or design decision made
 - Bug fix completed (include root cause + solution)
@@ -38,12 +38,12 @@ Call `memento_mem_save` IMMEDIATELY and WITHOUT BEING ASKED after any of these e
 - Gotcha, edge case, or unexpected behavior found
 - Team convention documented or workflow change agreed upon
 
-**Self-check after EVERY task**: "Did I make a decision, fix a bug, learn something non-obvious, or establish a convention? If yes, call `memento_mem_save` NOW."
+**Self-check after EVERY task**: "Did I make a decision, fix a bug, learn something non-obvious, or establish a convention? If yes, call `mem_save` NOW."
 
 ### Save Format
 
 ```
-memento_mem_save({
+mem_save({
   title: "Verb + what",              // Short, SEARCHABLE. e.g. "Fixed N+1 in UserList"
   content: "structured text",         // Use What/Why/Where/Learned format below
   type: "decision|bug|discovery|note",
@@ -74,7 +74,7 @@ memento_mem_save({
 
 ### Proactive Search (do this BEFORE responding)
 
-Call `memento_mem_search` PROACTIVELY when:
+Call `mem_search` PROACTIVELY when:
 
 1. **User's FIRST message** references a project, feature, or problem — search for prior work before responding
 2. **Starting work** on something that might have been done before
@@ -84,8 +84,8 @@ Call `memento_mem_search` PROACTIVELY when:
 
 On any variation of "remember", "recall", "what did we do", "how did we solve", "recordar", "que hicimos":
 
-1. `memento_mem_search` with relevant keywords (fast FTS5 search)
-2. If match found, `memento_mem_get_observation` for full untruncated content
+1. `mem_search` with relevant keywords (fast FTS5 search)
+2. If match found, `mem_get_observation` for full untruncated content
 3. Use recovered context to inform your response
 
 ---
@@ -94,7 +94,7 @@ On any variation of "remember", "recall", "what did we do", "how did we solve", 
 
 ### Starting a Session
 
-Call `memento_mem_session_start` with `project_id` at the beginning of a session.
+Call `mem_session_start` with `project_id` at the beginning of a session.
 
 ### During a Session
 
@@ -102,10 +102,10 @@ Save observations **as you work**. Don't batch — save immediately after each s
 
 ### Ending a Session (MANDATORY)
 
-Before saying "done" / "listo" / "that's it", you MUST call `memento_mem_save` with a session summary:
+Before saying "done" / "listo" / "that's it", you MUST call `mem_save` with a session summary:
 
 ```
-memento_mem_save({
+mem_save({
   title: "Session summary: [brief description]",
   type: "note",
   content: `
@@ -137,39 +137,39 @@ This is NOT optional. If you skip this, the next session starts blind.
 
 | Tool                          | Description                                       |
 | ----------------------------- | ------------------------------------------------- |
-| `memento_mem_save`            | Save observation (decision, bug, discovery, note) |
-| `memento_mem_search`          | Full-text search across all observations          |
-| `memento_mem_get_observation` | Get full content by ID                            |
-| `memento_mem_update`          | Update existing observation                       |
+| `mem_save`            | Save observation (decision, bug, discovery, note) |
+| `mem_search`          | Full-text search across all observations          |
+| `mem_get_observation` | Get full content by ID                            |
+| `mem_update`          | Update existing observation                       |
 
 ### Lifecycle Tools — Delete, Restore, Merge, Export
 
 | Tool                       | Description                                                                  |
 | -------------------------- | ---------------------------------------------------------------------------- |
-| `memento_mem_delete`       | Soft-delete (hides from search, can be restored)                             |
-| `memento_mem_restore`      | Restore a soft-deleted observation                                           |
-| `memento_mem_purge`        | PERMANENTLY delete soft-deleted obs (irreversible, requires `confirm: true`) |
-| `memento_mem_list_deleted` | List soft-deleted observations                                               |
-| `memento_mem_merge`        | Merge related observations into one synthesized record                       |
-| `memento_mem_export`       | Export observations to JSON, XML, or TXT                                     |
+| `mem_delete`       | Soft-delete (hides from search, can be restored)                             |
+| `mem_restore`      | Restore a soft-deleted observation                                           |
+| `mem_purge`        | PERMANENTLY delete soft-deleted obs (irreversible, requires `confirm: true`) |
+| `mem_list_deleted` | List soft-deleted observations                                               |
+| `mem_merge`        | Merge related observations into one synthesized record                       |
+| `mem_export`       | Export observations to JSON, XML, or TXT                                     |
 
 ### Session Tools
 
 | Tool                        | Description              |
 | --------------------------- | ------------------------ |
-| `memento_mem_session_start` | Start tracking a session |
-| `memento_mem_session_end`   | End current session      |
-| `memento_mem_list_sessions` | List sessions            |
-| `memento_mem_get_session`   | Get session details      |
+| `mem_session_start` | Start tracking a session |
+| `mem_session_end`   | End current session      |
+| `mem_list_sessions` | List sessions            |
+| `mem_get_session`   | Get session details      |
 
 ### Utility Tools
 
 | Tool                   | Description                                    |
 | ---------------------- | ---------------------------------------------- |
-| `memento_mem_timeline` | Chronological view of observations             |
-| `memento_mem_stats`    | Memory statistics (total, by type, by project) |
-| `memento_mem_health`   | System health check                            |
-| `memento_mem_config`   | Current configuration and available tools      |
+| `mem_timeline` | Chronological view of observations             |
+| `mem_stats`    | Memory statistics (total, by type, by project) |
+| `mem_health`   | System health check                            |
+| `mem_config`   | Current configuration and available tools      |
 
 ---
 
@@ -179,14 +179,14 @@ When the user asks to consolidate/merge memories, or when you detect excessive r
 
 ```
 // 1. Preview candidates (dry run)
-memento_mem_merge({
+mem_merge({
   project_id: "my-project",
   strategy: "by_topic",  // or "by_similarity" or "by_ids"
   dry_run: true
 })
 
 // 2. Execute merge
-memento_mem_merge({
+mem_merge({
   project_id: "my-project",
   strategy: "by_topic"
 })
@@ -206,16 +206,16 @@ Observations follow a lifecycle: **ACTIVE -> SOFT DELETED -> PURGED**
 
 ```
 // Soft delete (recoverable)
-memento_mem_delete({ id: 123, reason: "obsolete decision" })
+mem_delete({ id: 123, reason: "obsolete decision" })
 
 // List what's been deleted
-memento_mem_list_deleted({ project_id: "my-project" })
+mem_list_deleted({ project_id: "my-project" })
 
 // Restore if needed
-memento_mem_restore({ id: 123 })
+mem_restore({ id: 123 })
 
 // Permanent delete (irreversible)
-memento_mem_purge({ confirm: true, project_id: "my-project" })
+mem_purge({ confirm: true, project_id: "my-project" })
 ```
 
 ---
@@ -224,13 +224,13 @@ memento_mem_purge({ confirm: true, project_id: "my-project" })
 
 ```
 // Export to JSON (default)
-memento_mem_export({ project_id: "my-project" })
+mem_export({ project_id: "my-project" })
 
 // Export decisions to XML
-memento_mem_export({ format: "xml", type: "decision" })
+mem_export({ format: "xml", type: "decision" })
 
 // Export with date range
-memento_mem_export({
+mem_export({
   format: "txt",
   project_id: "my-project",
   date_from: "2026-01-01",
@@ -246,7 +246,7 @@ If you detect your context was compacted (lost context, "FIRST ACTION REQUIRED" 
 
 1. **IMMEDIATELY** search memento for recent session context:
    ```
-   memento_mem_search({ project_id: "current-project", limit: 10 })
+   mem_search({ project_id: "current-project", limit: 10 })
    ```
 2. Rebuild understanding from saved observations
 3. Continue working with recovered context
@@ -263,5 +263,5 @@ Do NOT skip this step. Without it, everything done before compaction is effectiv
 4. **Content should be STRUCTURED** — always use What/Why/Where/Learned
 5. **Types matter** — use decision/bug/discovery/note correctly
 6. **Topic keys are STABLE** — don't change them between sessions
-7. **Merge periodically** — reduce redundancy with `memento_mem_merge`
-8. **Soft delete first** — use `memento_mem_delete` before purging permanently
+7. **Merge periodically** — reduce redundancy with `mem_merge`
+8. **Soft delete first** — use `mem_delete` before purging permanently

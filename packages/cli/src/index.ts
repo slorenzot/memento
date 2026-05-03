@@ -363,7 +363,7 @@ program
     console.log(`  Source: ${sourcePath}`);
     console.log(`  Target: ${destPath}`);
     console.log(`  Agent: ${target}`);
-    console.log(`\n  The AI agent will now know how to use all memento_mem_* tools.`);
+    console.log(`\n  The AI agent will now know how to use all mem_* tools.`);
   });
 
 program.parseAsync(process.argv);
