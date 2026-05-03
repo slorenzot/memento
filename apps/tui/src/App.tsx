@@ -2,13 +2,23 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 import { createMementoConnection } from './hooks/useMemento';
 import { createSearchService } from './hooks/useSearch';
+import { createSessionsService } from './hooks/useSessions';
 import { Dashboard } from './views/Dashboard';
 import { ObservationsList } from './views/ObservationsList';
 import { Search } from './views/Search';
 import { ObservationDetail } from './views/ObservationDetail';
+import { SessionsList } from './views/SessionsList';
+import { ProjectsList } from './views/ProjectsList';
 import { StatusBar } from './components/StatusBar';
+import { Breadcrumb } from './components/Breadcrumb';
 import { SplitPane } from './components/SplitPane';
-import type { DashboardStats, Observation, SearchResult } from '@slorenzot/memento-core';
+import type {
+  DashboardStats,
+  Observation,
+  Session,
+  SearchResult,
+  ProjectStats,
+} from '@slorenzot/memento-core';
 import { layout } from './theme';
 
 type ViewName = 'dashboard' | 'observations' | 'search' | 'detail' | 'sessions' | 'projects';
@@ -23,6 +33,15 @@ const VIEW_SHORTCUTS: Record<string, ViewName> = {
   '6': 'projects',
 };
 
+const VIEW_LABELS: Record<ViewName, string> = {
+  dashboard: 'Dashboard',
+  observations: 'Observations',
+  search: 'Search',
+  detail: 'Detail',
+  sessions: 'Sessions',
+  projects: 'Projects',
+};
+
 interface AppState {
   currentView: ViewName;
   selectedIndex: number;
@@ -32,22 +51,30 @@ interface AppState {
   stats: DashboardStats | null;
   loading: boolean;
   error: string | null;
-  // Phase 2: Search state
+  // Search state
   searchQuery: string;
   searchResults: Observation[];
   searchTotal: number;
   isSearching: boolean;
-  // Phase 2: Detail state
+  // Detail state
   selectedObservation: Observation | null;
   detailScrollOffset: number;
-  // Phase 2: Split pane state
+  // Split pane state
   panelFocus: PanelFocus;
+  // Sessions state
+  sessions: Session[];
+  totalSessions: number;
+  expandedSessionId: number | null;
+  sessionObservations: Record<number, Observation[]>;
+  // Projects state
+  projects: ProjectStats[];
 }
 
 export function App({ dbPath }: { dbPath?: string }) {
   const { exit } = useApp();
   const memento = createMementoConnection({ dbPath });
   const searchService = createSearchService(memento.engine);
+  const sessionsService = createSessionsService(memento.engine);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [state, setState] = useState<AppState>({
@@ -66,6 +93,11 @@ export function App({ dbPath }: { dbPath?: string }) {
     selectedObservation: null,
     detailScrollOffset: 0,
     panelFocus: 'left',
+    sessions: [],
+    totalSessions: 0,
+    expandedSessionId: null,
+    sessionObservations: {},
+    projects: [],
   });
 
   // Load data for current view
@@ -91,8 +123,18 @@ export function App({ dbPath }: { dbPath?: string }) {
           loading: false,
         }));
       } else if (view === 'search') {
-        // Pre-load empty search
         setState((prev) => ({ ...prev, loading: false }));
+      } else if (view === 'sessions') {
+        const result = await sessionsService.listSessions({});
+        setState((prev) => ({
+          ...prev,
+          sessions: result.sessions,
+          totalSessions: result.total,
+          loading: false,
+        }));
+      } else if (view === 'projects') {
+        const projects = await memento.engine.listProjects();
+        setState((prev) => ({ ...prev, projects, loading: false }));
       }
     } catch (err) {
       setState((prev) => ({
@@ -101,7 +143,7 @@ export function App({ dbPath }: { dbPath?: string }) {
         error: err instanceof Error ? err.message : 'Unknown error',
       }));
     }
-  }, [memento.engine, state.page]);
+  }, [memento.engine, sessionsService, state.page]);
 
   // Load data when view changes
   useEffect(() => {
@@ -160,6 +202,25 @@ export function App({ dbPath }: { dbPath?: string }) {
     }
   }, [memento.engine]);
 
+  // Toggle session expansion
+  const toggleSessionExpand = useCallback(async (sessionId: number) => {
+    setState((prev) => {
+      const isExpanded = prev.expandedSessionId === sessionId;
+      if (isExpanded) {
+        return { ...prev, expandedSessionId: null };
+      }
+      // Load observations for this session
+      sessionsService.getSessionObservations(sessionId).then((obs) => {
+        setState((p) => ({
+          ...p,
+          expandedSessionId: sessionId,
+          sessionObservations: { ...p.sessionObservations, [sessionId]: obs },
+        }));
+      });
+      return prev;
+    });
+  }, [sessionsService]);
+
   // Global key handler
   useInput((input, key) => {
     // Quit
@@ -182,7 +243,6 @@ export function App({ dbPath }: { dbPath?: string }) {
         return;
       }
       if (key.return) {
-        // Open detail for selected result
         if (state.searchResults.length > 0) {
           loadDetail(state.searchResults[state.selectedIndex].id);
         }
@@ -214,7 +274,7 @@ export function App({ dbPath }: { dbPath?: string }) {
         debouncedSearch(newQuery);
         return;
       }
-      return; // Don't process other keys in search mode
+      return;
     }
 
     // Detail mode — scroll
@@ -298,17 +358,63 @@ export function App({ dbPath }: { dbPath?: string }) {
           setState((prev) => ({ ...prev, page: prev.page - 1, selectedIndex: 0 }));
         }
       } else if (key.return) {
-        // Open detail for selected observation
         if (state.observations.length > 0) {
           loadDetail(state.observations[state.selectedIndex].id);
         }
       } else if (input === 'Tab') {
-        // Toggle detail panel
         setState((prev) => ({
           ...prev,
           panelFocus: prev.panelFocus === 'left' ? 'right' : 'left',
         }));
       }
+      return;
+    }
+
+    // Sessions navigation
+    if (state.currentView === 'sessions') {
+      if (key.downArrow || input === 'j') {
+        setState((prev) => ({
+          ...prev,
+          selectedIndex: Math.min(prev.selectedIndex + 1, prev.sessions.length - 1),
+        }));
+      } else if (key.upArrow || input === 'k') {
+        setState((prev) => ({
+          ...prev,
+          selectedIndex: Math.max(prev.selectedIndex - 1, 0),
+        }));
+      } else if (key.return) {
+        // Toggle expand selected session
+        if (state.sessions.length > 0) {
+          toggleSessionExpand(state.sessions[state.selectedIndex].id);
+        }
+      }
+      return;
+    }
+
+    // Projects navigation
+    if (state.currentView === 'projects') {
+      if (key.downArrow || input === 'j') {
+        setState((prev) => ({
+          ...prev,
+          selectedIndex: Math.min(prev.selectedIndex + 1, prev.projects.length - 1),
+        }));
+      } else if (key.upArrow || input === 'k') {
+        setState((prev) => ({
+          ...prev,
+          selectedIndex: Math.max(prev.selectedIndex - 1, 0),
+        }));
+      } else if (key.return) {
+        // Navigate to observations filtered by selected project
+        if (state.projects.length > 0) {
+          setState((prev) => ({
+            ...prev,
+            currentView: 'observations',
+            selectedIndex: 0,
+            page: 1,
+          }));
+        }
+      }
+      return;
     }
   });
 
@@ -330,8 +436,11 @@ export function App({ dbPath }: { dbPath?: string }) {
   // Loading state
   if (state.loading) {
     return (
-      <Box padding={1}>
-        <Text dimColor>Loading...</Text>
+      <Box flexDirection="column">
+        <Breadcrumb segments={['Memento', 'Loading...']} />
+        <Box padding={1}>
+          <Text dimColor>Loading...</Text>
+        </Box>
       </Box>
     );
   }
@@ -346,6 +455,12 @@ export function App({ dbPath }: { dbPath?: string }) {
     );
   }
 
+  // Build breadcrumb
+  const breadcrumbSegments = ['Memento', VIEW_LABELS[state.currentView]];
+  if (state.currentView === 'detail' && state.selectedObservation) {
+    breadcrumbSegments.push(`#${state.selectedObservation.id}`);
+  }
+
   // Key bindings for status bar
   const keyBindings = ['q: quit', '1-6: views', 'Esc: back'];
   if (state.currentView === 'observations') {
@@ -354,10 +469,26 @@ export function App({ dbPath }: { dbPath?: string }) {
     keyBindings.push('type to search', 'Enter: open', 'Esc: close');
   } else if (state.currentView === 'detail') {
     keyBindings.push('j/k: scroll', 'Esc: back');
+  } else if (state.currentView === 'sessions') {
+    keyBindings.push('j/k: nav', 'Enter: expand');
+  } else if (state.currentView === 'projects') {
+    keyBindings.push('j/k: nav', 'Enter: filter');
   }
+
+  // Total count for status bar
+  const totalCount = state.currentView === 'observations'
+    ? state.totalObservations
+    : state.currentView === 'search'
+    ? state.searchTotal
+    : state.currentView === 'sessions'
+    ? state.totalSessions
+    : undefined;
 
   return (
     <Box flexDirection="column" height="100%">
+      {/* Breadcrumb */}
+      <Breadcrumb segments={breadcrumbSegments} />
+
       {/* Main content area */}
       <Box flexGrow={1}>
         {state.currentView === 'dashboard' && state.stats && (
@@ -405,14 +536,22 @@ export function App({ dbPath }: { dbPath?: string }) {
           />
         )}
         {state.currentView === 'sessions' && (
-          <Box padding={1}>
-            <Text dimColor>Sessions view — coming in Phase 3</Text>
-          </Box>
+          <SessionsList
+            sessions={state.sessions}
+            total={state.totalSessions}
+            selectedIndex={state.selectedIndex}
+            sessionObservations={state.sessionObservations}
+            expandedSessionId={state.expandedSessionId}
+            onSelect={() => {}}
+            onToggleExpand={(id) => toggleSessionExpand(id)}
+          />
         )}
         {state.currentView === 'projects' && (
-          <Box padding={1}>
-            <Text dimColor>Projects view — coming in Phase 3</Text>
-          </Box>
+          <ProjectsList
+            projects={state.projects}
+            selectedIndex={state.selectedIndex}
+            onSelect={() => {}}
+          />
         )}
       </Box>
 
@@ -420,13 +559,7 @@ export function App({ dbPath }: { dbPath?: string }) {
       <StatusBar
         currentView={state.currentView}
         keyBindings={keyBindings}
-        totalCount={
-          state.currentView === 'observations'
-            ? state.totalObservations
-            : state.currentView === 'search'
-            ? state.searchTotal
-            : undefined
-        }
+        totalCount={totalCount}
       />
     </Box>
   );
