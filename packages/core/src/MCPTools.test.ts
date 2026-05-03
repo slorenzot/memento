@@ -5,12 +5,12 @@
  * but directly against the MemoryEngine — no stdio transport needed.
  *
  * Each test maps to one or more MCP tools:
- *   memento_mem_save, memento_mem_search, memento_mem_get_observation,
- *   memento_mem_update, memento_mem_delete, memento_mem_restore,
- *   memento_mem_purge, memento_mem_list_deleted, memento_mem_merge,
- *   memento_mem_export, memento_mem_session_start, memento_mem_session_end,
- *   memento_mem_list_sessions, memento_mem_get_session,
- *   memento_mem_timeline, memento_mem_stats, memento_mem_health, memento_mem_config
+ *   mem_save, mem_search, mem_get_observation,
+ *   mem_update, mem_delete, mem_restore,
+ *   mem_purge, mem_list_deleted, mem_merge,
+ *   mem_export, mem_session_start, mem_session_end,
+ *   mem_list_sessions, mem_get_session,
+ *   mem_timeline, mem_stats, mem_health, mem_config
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
@@ -62,8 +62,8 @@ describe('MCP Tools E2E', () => {
 
   // ─── Session Lifecycle Tools ───────────────────────────────
 
-  describe('memento_mem_session_start / end / list / get', () => {
-    it('should start a session (memento_mem_session_start)', async () => {
+  describe('mem_session_start / end / list / get', () => {
+    it('should start a session (mem_session_start)', async () => {
       const session = await engine.createSession({
         projectId: 'mcp-test',
         endedAt: null,
@@ -76,7 +76,7 @@ describe('MCP Tools E2E', () => {
       expect(session.endedAt).toBeNull();
     });
 
-    it('should end an active session (memento_mem_session_end)', async () => {
+    it('should end an active session (mem_session_end)', async () => {
       const session = await engine.createSession({
         projectId: 'mcp-test',
         endedAt: null,
@@ -92,7 +92,7 @@ describe('MCP Tools E2E', () => {
       expect(engine.endSession(99999)).rejects.toThrow();
     });
 
-    it('should get a session by ID (memento_mem_get_session)', async () => {
+    it('should get a session by ID (mem_get_session)', async () => {
       const session = await engine.createSession({
         projectId: 'mcp-test',
         endedAt: null,
@@ -110,7 +110,7 @@ describe('MCP Tools E2E', () => {
       expect(found).toBeNull();
     });
 
-    it('should list sessions (memento_mem_list_sessions)', async () => {
+    it('should list sessions (mem_list_sessions)', async () => {
       // Create sessions with observations
       const s1 = await seedSession(engine, 'project-a');
       await seedObservation(engine, s1.id, { projectId: 'project-a' });
@@ -129,8 +129,8 @@ describe('MCP Tools E2E', () => {
 
   // ─── Observation CRUD Tools ────────────────────────────────
 
-  describe('memento_mem_save / search / get / update', () => {
-    it('should save with auto-session (memento_mem_save pattern)', async () => {
+  describe('mem_save / search / get / update', () => {
+    it('should save with auto-session (mem_save pattern)', async () => {
       const sessionId = await ctx.getOrCreateSession();
 
       const obs = await engine.createObservation({
@@ -162,7 +162,7 @@ describe('MCP Tools E2E', () => {
       expect(result.total).toBe(2);
     });
 
-    it('should search with FTS5 query (memento_mem_search)', async () => {
+    it('should search with FTS5 query (mem_search)', async () => {
       const session = await seedSession(engine, 'mcp-test');
       await seedObservation(engine, session.id, { title: 'React patterns', content: 'Hooks and components', projectId: 'mcp-test' });
       await seedObservation(engine, session.id, { title: 'Vue patterns', content: 'Composition API', projectId: 'mcp-test' });
@@ -172,7 +172,7 @@ describe('MCP Tools E2E', () => {
       expect(result.observations[0].title).toBe('React patterns');
     });
 
-    it('should get observation by ID (memento_mem_get_observation)', async () => {
+    it('should get observation by ID (mem_get_observation)', async () => {
       const session = await seedSession(engine, 'mcp-test');
       const obs = await seedObservation(engine, session.id, { projectId: 'mcp-test' });
 
@@ -182,7 +182,7 @@ describe('MCP Tools E2E', () => {
       expect(found!.title).toBe(obs.title);
     });
 
-    it('should update observation (memento_mem_update)', async () => {
+    it('should update observation (mem_update)', async () => {
       const session = await seedSession(engine, 'mcp-test');
       const obs = await seedObservation(engine, session.id, { projectId: 'mcp-test' });
 
@@ -213,7 +213,7 @@ describe('MCP Tools E2E', () => {
 
   // ─── Soft Delete / Restore / Purge Tools ───────────────────
 
-  describe('memento_mem_delete / restore / purge / list_deleted', () => {
+  describe('mem_delete / restore / purge / list_deleted', () => {
     it('should soft-delete and exclude from search', async () => {
       const session = await seedSession(engine, 'mcp-test');
       const obs = await seedObservation(engine, session.id, { projectId: 'mcp-test' });
@@ -244,7 +244,7 @@ describe('MCP Tools E2E', () => {
       expect(result.total).toBe(1);
     });
 
-    it('should purge with confirm check (memento_mem_purge)', async () => {
+    it('should purge with confirm check (mem_purge)', async () => {
       const session = await seedSession(engine, 'mcp-test');
       const obs = await seedObservation(engine, session.id, { projectId: 'mcp-test' });
 
@@ -261,7 +261,7 @@ describe('MCP Tools E2E', () => {
 
   // ─── Merge Tool ────────────────────────────────────────────
 
-  describe('memento_mem_merge', () => {
+  describe('mem_merge', () => {
     it('should merge by topic_key (dry_run + execute)', async () => {
       const session = await seedSession(engine, 'mcp-test');
       await seedObservation(engine, session.id, { topicKey: 'auth/model', projectId: 'mcp-test', content: 'Version 1' });
@@ -309,7 +309,7 @@ describe('MCP Tools E2E', () => {
 
   // ─── Export Tool ───────────────────────────────────────────
 
-  describe('memento_mem_export', () => {
+  describe('mem_export', () => {
     it('should export as JSON', async () => {
       const session = await seedSession(engine, 'mcp-test');
       await seedMultipleObservations(engine, session.id, 3, { projectId: 'mcp-test' });
@@ -362,7 +362,7 @@ describe('MCP Tools E2E', () => {
 
   // ─── Utility Tools ─────────────────────────────────────────
 
-  describe('memento_mem_timeline / stats / health / config', () => {
+  describe('mem_timeline / stats / health / config', () => {
     it('should return timeline (chronological observations)', async () => {
       const session = await seedSession(engine, 'mcp-test');
       await seedMultipleObservations(engine, session.id, 5, { projectId: 'mcp-test' });

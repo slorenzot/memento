@@ -44,7 +44,7 @@ const server = new McpServer({
 // ─── Observation Tools ──────────────────────────────────────
 
 server.tool(
-  'memento_mem_save',
+  'mem_save',
   'Save an observation to persistent memory. Types: decision, bug, discovery, note. Call this PROACTIVELY after making decisions, fixing bugs, or discovering something non-obvious.',
   {
     title: z.string().describe('Short, searchable title (e.g. "Fixed N+1 in UserList")'),
@@ -100,7 +100,7 @@ server.tool(
 );
 
 server.tool(
-  'memento_mem_search',
+  'mem_search',
   'Search observations using full-text search (FTS5). Start with small limits and expand only if needed.',
   {
     query: z.string().optional().describe('Search query (FTS5 syntax)'),
@@ -133,7 +133,7 @@ server.tool(
 );
 
 server.tool(
-  'memento_mem_get_observation',
+  'mem_get_observation',
   'Get full content of a specific observation by ID.',
   {
     id: z.number().describe('Observation ID'),
@@ -152,7 +152,7 @@ server.tool(
 );
 
 server.tool(
-  'memento_mem_update',
+  'mem_update',
   'Update an existing observation.',
   {
     id: z.number().describe('Observation ID'),
@@ -183,8 +183,8 @@ server.tool(
 // ─── Soft Delete / Restore / Purge ──────────────────────────
 
 server.tool(
-  'memento_mem_delete',
-  'Soft-delete an observation. The record is hidden from searches but can be restored with memento_mem_restore. Use memento_mem_purge for permanent deletion.',
+  'mem_delete',
+  'Soft-delete an observation. The record is hidden from searches but can be restored with mem_restore. Use mem_purge for permanent deletion.',
   {
     id: z.number().describe('Observation ID to soft-delete'),
     reason: z.string().optional().describe('Reason for deletion (stored in metadata)'),
@@ -204,7 +204,7 @@ server.tool(
 );
 
 server.tool(
-  'memento_mem_restore',
+  'mem_restore',
   'Restore a soft-deleted observation back to active state.',
   {
     id: z.number().describe('Observation ID to restore'),
@@ -227,7 +227,7 @@ server.tool(
 );
 
 server.tool(
-  'memento_mem_purge',
+  'mem_purge',
   'PERMANENTLY delete soft-deleted observations. This is IRREVERSIBLE. Requires confirm: true.',
   {
     confirm: z.boolean().describe('Must be true to execute purge'),
@@ -269,7 +269,7 @@ server.tool(
 );
 
 server.tool(
-  'memento_mem_list_deleted',
+  'mem_list_deleted',
   'List soft-deleted observations that can be restored or purged.',
   {
     project_id: z.string().optional(),
@@ -290,7 +290,7 @@ server.tool(
 // ─── Merge ──────────────────────────────────────────────────
 
 server.tool(
-  'memento_mem_merge',
+  'mem_merge',
   'Merge related observations into a single synthesized record. Identifies candidates automatically by topic_key or content similarity (Jaccard > 0.85). Use dry_run to preview without executing.',
   {
     project_id: z.string().describe('Project to merge observations in (required)'),
@@ -346,7 +346,7 @@ server.tool(
 // ─── Export ──────────────────────────────────────────────────
 
 server.tool(
-  'memento_mem_export',
+  'mem_export',
   'Export observations to JSON, XML, or TXT format. Use filters to reduce scope.',
   {
     format: z.enum(['json', 'xml', 'txt']).optional().describe('Export format (default: json)'),
@@ -396,7 +396,7 @@ server.tool(
 // ─── Session Tools ──────────────────────────────────────────
 
 server.tool(
-  'memento_mem_session_start',
+  'mem_session_start',
   'Start a new memory session for tracking a coding conversation.',
   {
     project_id: z.string().describe('Project identifier'),
@@ -425,7 +425,7 @@ server.tool(
   }
 );
 
-server.tool('memento_mem_session_end', 'End current active session.', {}, async () => {
+server.tool('mem_session_end', 'End current active session.', {}, async () => {
   try {
     if (!activeSessionId) throw new Error('No active session');
     const ended = await engine.endSession(activeSessionId);
@@ -449,7 +449,7 @@ server.tool('memento_mem_session_end', 'End current active session.', {}, async 
 });
 
 server.tool(
-  'memento_mem_list_sessions',
+  'mem_list_sessions',
   'List all sessions.',
   {
     project_id: z.string().optional(),
@@ -482,7 +482,7 @@ server.tool(
 );
 
 server.tool(
-  'memento_mem_get_session',
+  'mem_get_session',
   'Get a specific session by ID.',
   {
     id: z.number().describe('Session ID'),
@@ -503,7 +503,7 @@ server.tool(
 // ─── Utility Tools ──────────────────────────────────────────
 
 server.tool(
-  'memento_mem_timeline',
+  'mem_timeline',
   'Get chronological timeline of observations.',
   {
     project_id: z.string().optional(),
@@ -522,7 +522,7 @@ server.tool(
   }
 );
 
-server.tool('memento_mem_stats', 'Get memory statistics.', {}, async () => {
+server.tool('mem_stats', 'Get memory statistics.', {}, async () => {
   try {
     const result = await engine.search({});
     const deleted = await engine.listDeleted({});
@@ -557,7 +557,7 @@ server.tool('memento_mem_stats', 'Get memory statistics.', {}, async () => {
   }
 });
 
-server.tool('memento_mem_health', 'Check system health.', {}, async () => {
+server.tool('mem_health', 'Check system health.', {}, async () => {
   try {
     const isHealthy = engine.isHealthy();
     const result = isHealthy ? await engine.search({}) : { total: 0, observations: [] };
@@ -591,7 +591,7 @@ server.tool('memento_mem_health', 'Check system health.', {}, async () => {
 });
 
 server.tool(
-  'memento_mem_config',
+  'mem_config',
   'Get current memento configuration and system status.',
   {},
   async () => {
@@ -639,24 +639,24 @@ server.tool(
                   bunVersion: (process as any).versions?.bun || 'unknown',
                 },
                 tools: [
-                  'memento_mem_save',
-                  'memento_mem_search',
-                  'memento_mem_get_observation',
-                  'memento_mem_update',
-                  'memento_mem_delete',
-                  'memento_mem_restore',
-                  'memento_mem_purge',
-                  'memento_mem_list_deleted',
-                  'memento_mem_merge',
-                  'memento_mem_export',
-                  'memento_mem_session_start',
-                  'memento_mem_session_end',
-                  'memento_mem_list_sessions',
-                  'memento_mem_get_session',
-                  'memento_mem_timeline',
-                  'memento_mem_stats',
-                  'memento_mem_health',
-                  'memento_mem_config',
+                  'mem_save',
+                  'mem_search',
+                  'mem_get_observation',
+                  'mem_update',
+                  'mem_delete',
+                  'mem_restore',
+                  'mem_purge',
+                  'mem_list_deleted',
+                  'mem_merge',
+                  'mem_export',
+                  'mem_session_start',
+                  'mem_session_end',
+                  'mem_list_sessions',
+                  'mem_get_session',
+                  'mem_timeline',
+                  'mem_stats',
+                  'mem_health',
+                  'mem_config',
                 ],
               },
               null,
@@ -727,7 +727,7 @@ const BANNER = `
  ║     Version: 1.0.0                               ║
  ║     MCP Server: memento                          ║
  ║     Storage: SQLite Persistent                   ║
- ║     Tools: memento_mem_*                         ║
+ ║     Tools: mem_*                         ║
  ║                                                  ║
  ╚══════════════════════════════════════════════════╝
 `;
@@ -750,7 +750,7 @@ async function main() {
   console.error(`  Database: ${dbPath}`);
   console.error(`  Project: ${projectId}`);
   console.error(`  Health: ${engine.isHealthy() ? '✓ Healthy' : '✗ Unhealthy'}`);
-  console.error(`  Tools: 18 (memento_mem_*)`);
+  console.error(`  Tools: 18 (mem_*)`);
   console.error(`  Ready to accept connections...\n`);
 }
 

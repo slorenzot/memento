@@ -1,7 +1,7 @@
 {
   "name": "@slorenzot/memento-mcp-server",
   "version": "1.0.0",
-  "description": "MCP server for Memento persistent memory system. Server name: memento. Tools: memento_mem_*. Includes AI skill for teaching agents.",
+  "description": "MCP server for Memento persistent memory system. Server name: memento. Tools: mem_*. Includes AI skill for teaching agents.",
   "keywords": [
     "mcp",
     "memento",
