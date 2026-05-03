@@ -1,22 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
-import { createMementoConnection, type MementoConnection } from './hooks/useMemento';
+import { createMementoConnection } from './hooks/useMemento';
+import { createSearchService } from './hooks/useSearch';
 import { Dashboard } from './views/Dashboard';
 import { ObservationsList } from './views/ObservationsList';
+import { Search } from './views/Search';
+import { ObservationDetail } from './views/ObservationDetail';
 import { StatusBar } from './components/StatusBar';
+import { SplitPane } from './components/SplitPane';
 import type { DashboardStats, Observation, SearchResult } from '@slorenzot/memento-core';
 import { layout } from './theme';
 
 type ViewName = 'dashboard' | 'observations' | 'search' | 'detail' | 'sessions' | 'projects';
-
-const VIEW_NAMES: Record<ViewName, string> = {
-  dashboard: 'Dashboard',
-  observations: 'Observations',
-  search: 'Search',
-  detail: 'Detail',
-  sessions: 'Sessions',
-  projects: 'Projects',
-};
+type PanelFocus = 'left' | 'right';
 
 const VIEW_SHORTCUTS: Record<string, ViewName> = {
   '1': 'dashboard',
@@ -36,11 +32,23 @@ interface AppState {
   stats: DashboardStats | null;
   loading: boolean;
   error: string | null;
+  // Phase 2: Search state
+  searchQuery: string;
+  searchResults: Observation[];
+  searchTotal: number;
+  isSearching: boolean;
+  // Phase 2: Detail state
+  selectedObservation: Observation | null;
+  detailScrollOffset: number;
+  // Phase 2: Split pane state
+  panelFocus: PanelFocus;
 }
 
 export function App({ dbPath }: { dbPath?: string }) {
   const { exit } = useApp();
   const memento = createMementoConnection({ dbPath });
+  const searchService = createSearchService(memento.engine);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [state, setState] = useState<AppState>({
     currentView: 'dashboard',
@@ -51,6 +59,13 @@ export function App({ dbPath }: { dbPath?: string }) {
     stats: null,
     loading: true,
     error: null,
+    searchQuery: '',
+    searchResults: [],
+    searchTotal: 0,
+    isSearching: false,
+    selectedObservation: null,
+    detailScrollOffset: 0,
+    panelFocus: 'left',
   });
 
   // Load data for current view
@@ -62,7 +77,7 @@ export function App({ dbPath }: { dbPath?: string }) {
         const stats = await memento.engine.getDashboardStats();
         setState((prev) => ({ ...prev, stats, loading: false }));
       } else if (view === 'observations') {
-        const { limit } = layout;
+        const { pageSize: limit } = layout;
         const offset = (state.page - 1) * limit;
         const result: SearchResult = await memento.engine.search({
           limit,
@@ -75,6 +90,9 @@ export function App({ dbPath }: { dbPath?: string }) {
           totalObservations: result.total,
           loading: false,
         }));
+      } else if (view === 'search') {
+        // Pre-load empty search
+        setState((prev) => ({ ...prev, loading: false }));
       }
     } catch (err) {
       setState((prev) => ({
@@ -90,12 +108,136 @@ export function App({ dbPath }: { dbPath?: string }) {
     loadViewData(state.currentView);
   }, [state.currentView, state.page]);
 
+  // Debounced search
+  const performSearch = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setState((prev) => ({
+        ...prev,
+        searchResults: [],
+        searchTotal: 0,
+        isSearching: false,
+      }));
+      return;
+    }
+
+    setState((prev) => ({ ...prev, isSearching: true }));
+    try {
+      const results = await searchService.search(query);
+      setState((prev) => ({
+        ...prev,
+        searchResults: results.observations,
+        searchTotal: results.total,
+        isSearching: false,
+      }));
+    } catch {
+      setState((prev) => ({ ...prev, isSearching: false }));
+    }
+  }, [searchService]);
+
+  const debouncedSearch = useCallback((query: string) => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      performSearch(query);
+    }, layout.searchDebounceMs);
+  }, [performSearch]);
+
+  // Load detail for selected observation
+  const loadDetail = useCallback(async (id: number) => {
+    try {
+      const obs = await memento.engine.getObservation(id);
+      if (obs) {
+        setState((prev) => ({
+          ...prev,
+          selectedObservation: obs,
+          detailScrollOffset: 0,
+          currentView: 'detail',
+        }));
+      }
+    } catch {
+      // ignore
+    }
+  }, [memento.engine]);
+
   // Global key handler
   useInput((input, key) => {
     // Quit
     if (input === 'q') {
       memento.close();
       exit();
+      return;
+    }
+
+    // Search mode — capture all input
+    if (state.currentView === 'search') {
+      if (key.escape) {
+        setState((prev) => ({
+          ...prev,
+          currentView: 'observations',
+          searchQuery: '',
+          searchResults: [],
+          searchTotal: 0,
+        }));
+        return;
+      }
+      if (key.return) {
+        // Open detail for selected result
+        if (state.searchResults.length > 0) {
+          loadDetail(state.searchResults[state.selectedIndex].id);
+        }
+        return;
+      }
+      if (key.downArrow || input === 'j') {
+        setState((prev) => ({
+          ...prev,
+          selectedIndex: Math.min(prev.selectedIndex + 1, prev.searchResults.length - 1),
+        }));
+        return;
+      }
+      if (key.upArrow || input === 'k') {
+        setState((prev) => ({
+          ...prev,
+          selectedIndex: Math.max(prev.selectedIndex - 1, 0),
+        }));
+        return;
+      }
+      if (key.backspace) {
+        const newQuery = state.searchQuery.slice(0, -1);
+        setState((prev) => ({ ...prev, searchQuery: newQuery, selectedIndex: 0 }));
+        debouncedSearch(newQuery);
+        return;
+      }
+      if (input.length === 1 && !key.ctrl) {
+        const newQuery = state.searchQuery + input;
+        setState((prev) => ({ ...prev, searchQuery: newQuery, selectedIndex: 0 }));
+        debouncedSearch(newQuery);
+        return;
+      }
+      return; // Don't process other keys in search mode
+    }
+
+    // Detail mode — scroll
+    if (state.currentView === 'detail') {
+      if (key.escape) {
+        setState((prev) => ({
+          ...prev,
+          currentView: 'observations',
+          selectedObservation: null,
+        }));
+        return;
+      }
+      if (key.downArrow || input === 'j') {
+        setState((prev) => ({ ...prev, detailScrollOffset: prev.detailScrollOffset + 5 }));
+        return;
+      }
+      if (key.upArrow || input === 'k') {
+        setState((prev) => ({
+          ...prev,
+          detailScrollOffset: Math.max(0, prev.detailScrollOffset - 5),
+        }));
+        return;
+      }
       return;
     }
 
@@ -107,6 +249,7 @@ export function App({ dbPath }: { dbPath?: string }) {
         currentView: newView,
         selectedIndex: 0,
         page: 1,
+        searchQuery: '',
       }));
       return;
     }
@@ -122,7 +265,18 @@ export function App({ dbPath }: { dbPath?: string }) {
       return;
     }
 
-    // View-specific navigation
+    // / opens search from observations view
+    if (input === '/' && state.currentView === 'observations') {
+      setState((prev) => ({
+        ...prev,
+        currentView: 'search',
+        searchQuery: '',
+        selectedIndex: 0,
+      }));
+      return;
+    }
+
+    // Observations navigation
     if (state.currentView === 'observations') {
       if (key.downArrow || input === 'j') {
         setState((prev) => ({
@@ -135,16 +289,25 @@ export function App({ dbPath }: { dbPath?: string }) {
           selectedIndex: Math.max(prev.selectedIndex - 1, 0),
         }));
       } else if (input === '>' || key.rightArrow) {
-        // Next page
         const totalPages = Math.ceil(state.totalObservations / layout.pageSize);
         if (state.page < totalPages) {
           setState((prev) => ({ ...prev, page: prev.page + 1, selectedIndex: 0 }));
         }
       } else if (input === '<' || key.leftArrow) {
-        // Prev page
         if (state.page > 1) {
           setState((prev) => ({ ...prev, page: prev.page - 1, selectedIndex: 0 }));
         }
+      } else if (key.return) {
+        // Open detail for selected observation
+        if (state.observations.length > 0) {
+          loadDetail(state.observations[state.selectedIndex].id);
+        }
+      } else if (input === 'Tab') {
+        // Toggle detail panel
+        setState((prev) => ({
+          ...prev,
+          panelFocus: prev.panelFocus === 'left' ? 'right' : 'left',
+        }));
       }
     }
   });
@@ -186,7 +349,11 @@ export function App({ dbPath }: { dbPath?: string }) {
   // Key bindings for status bar
   const keyBindings = ['q: quit', '1-6: views', 'Esc: back'];
   if (state.currentView === 'observations') {
-    keyBindings.push('j/k: nav', '</>: page');
+    keyBindings.push('j/k: nav', '</>: page', '/: search', 'Enter: detail');
+  } else if (state.currentView === 'search') {
+    keyBindings.push('type to search', 'Enter: open', 'Esc: close');
+  } else if (state.currentView === 'detail') {
+    keyBindings.push('j/k: scroll', 'Esc: back');
   }
 
   return (
@@ -196,25 +363,46 @@ export function App({ dbPath }: { dbPath?: string }) {
         {state.currentView === 'dashboard' && state.stats && (
           <Dashboard stats={state.stats} />
         )}
-        {state.currentView === 'observations' && (
-          <ObservationsList
-            observations={state.observations}
-            total={state.totalObservations}
-            selectedIndex={state.selectedIndex}
-            page={state.page}
-            totalPages={Math.max(1, Math.ceil(state.totalObservations / layout.pageSize))}
-            onSelect={() => {}}
+        {(state.currentView === 'observations' || state.currentView === 'detail') && (
+          <SplitPane
+            focus={state.panelFocus}
+            left={
+              <ObservationsList
+                observations={state.observations}
+                total={state.totalObservations}
+                selectedIndex={state.selectedIndex}
+                page={state.page}
+                totalPages={Math.max(1, Math.ceil(state.totalObservations / layout.pageSize))}
+                onSelect={(obs) => loadDetail(obs.id)}
+              />
+            }
+            right={
+              state.selectedObservation ? (
+                <ObservationDetail
+                  observation={state.selectedObservation}
+                  scrollOffset={state.detailScrollOffset}
+                />
+              ) : (
+                <Box padding={1}>
+                  <Text dimColor>Select an observation to view details</Text>
+                  <Text dimColor>Press Enter on a row</Text>
+                </Box>
+              )
+            }
           />
         )}
         {state.currentView === 'search' && (
-          <Box padding={1}>
-            <Text dimColor>Search view — coming in Phase 2</Text>
-          </Box>
-        )}
-        {state.currentView === 'detail' && (
-          <Box padding={1}>
-            <Text dimColor>Detail view — coming in Phase 2</Text>
-          </Box>
+          <Search
+            query={state.searchQuery}
+            results={state.searchResults}
+            total={state.searchTotal}
+            selectedIndex={state.selectedIndex}
+            onQueryChange={(q) => {
+              setState((prev) => ({ ...prev, searchQuery: q }));
+              debouncedSearch(q);
+            }}
+            onSelect={(obs) => loadDetail(obs.id)}
+          />
         )}
         {state.currentView === 'sessions' && (
           <Box padding={1}>
@@ -235,6 +423,8 @@ export function App({ dbPath }: { dbPath?: string }) {
         totalCount={
           state.currentView === 'observations'
             ? state.totalObservations
+            : state.currentView === 'search'
+            ? state.searchTotal
             : undefined
         }
       />
