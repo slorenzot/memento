@@ -104,3 +104,35 @@ export interface ExportResult {
   recordCount: number;
   exportedAt: Date;
 }
+
+// --- TUI Explorer types ---
+
+export interface ListSessionsParams {
+  projectId?: string;
+  activeOnly?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ListSessionsResult {
+  sessions: Session[];
+  total: number;
+}
+
+export interface ProjectStats {
+  name: string;
+  activeCount: number;
+  deletedCount: number;
+  lastActivity: Date | null;
+  byType: Record<Observation['type'], number>;
+}
+
+export interface DashboardStats {
+  totalObservations: number;
+  activeObservations: number;
+  deletedObservations: number;
+  byType: Record<Observation['type'], number>;
+  byProject: Record<string, number>;
+  activeSessions: number;
+  recentObservations: Observation[];
+}
