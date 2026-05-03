@@ -30,13 +30,8 @@ export class MemoryEngine {
       mkdirSync(dbDir, { recursive: true });
       this.db = new Database(dbPath, { create: true });
       this.initializeDatabase();
-      console.error(`✓ Database initialized successfully at: ${dbPath}`);
     } catch (error: any) {
       this.initError = error;
-      console.error(`✗ Failed to initialize database at ${dbPath}:`, error.message);
-      console.error(
-        '  The server will start but database operations will fail until this is resolved.'
-      );
       this.db = this.createMockDatabase();
     }
   }

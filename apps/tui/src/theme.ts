@@ -1,9 +1,9 @@
-import chalk from 'chalk';
+import chalk, { type ChalkInstance } from 'chalk';
 
 // ─── Type Colors ─────────────────────────────────────────────
 // Each observation type has a distinct color for visual identification.
 
-export const TYPE_COLORS: Record<string, chalk.Chalk> = {
+export const TYPE_COLORS: Record<string, ChalkInstance> = {
   decision: chalk.cyan,
   bug: chalk.red,
   discovery: chalk.green,

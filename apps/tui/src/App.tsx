@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 import { createMementoConnection } from './hooks/useMemento';
 import { createSearchService } from './hooks/useSearch';
@@ -24,13 +24,15 @@ import { layout } from './theme';
 type ViewName = 'dashboard' | 'observations' | 'search' | 'detail' | 'sessions' | 'projects';
 type PanelFocus = 'left' | 'right';
 
+// Ordered views for ←/→ navigation (excludes 'detail' — it's a sub-view of observations)
+const VIEW_ORDER: ViewName[] = ['dashboard', 'observations', 'search', 'sessions', 'projects'];
+
 const VIEW_SHORTCUTS: Record<string, ViewName> = {
   '1': 'dashboard',
   '2': 'observations',
   '3': 'search',
-  '4': 'detail',
-  '5': 'sessions',
-  '6': 'projects',
+  '4': 'sessions',
+  '5': 'projects',
 };
 
 const VIEW_LABELS: Record<ViewName, string> = {
@@ -41,6 +43,16 @@ const VIEW_LABELS: Record<ViewName, string> = {
   sessions: 'Sessions',
   projects: 'Projects',
 };
+
+/** Navigate to next/previous view in VIEW_ORDER cycle */
+function getAdjacentView(current: ViewName, direction: 'prev' | 'next'): ViewName {
+  // If in detail, treat as being in observations for navigation purposes
+  const effective = current === 'detail' ? 'observations' : current;
+  const idx = VIEW_ORDER.indexOf(effective);
+  if (idx === -1) return 'dashboard';
+  if (direction === 'next') return VIEW_ORDER[(idx + 1) % VIEW_ORDER.length];
+  return VIEW_ORDER[(idx - 1 + VIEW_ORDER.length) % VIEW_ORDER.length];
+}
 
 interface AppState {
   currentView: ViewName;
@@ -72,7 +84,11 @@ interface AppState {
 
 export function App({ dbPath }: { dbPath?: string }) {
   const { exit } = useApp();
-  const memento = createMementoConnection({ dbPath });
+  const memento = useMemo(() => createMementoConnection({ dbPath }), [dbPath]);
+
+  useEffect(() => {
+    return () => memento.close();
+  }, [memento]);
   const searchService = createSearchService(memento.engine);
   const sessionsService = createSessionsService(memento.engine);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -102,6 +118,9 @@ export function App({ dbPath }: { dbPath?: string }) {
 
   // Load data for current view
   const loadViewData = useCallback(async (view: ViewName) => {
+    // Detail view is loaded by loadDetail — skip to avoid resetting loading state
+    if (view === 'detail') return;
+
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
@@ -230,6 +249,36 @@ export function App({ dbPath }: { dbPath?: string }) {
       return;
     }
 
+    // ←/→ navigate between views (works in all views except search)
+    if (state.currentView !== 'search') {
+      if (key.leftArrow) {
+        const newView = getAdjacentView(state.currentView, 'prev');
+        setState((prev) => ({
+          ...prev,
+          currentView: newView,
+          selectedIndex: 0,
+          page: 1,
+          searchQuery: '',
+          selectedObservation: null,
+          detailScrollOffset: 0,
+        }));
+        return;
+      }
+      if (key.rightArrow) {
+        const newView = getAdjacentView(state.currentView, 'next');
+        setState((prev) => ({
+          ...prev,
+          currentView: newView,
+          selectedIndex: 0,
+          page: 1,
+          searchQuery: '',
+          selectedObservation: null,
+          detailScrollOffset: 0,
+        }));
+        return;
+      }
+    }
+
     // Search mode — capture all input
     if (state.currentView === 'search') {
       if (key.escape) {
@@ -262,7 +311,7 @@ export function App({ dbPath }: { dbPath?: string }) {
         }));
         return;
       }
-      if (key.backspace) {
+      if (key.backspace || key.delete) {
         const newQuery = state.searchQuery.slice(0, -1);
         setState((prev) => ({ ...prev, searchQuery: newQuery, selectedIndex: 0 }));
         debouncedSearch(newQuery);
@@ -348,13 +397,11 @@ export function App({ dbPath }: { dbPath?: string }) {
           ...prev,
           selectedIndex: Math.max(prev.selectedIndex - 1, 0),
         }));
-      } else if (input === '>' || key.rightArrow) {
+      } else if (input === '>' || input === '<') {
         const totalPages = Math.ceil(state.totalObservations / layout.pageSize);
-        if (state.page < totalPages) {
+        if (input === '>' && state.page < totalPages) {
           setState((prev) => ({ ...prev, page: prev.page + 1, selectedIndex: 0 }));
-        }
-      } else if (input === '<' || key.leftArrow) {
-        if (state.page > 1) {
+        } else if (input === '<' && state.page > 1) {
           setState((prev) => ({ ...prev, page: prev.page - 1, selectedIndex: 0 }));
         }
       } else if (key.return) {
@@ -462,13 +509,13 @@ export function App({ dbPath }: { dbPath?: string }) {
   }
 
   // Key bindings for status bar
-  const keyBindings = ['q: quit', '1-6: views', 'Esc: back'];
+  const keyBindings = ['q: quit', '←/→: views', '1-5: jump', 'Esc: back'];
   if (state.currentView === 'observations') {
     keyBindings.push('j/k: nav', '</>: page', '/: search', 'Enter: detail');
   } else if (state.currentView === 'search') {
     keyBindings.push('type to search', 'Enter: open', 'Esc: close');
   } else if (state.currentView === 'detail') {
-    keyBindings.push('j/k: scroll', 'Esc: back');
+    keyBindings.push('j/k: scroll', '←/→: views', 'Esc: back');
   } else if (state.currentView === 'sessions') {
     keyBindings.push('j/k: nav', 'Enter: expand');
   } else if (state.currentView === 'projects') {

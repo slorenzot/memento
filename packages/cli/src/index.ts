@@ -11,6 +11,12 @@ const config = loadConfig();
 const dbPath = resolveDbPath(config);
 const projectId = getProjectId(config);
 const memory = new MemoryEngine(dbPath);
+if (memory.isHealthy()) {
+  console.error(`✓ Database initialized successfully at: ${dbPath}`);
+} else {
+  const initError = memory.getInitError();
+  console.error(`✗ Failed to initialize database at ${dbPath}:`, initError?.message);
+}
 let activeSessionId: number | null = null;
 
 async function getOrCreateSessionId(projectId: string): Promise<number> {

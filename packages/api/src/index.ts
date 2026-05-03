@@ -14,6 +14,12 @@ export class APIServer {
   constructor(port: number, dbPath: string) {
     this.port = port;
     this.memory = new MemoryEngine(dbPath);
+    if (this.memory.isHealthy()) {
+      console.error(`✓ Database initialized successfully at: ${dbPath}`);
+    } else {
+      const initError = this.memory.getInitError();
+      console.error(`✗ Failed to initialize database at ${dbPath}:`, initError?.message);
+    }
     this.app = express();
     this.setupMiddleware();
     this.setupRoutes();

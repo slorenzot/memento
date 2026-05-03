@@ -34,6 +34,13 @@ const dbPath = resolveDbPath(config);
 const projectId = getProjectId(config);
 
 const engine = new MemoryEngine(dbPath);
+if (engine.isHealthy()) {
+  console.error(`✓ Database initialized successfully at: ${dbPath}`);
+} else {
+  const initError = engine.getInitError();
+  console.error(`✗ Failed to initialize database at ${dbPath}:`, initError?.message);
+  console.error('  The server will start but database operations will fail until this is resolved.');
+}
 let activeSessionId: number | null = null;
 
 const server = new McpServer({

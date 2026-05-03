@@ -19,7 +19,7 @@ export function Badge({ type, deleted = false }: BadgeProps) {
         </Text>
       ) : null}
       <Text color={colorFn('#fff') as unknown as string}>
-        {icon} {type}
+        [{type}]
       </Text>
     </Text>
   );
