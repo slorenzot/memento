@@ -91,7 +91,7 @@ server.tool(
         content: [
           {
             type: 'text',
-            text: JSON.stringify({ id: obs.id, uuid: obs.uuid, success: true }, null, 2),
+            text: `✓ Observation #${obs.id} saved successfully`,
           },
         ],
       };
@@ -173,7 +173,7 @@ server.tool(
       content: [
         {
           type: 'text',
-          text: JSON.stringify({ id: updated.id, success: true }, null, 2),
+          text: `✓ Observation #${updated.id} updated successfully`,
         },
       ],
     };
@@ -192,7 +192,7 @@ server.tool(
       content: [
         {
           type: 'text',
-          text: JSON.stringify({ id, success: true }, null, 2),
+          text: `✓ Observation #${id} deleted successfully`,
         },
       ],
     };
@@ -218,7 +218,7 @@ server.tool(
       content: [
         {
           type: 'text',
-          text: JSON.stringify({ id: session.id, uuid: session.uuid, success: true }, null, 2),
+          text: `✓ Session #${session.id} started (project: ${project_id})`,
         },
       ],
     };
@@ -234,11 +234,7 @@ server.tool('mem_session_end', 'End current active session.', {}, async () => {
     content: [
       {
         type: 'text',
-        text: JSON.stringify(
-          { id: ended.id, uuid: ended.uuid, endedAt: ended.endedAt, success: true },
-          null,
-          2
-        ),
+        text: `✓ Session #${ended.id} ended`,
       },
     ],
   };
