@@ -3,7 +3,9 @@
 import { Command } from 'commander';
 import { MemoryEngine, loadConfig, resolveDbPath, getProjectId } from '@slorenzot/memento-core';
 import type { Observation } from '@slorenzot/memento-core';
-import { statSync } from 'fs';
+import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync } from 'fs';
+import { join, dirname } from 'path';
+import { homedir } from 'os';
 
 const config = loadConfig();
 const dbPath = resolveDbPath(config);
@@ -133,6 +135,102 @@ program
       console.log(`    ${type}: ${count}`);
     });
     memory.close();
+  });
+
+// ─── Install Skill ──────────────────────────────────────────
+
+program
+  .command('install-skill')
+  .description('Install Memento AI skill and slash commands for coding agents')
+  .option('--target <target>', 'Target: opencode, claude, or a custom path', 'opencode')
+  .action(async (options: any) => {
+    const target = options.target;
+
+    // Resolve SKILL.md source — try multiple locations
+    const skillPaths: string[] = [];
+
+    // npm package location
+    try {
+      const pkgRoot = dirname(require.resolve('@slorenzot/memento-mcp-server/package.json'));
+      skillPaths.push(join(pkgRoot, 'skills', 'memento', 'SKILL.md'));
+    } catch { /* not installed as package */ }
+
+    // Fallback: relative to this CLI package (monorepo dev)
+    skillPaths.push(
+      join(__dirname, '..', '..', 'mcp-server', 'skills', 'memento', 'SKILL.md'),
+      join(__dirname, '..', '..', '..', 'packages', 'mcp-server', 'skills', 'memento', 'SKILL.md')
+    );
+
+    let sourcePath: string | null = null;
+    for (const p of skillPaths) {
+      if (existsSync(p)) { sourcePath = p; break; }
+    }
+
+    // Determine destination directories
+    let skillDestDir: string;
+    let commandsDestDir: string;
+
+    switch (target) {
+      case 'opencode':
+        skillDestDir = join(homedir(), '.config', 'opencode', 'skills', 'memento');
+        commandsDestDir = join(homedir(), '.config', 'opencode', 'commands');
+        break;
+      case 'claude':
+        skillDestDir = join(homedir(), '.claude', 'skills', 'memento');
+        commandsDestDir = join(homedir(), '.claude', 'commands');
+        break;
+      default:
+        skillDestDir = join(target, 'skills', 'memento');
+        commandsDestDir = join(target, 'commands');
+        break;
+    }
+
+    // Install SKILL.md
+    if (sourcePath) {
+      mkdirSync(skillDestDir, { recursive: true });
+      copyFileSync(sourcePath, join(skillDestDir, 'SKILL.md'));
+      console.log(`  ✓ Skill: ${join(skillDestDir, 'SKILL.md')}`);
+    } else {
+      console.error('  ⚠ SKILL.md not found (skill skipped)');
+    }
+
+    // Install slash commands
+    const cmdPaths: string[] = [];
+
+    try {
+      const pkgRoot = dirname(require.resolve('@slorenzot/memento-mcp-server/package.json'));
+      cmdPaths.push(join(pkgRoot, 'commands'));
+    } catch { /* not installed as package */ }
+
+    cmdPaths.push(
+      join(__dirname, '..', '..', 'mcp-server', 'commands'),
+      join(__dirname, '..', '..', '..', 'packages', 'mcp-server', 'commands')
+    );
+
+    let commandsDir: string | null = null;
+    for (const d of cmdPaths) {
+      if (existsSync(d)) { commandsDir = d; break; }
+    }
+
+    if (commandsDir) {
+      const commandFiles = readdirSync(commandsDir).filter((f: string) => f.endsWith('.md'));
+      if (commandFiles.length > 0) {
+        mkdirSync(commandsDestDir, { recursive: true });
+        for (const file of commandFiles) {
+          const src = join(commandsDir, file);
+          const dest = join(commandsDestDir, file);
+          copyFileSync(src, dest);
+          console.log(`  ✓ Command: /${file.replace('.md', '')}`);
+        }
+      } else {
+        console.error('  ⚠ No command files found in commands/');
+      }
+    } else {
+      console.error('  ⚠ commands/ directory not found (commands skipped)');
+    }
+
+    console.log(`\n  Target: ${target}`);
+    console.log('  The AI agent will now know how to use all mem_* tools.');
   });
 
 // ─── Helpers ────────────────────────────────────────────────
