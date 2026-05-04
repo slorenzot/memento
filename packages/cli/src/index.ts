@@ -3,7 +3,7 @@
 import { Command } from 'commander';
 import { MemoryEngine, loadConfig, resolveDbPath, getProjectId } from '@slorenzot/memento-core';
 import type { Observation } from '@slorenzot/memento-core';
-import { existsSync, mkdirSync, copyFileSync, readdirSync } from 'fs';
+import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
 
@@ -231,6 +231,143 @@ program
 
     console.log(`\n  Target: ${target}`);
     console.log('  The AI agent will now know how to use all mem_* tools.');
+  });
+
+// ─── Helpers ────────────────────────────────────────────────
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+}
+
+function getDbSize(path: string): string {
+  try {
+    let total = statSync(path).size;
+    try { total += statSync(`${path}-wal`).size; } catch { /* no WAL */ }
+    try { total += statSync(`${path}-shm`).size; } catch { /* no SHM */ }
+    return formatBytes(total);
+  } catch {
+    return 'unknown';
+  }
+}
+
+function relativeTime(date: Date): string {
+  const now = Date.now();
+  const diff = now - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString();
+}
+
+// ─── Status ─────────────────────────────────────────────────
+
+program
+  .command('status')
+  .description('Quick health check and executive summary')
+  .action(async () => {
+    const healthy = memory.isHealthy();
+    const dbSize = getDbSize(dbPath);
+    const dashboard = healthy ? await memory.getDashboardStats() : null;
+    const initError = memory.getInitError();
+
+    const W = 42;
+    const line = (s: string) => `│ ${s.padEnd(W - 2)}│`;
+    const border = (l: string, r: string) => l + '─'.repeat(W - 2) + r;
+
+    console.log(border('╭', '╮'));
+    console.log(line('MEMENTO STATUS'));
+    console.log(border('├', '┤'));
+    console.log(line(`Database:   ${healthy ? '✓' : '✗'} ${healthy ? 'healthy' : 'unhealthy'}`));
+
+    if (!healthy && initError) {
+      console.log(line(`Error:      ${initError.message.substring(0, W - 14)}`));
+    }
+
+    console.log(line(`Path:       ${dbPath}`));
+    console.log(line(`Project:    ${projectId}`));
+
+    if (dashboard) {
+      console.log(line(`Session:    ${dashboard.activeSessions > 0 ? `#${dashboard.activeSessions} (active)` : 'none'}`));
+      console.log(line(''));
+      console.log(line(`Observations: ${dashboard.activeObservations} active, ${dashboard.deletedObservations} deleted`));
+
+      const types = Object.entries(dashboard.byType)
+        .filter(([, c]) => c > 0)
+        .map(([t, c]) => `${t}: ${c}`)
+        .join('  │  ');
+      if (types) console.log(line(`  ${types}`));
+
+      if (dashboard.recentObservations.length > 0) {
+        const last = dashboard.recentObservations[0];
+        console.log(line(''));
+        console.log(line(`Last activity: ${last.createdAt.toLocaleString()}`));
+      }
+    }
+
+    console.log(line(`DB size:    ${dbSize}`));
+    console.log(border('╰', '╯'));
+
+    memory.close();
+  });
+
+// ─── Recents ────────────────────────────────────────────────
+
+program
+  .command('recents')
+  .description('Show recent observations in compact format')
+  .option('-l, --limit <n>', 'Max results', '10')
+  .option('-p, --project <project>', 'Filter by project')
+  .option('-t, --type <type>', 'Filter by type')
+  .option('--hours <n>', 'Only observations from last N hours', '24')
+  .action(async (options: any) => {
+    const hours = parseInt(options.hours);
+    const limit = parseInt(options.limit);
+    const since = new Date(Date.now() - hours * 3600000);
+
+    const result = await memory.search({
+      projectId: options.project,
+      type: options.type,
+      limit,
+    });
+
+    const observations = result.observations.filter((obs: Observation) => obs.createdAt >= since);
+
+    const W = 58;
+    const line = (s: string) => `│ ${s.padEnd(W - 2)}│`;
+    const border = (l: string, r: string) => l + '─'.repeat(W - 2) + r;
+
+    console.log(border('╭', '╮'));
+    console.log(line(`RECENT OBSERVATIONS (last ${hours}h)`));
+    console.log(border('├', '┤'));
+
+    if (observations.length === 0) {
+      console.log(line('  No observations in this period.'));
+    } else {
+      for (const obs of observations) {
+        const badge = `[${obs.type}]`.padEnd(12);
+        const time = relativeTime(obs.createdAt).padStart(12);
+        const maxTitleLen = W - badge.length - time.length - 6;
+        const title = obs.title.length > maxTitleLen
+          ? obs.title.substring(0, maxTitleLen - 1) + '…'
+          : obs.title;
+        console.log(line(`#${obs.id} ${badge}${title.padEnd(maxTitleLen)}${time}`));
+      }
+    }
+
+    console.log(border('╰', '╯'));
+    console.log(`  Showing ${observations.length} of ${result.total} total observations.`);
+
+    memory.close();
   });
 
 program.parseAsync(process.argv);
