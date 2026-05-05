@@ -619,6 +619,80 @@ export class MemoryEngine {
     return this.mapObservation(row as Record<string, unknown>);
   }
 
+  async resetFull(): Promise<{ deleted: number }> {
+    this.checkHealth();
+
+    // Count before reset
+    const countResult = this.db.prepare('SELECT COUNT(*) as count FROM observations').get() as { count: number } | undefined;
+    const deleted = countResult?.count || 0;
+
+    // Drop everything
+    this.db.exec('DROP TABLE IF EXISTS observations_fts');
+    this.db.exec('DROP TRIGGER IF EXISTS observations_ai');
+    this.db.exec('DROP TRIGGER IF EXISTS observations_ad');
+    this.db.exec('DROP TRIGGER IF EXISTS observations_au');
+    this.db.exec('DROP TABLE IF EXISTS observations');
+    this.db.exec('DROP TABLE IF EXISTS prompts');
+    this.db.exec('DROP TABLE IF EXISTS sessions');
+    this.db.exec('DROP TABLE IF EXISTS projects');
+
+    // Recreate schema
+    this.initializeDatabase();
+
+    return { deleted };
+  }
+
+  async resetProject(projectId: string): Promise<{ deleted: number; orphanSessions: number }> {
+    this.checkHealth();
+
+    // Count observations to delete
+    const obsCount = this.db
+      .prepare('SELECT COUNT(*) as count FROM observations WHERE project_id = ?')
+      .get(projectId) as { count: number };
+    const promptCount = this.db
+      .prepare('SELECT COUNT(*) as count FROM prompts WHERE project_id = ?')
+      .get(projectId) as { count: number };
+    const deleted = obsCount.count + promptCount.count;
+
+    // Delete observations and prompts for this project
+    this.db.prepare('DELETE FROM observations WHERE project_id = ?').run(projectId);
+    this.db.prepare('DELETE FROM prompts WHERE project_id = ?').run(projectId);
+
+    // Clean up orphan sessions (no observations AND no prompts)
+    const orphanResult = this.db.prepare(`
+      DELETE FROM sessions WHERE id NOT IN (
+        SELECT DISTINCT session_id FROM observations
+        UNION
+        SELECT DISTINCT session_id FROM prompts
+      )
+    `).run();
+    const orphanSessions = typeof orphanResult.changes === 'bigint'
+      ? Number(orphanResult.changes)
+      : orphanResult.changes;
+
+    return { deleted, orphanSessions };
+  }
+
+  async countByProject(projectId: string): Promise<{ observations: number; prompts: number; sessions: number }> {
+    this.checkHealth();
+
+    const obsCount = this.db
+      .prepare('SELECT COUNT(*) as count FROM observations WHERE project_id = ?')
+      .get(projectId) as { count: number };
+    const promptCount = this.db
+      .prepare('SELECT COUNT(*) as count FROM prompts WHERE project_id = ?')
+      .get(projectId) as { count: number };
+    const sessionCount = this.db
+      .prepare('SELECT COUNT(DISTINCT session_id) as count FROM observations WHERE project_id = ?')
+      .get(projectId) as { count: number };
+
+    return {
+      observations: obsCount.count,
+      prompts: promptCount.count,
+      sessions: sessionCount.count,
+    };
+  }
+
   close(): void {
     this.db.close();
   }
