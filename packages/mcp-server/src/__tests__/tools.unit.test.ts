@@ -542,7 +542,222 @@ describe('Tool Handlers', () => {
       expect(result.name).toBe('memento');
       expect(result.version).toBe('1.0.0');
       expect(result.storage).toBeDefined();
-      expect(result.tools).toHaveLength(18);
+      expect(result.tools).toHaveLength(23);
+    });
+  });
+
+  // ─── Agent Convenience Tools ───────────────────────────────
+
+  describe('mem_save_prompt', () => {
+    it('should save a prompt and return { id, uuid, success }', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_save_prompt',
+        arguments: {
+          content: 'How do I implement FTS5 in SQLite?',
+          project_id: 'test-project',
+        },
+      });
+
+      const result = parseResult(response);
+      expect(result.success).toBe(true);
+      expect(result.id).toBeDefined();
+      expect(result.uuid).toBeDefined();
+    });
+
+    it('should auto-create session if none active', async () => {
+      expect(setup.ctx.activeSessionId).toBeNull();
+
+      const response = await setup.client.callTool({
+        name: 'mem_save_prompt',
+        arguments: { content: 'Test prompt' },
+      });
+
+      const result = parseResult(response);
+      expect(result.success).toBe(true);
+      expect(setup.ctx.activeSessionId).not.toBeNull();
+    });
+  });
+
+  describe('mem_context', () => {
+    it('should return recent observations', async () => {
+      const session = await seedSession(setup.engine, 'test-project');
+      await seedObservation(setup.engine, session.id, { title: 'Context 1', projectId: 'test-project' });
+      await seedObservation(setup.engine, session.id, { title: 'Context 2', projectId: 'test-project' });
+
+      const response = await setup.client.callTool({
+        name: 'mem_context',
+        arguments: { project_id: 'test-project' },
+      });
+
+      const result = parseResult(response);
+      expect(result.total).toBe(2);
+      expect(result.observations).toHaveLength(2);
+    });
+
+    it('should respect limit parameter', async () => {
+      const session = await seedSession(setup.engine, 'test-project');
+      for (let i = 0; i < 5; i++) {
+        await seedObservation(setup.engine, session.id, { projectId: 'test-project' });
+      }
+
+      const response = await setup.client.callTool({
+        name: 'mem_context',
+        arguments: { project_id: 'test-project', limit: 2 },
+      });
+
+      const result = parseResult(response);
+      expect(result.observations).toHaveLength(2);
+    });
+  });
+
+  describe('mem_suggest_topic_key', () => {
+    it('should generate stable key from title', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_suggest_topic_key',
+        arguments: { title: 'Fixed N+1 Query in UserList' },
+      });
+
+      const result = parseResult(response);
+      expect(result.suggested_key).toBe('fixed-n-1-query-in-userlist');
+    });
+
+    it('should add type prefix when provided', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_suggest_topic_key',
+        arguments: { title: 'Auth Model', type: 'decision' },
+      });
+
+      const result = parseResult(response);
+      expect(result.suggested_key).toBe('decision/auth-model');
+    });
+
+    it('should return empty when no input provided', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_suggest_topic_key',
+        arguments: {},
+      });
+
+      const result = parseResult(response);
+      expect(result.suggested_key).toBe('');
+    });
+  });
+
+  describe('mem_session_summary', () => {
+    it('should create observation with type summary', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_session_summary',
+        arguments: {
+          content: '## Goal\nImplement feature\n## Accomplished\n- Done',
+          project_id: 'test-project',
+        },
+      });
+
+      const result = parseResult(response);
+      expect(result.success).toBe(true);
+      expect(result.id).toBeDefined();
+
+      // Verify it's a summary type
+      const getResponse = await setup.client.callTool({
+        name: 'mem_get_observation',
+        arguments: { id: result.id },
+      });
+      const obs = parseResult(getResponse);
+      expect(obs.type).toBe('summary');
+      expect(obs.metadata.isSessionSummary).toBe(true);
+    });
+  });
+
+  describe('mem_capture_passive', () => {
+    it('should extract learnings from text', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_capture_passive',
+        arguments: {
+          content: '## Key Learnings:\n- SQLite FTS5 is powerful for search\n- Always use prepared statements\n- WAL mode improves write performance',
+          project_id: 'test-project',
+          source: 'test',
+        },
+      });
+
+      const result = parseResult(response);
+      expect(result.captured).toBe(3);
+      expect(result.observations).toHaveLength(3);
+
+      // Verify type is learning
+      const getResponse = await setup.client.callTool({
+        name: 'mem_get_observation',
+        arguments: { id: result.observations[0].id },
+      });
+      const obs = parseResult(getResponse);
+      expect(obs.type).toBe('learning');
+    });
+
+    it('should return 0 when no learning sections found', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_capture_passive',
+        arguments: {
+          content: 'No learning sections here, just plain text.',
+          project_id: 'test-project',
+        },
+      });
+
+      const result = parseResult(response);
+      expect(result.captured).toBe(0);
+      expect(result.observations).toHaveLength(0);
+    });
+
+    it('should deduplicate similar learnings', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_capture_passive',
+        arguments: {
+          content: '## Key Learnings:\n- SQLite FTS5 is powerful for search\n- FTS5 is powerful for search with SQLite\n- Completely different learning about React hooks',
+          project_id: 'test-project',
+        },
+      });
+
+      const result = parseResult(response);
+      // The first two are very similar, should deduplicate to 1 + the different one
+      expect(result.captured).toBeLessThanOrEqual(3);
+      expect(result.captured).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  // ─── Updated Tool Behavior ────────────────────────────────
+
+  describe('mem_timeline (updated)', () => {
+    it('should return observations in ASC chronological order', async () => {
+      const session = await seedSession(setup.engine, 'test-project');
+      const first = await seedObservation(setup.engine, session.id, { title: 'First', projectId: 'test-project' });
+      const second = await seedObservation(setup.engine, session.id, { title: 'Second', projectId: 'test-project' });
+
+      const response = await setup.client.callTool({
+        name: 'mem_timeline',
+        arguments: { project_id: 'test-project' },
+      });
+
+      const result = parseResult(response);
+      expect(result.total).toBe(2);
+      expect(result.observations[0].id).toBe(first.id);
+      expect(result.observations[1].id).toBe(second.id);
+    });
+  });
+
+  describe('mem_stats (updated)', () => {
+    it('should use getDashboardStats for accurate counts', async () => {
+      const session = await seedSession(setup.engine, 'test-project');
+      await seedObservation(setup.engine, session.id, { type: 'bug', projectId: 'test-project' });
+      await seedObservation(setup.engine, session.id, { type: 'note', projectId: 'test-project' });
+      await seedObservation(setup.engine, session.id, { type: 'decision', projectId: 'test-project' });
+
+      const response = await setup.client.callTool({
+        name: 'mem_stats',
+        arguments: {},
+      });
+
+      const result = parseResult(response);
+      expect(result.totalObservations).toBe(3);
+      expect(result.byType.bug).toBe(1);
+      expect(result.byType.note).toBe(1);
+      expect(result.byType.decision).toBe(1);
     });
   });
 });

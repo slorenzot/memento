@@ -283,6 +283,8 @@ describe('MemoryEngine — TUI Explorer API', () => {
         bug: 0,
         discovery: 0,
         note: 1,
+        summary: 0,
+        learning: 0,
       });
     });
 
@@ -326,6 +328,8 @@ describe('MemoryEngine — TUI Explorer API', () => {
         bug: 0,
         discovery: 0,
         note: 0,
+        summary: 0,
+        learning: 0,
       });
       expect(stats.byProject).toEqual({});
       expect(stats.recentObservations).toEqual([]);
@@ -411,6 +415,8 @@ describe('MemoryEngine — TUI Explorer API', () => {
         bug: 3,
         discovery: 1,
         note: 4,
+        summary: 0,
+        learning: 0,
       });
     });
 

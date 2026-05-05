@@ -162,7 +162,7 @@ export async function seedObservation(
   overrides: {
     title?: string;
     content?: string;
-    type?: 'decision' | 'bug' | 'discovery' | 'note';
+    type?: 'decision' | 'bug' | 'discovery' | 'note' | 'summary' | 'learning';
     topicKey?: string | null;
     projectId?: string;
     metadata?: Record<string, unknown>;
