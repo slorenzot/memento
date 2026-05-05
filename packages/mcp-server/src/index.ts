@@ -8,29 +8,44 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import * as fs from 'fs';
 
+// Helper: pluralize a type word based on count
+function pluralize(count: number, word: string): string {
+  if (count === 1) return `1 ${word}`;
+  if (word === 'discovery') return `${count} discoveries`;
+  return `${count} ${word}s`;
+}
+
+// Helper: format type breakdown from observations
+function formatTypeBreakdown(observations: any[]): string {
+  if (observations.length === 0) return '0 observations';
+  const counts: Record<string, number> = {};
+  for (const o of observations) {
+    counts[o.type] = (counts[o.type] || 0) + 1;
+  }
+  return Object.entries(counts)
+    .map(([type, count]) => pluralize(count, type))
+    .join(', ');
+}
+
+// Helper: build two-part response (clean summary for user + full data for agent)
+function buildResponse(summary: string, data: any): any {
+  return {
+    content: [
+      { type: 'text', text: summary },
+      { type: 'text', text: JSON.stringify(data, null, 2) },
+    ],
+  };
+}
+
 // Helper function to handle errors in tool execution
 function handleToolError(error: any): any {
   console.error('Tool execution error:', error.message);
-
-  let hint = 'An error occurred during operation';
-  if (!engine.isHealthy()) {
-    const initError = engine.getInitError();
-    hint = `Database initialization failed: ${initError?.message || 'Unknown error'}. Check configuration and permissions.`;
-  }
 
   return {
     content: [
       {
         type: 'text',
-        text: JSON.stringify(
-          {
-            success: false,
-            error: error.message,
-            hint,
-          },
-          null,
-          2
-        ),
+        text: `✗ Error: ${error.message} — project: ${projectId}`,
       },
     ],
   };
@@ -91,7 +106,7 @@ server.tool(
         content: [
           {
             type: 'text',
-            text: `✓ Observation #${obs.id} saved successfully`,
+            text: `✓ Observation #${obs.id} saved — project: ${currentProjectId}`,
           },
         ],
       };
@@ -123,14 +138,19 @@ server.tool(
         offset,
       });
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      };
+      const searchProject = project_id || projectId;
+
+      if (result.total === 0) {
+        return buildResponse(`No observations found — project: ${searchProject}`, result);
+      }
+      if (result.total === 1) {
+        const obs = result.observations[0];
+        return buildResponse(`✓ Found 1 ${obs.type}: "${obs.title}" — project: ${searchProject}`, result);
+      }
+      return buildResponse(
+        `✓ Found ${result.total} observations (${formatTypeBreakdown(result.observations)}) — project: ${searchProject}`,
+        result
+      );
     } catch (error: any) {
       return handleToolError(error);
     }
@@ -146,9 +166,10 @@ server.tool(
   async ({ id }) => {
     const obs = await engine.getObservation(id);
     if (!obs) throw new Error(`Observation ${id} not found`);
-    return {
-      content: [{ type: 'text', text: JSON.stringify(obs, null, 2) }],
-    };
+    return buildResponse(
+      `✓ Observation #${obs.id}: "${obs.title}" (${obs.type}, project: ${obs.projectId || projectId})`,
+      obs
+    );
   }
 );
 
@@ -173,7 +194,7 @@ server.tool(
       content: [
         {
           type: 'text',
-          text: `✓ Observation #${updated.id} updated successfully`,
+            text: `✓ Observation #${updated.id} updated — project: ${projectId}`,
         },
       ],
     };
@@ -192,7 +213,7 @@ server.tool(
       content: [
         {
           type: 'text',
-          text: `✓ Observation #${id} deleted successfully`,
+            text: `✓ Observation #${id} deleted — project: ${projectId}`,
         },
       ],
     };
@@ -234,7 +255,7 @@ server.tool('mem_session_end', 'End current active session.', {}, async () => {
     content: [
       {
         type: 'text',
-        text: `✓ Session #${ended.id} ended`,
+        text: `✓ Session #${ended.id} ended — project: ${projectId}`,
       },
     ],
   };
@@ -258,18 +279,12 @@ server.tool(
       Array.from(uniqueSessions).map((id) => engine.getSession(id))
     );
 
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
-            { sessions: sessions.filter(Boolean), total: sessions.length },
-            null,
-            2
-          ),
-        },
-      ],
-    };
+    const validSessions = sessions.filter(Boolean);
+    const sessionProject = project_id || projectId;
+    return buildResponse(
+      `✓ Found ${validSessions.length} sessions — project: ${sessionProject}`,
+      { sessions: validSessions, total: validSessions.length }
+    );
   }
 );
 
@@ -282,9 +297,10 @@ server.tool(
   async ({ id }) => {
     const s = await engine.getSession(id);
     if (!s) throw new Error(`Session ${id} not found`);
-    return {
-      content: [{ type: 'text', text: JSON.stringify(s, null, 2) }],
-    };
+    return buildResponse(
+      `✓ Session #${s.id} (project: ${s.projectId}, started: ${s.startedAt})`,
+      s
+    );
   }
 );
 
@@ -303,14 +319,19 @@ server.tool(
       offset,
     });
 
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(result, null, 2),
-        },
-      ],
-    };
+    const timelineProject = project_id || projectId;
+
+    if (result.total === 0) {
+      return buildResponse(`No observations in timeline — project: ${timelineProject}`, result);
+    }
+    if (result.total === 1) {
+      const obs = result.observations[0];
+      return buildResponse(`✓ Timeline: 1 ${obs.type}: "${obs.title}" — project: ${timelineProject}`, result);
+    }
+    return buildResponse(
+      `✓ Timeline: ${result.total} observations (${formatTypeBreakdown(result.observations)}) — project: ${timelineProject}`,
+      result
+    );
   }
 );
 
@@ -324,23 +345,12 @@ server.tool('mem_stats', 'Get memory statistics.', {}, async () => {
     byProject[o.projectId] = (byProject[o.projectId] || 0) + 1;
   }
 
-  return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(
-          {
-            totalObservations: result.total,
-            byType,
-            byProject,
-            activeSessionId,
-          },
-          null,
-          2
-        ),
-      },
-    ],
-  };
+  const breakdown = formatTypeBreakdown(result.observations);
+
+  return buildResponse(
+    `✓ Stats: ${result.total} total (${breakdown}) — project: ${projectId}`,
+    { totalObservations: result.total, byType, byProject, activeSessionId }
+  );
 });
 
 server.tool('mem_health', 'Check system health.', {}, async () => {
@@ -349,28 +359,23 @@ server.tool('mem_health', 'Check system health.', {}, async () => {
     const result = isHealthy ? await engine.search({}) : { total: 0, observations: [] };
     const initError = engine.getInitError();
 
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
-            {
-              status: isHealthy ? 'healthy' : 'unhealthy',
-              version: '0.7.0',
-              storage: 'sqlite-persistent',
-              databasePath: dbPath,
-              projectId: projectId,
-              databaseHealth: isHealthy ? 'ok' : 'failed',
-              ...(initError && { initError: initError.message }),
-              observations: result.total,
-              activeSession: activeSessionId,
-            },
-            null,
-            2
-          ),
-        },
-      ],
-    };
+    const statusIcon = isHealthy ? '✓' : '✗';
+    const statusText = isHealthy ? 'Healthy' : 'Unhealthy';
+
+    return buildResponse(
+      `${statusIcon} ${statusText} | SQLite | ${result.total} observations — project: ${projectId}`,
+      {
+        status: isHealthy ? 'healthy' : 'unhealthy',
+        version: '0.7.0',
+        storage: 'sqlite-persistent',
+        databasePath: dbPath,
+        projectId: projectId,
+        databaseHealth: isHealthy ? 'ok' : 'failed',
+        ...(initError && { initError: initError.message }),
+        observations: result.total,
+        activeSession: activeSessionId,
+      }
+    );
   } catch (error: any) {
     return handleToolError(error);
   }
@@ -387,45 +392,37 @@ server.tool('mem_config', 'Get current memento configuration and system status.'
 
   const dbStats = getDatabaseStats(dbPath);
 
-  return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(
-          {
-            name: 'memento-mcp-server',
-            version: '0.5.0',
-            config: {
-              storagePath: dbPath,
-              projectId: projectId,
-              projectRoot: process.cwd(),
-              hasConfigFile: existsSync(join(process.cwd(), '.mementorc')),
-            },
-            storage: {
-              type: 'SQLite Persistent',
-              method: 'bun:sqlite',
-              databasePath: dbPath,
-              walEnabled: true,
-            },
-            diskUsage: dbStats,
-            statistics: {
-              totalObservations: searchResult.total,
-              byType,
-              activeSession: activeSessionId,
-            },
-            environment: {
-              nodeVersion: process.version,
-              platform: process.platform,
-              arch: process.arch,
-              bunVersion: process.versions?.bun || 'unknown',
-            },
-          },
-          null,
-          2
-        ),
+  return buildResponse(
+    `✓ Memento v0.5.0 | SQLite | ${searchResult.total} obs | ${dbStats.totalSizeHuman} — project: ${projectId}`,
+    {
+      name: 'memento-mcp-server',
+      version: '0.5.0',
+      config: {
+        storagePath: dbPath,
+        projectId: projectId,
+        projectRoot: process.cwd(),
+        hasConfigFile: existsSync(join(process.cwd(), '.mementorc')),
       },
-    ],
-  };
+      storage: {
+        type: 'SQLite Persistent',
+        method: 'bun:sqlite',
+        databasePath: dbPath,
+        walEnabled: true,
+      },
+      diskUsage: dbStats,
+      statistics: {
+        totalObservations: searchResult.total,
+        byType,
+        activeSession: activeSessionId,
+      },
+      environment: {
+        nodeVersion: process.version,
+        platform: process.platform,
+        arch: process.arch,
+        bunVersion: process.versions?.bun || 'unknown',
+      },
+    }
+  );
 });
 
 function getDatabaseStats(dbPath: string) {
