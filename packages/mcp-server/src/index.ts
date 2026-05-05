@@ -425,6 +425,98 @@ server.tool('mem_config', 'Get current memento configuration and system status.'
   );
 });
 
+server.tool(
+  'mem_export',
+  'Export observations to a JSON file.',
+  {
+    file_path: z.string().describe('Absolute path to export file'),
+    project_id: z.string().optional().describe('Export only this project'),
+    include_sessions: z.boolean().optional().describe('Include session data (default: false)'),
+  },
+  async ({ file_path, project_id, include_sessions }) => {
+    try {
+      const data = await engine.exportToJson({
+        projectId: project_id,
+        includeSessions: include_sessions,
+      });
+
+      const dir = join(file_path, '..');
+      if (!existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      fs.writeFileSync(file_path, JSON.stringify(data, null, 2));
+
+      const exportProject = project_id || projectId;
+      return buildResponse(
+        `✓ Exported ${data.observations.length} observations to ${file_path} — project: ${exportProject}`,
+        { filePath: file_path, exported: data.observations.length, project: exportProject }
+      );
+    } catch (error: any) {
+      return handleToolError(error);
+    }
+  }
+);
+
+server.tool(
+  'mem_import',
+  'Import observations from a JSON file.',
+  {
+    file_path: z.string().describe('Absolute path to import file'),
+    project_id: z.string().optional().describe('Override project_id for all imported records'),
+    conflict_strategy: z
+      .enum(['skip', 'overwrite', 'fail'])
+      .optional()
+      .describe('How to handle duplicates (default: skip)'),
+    dry_run: z.boolean().optional().describe('Validate without importing (default: false)'),
+  },
+  async ({ file_path, project_id, conflict_strategy, dry_run }) => {
+    try {
+      if (!existsSync(file_path)) {
+        throw new Error(`File not found: ${file_path}`);
+      }
+
+      const raw = fs.readFileSync(file_path, 'utf-8');
+      const data = JSON.parse(raw);
+
+      const result = await engine.importFromJson(data, {
+        projectId: project_id,
+        conflictStrategy: conflict_strategy || 'skip',
+        dryRun: dry_run || false,
+      });
+
+      const importProject = project_id || data.project || projectId;
+
+      if (dry_run) {
+        return buildResponse(
+          `✓ Dry run: ${result.imported} valid, ${result.skipped} duplicates, ${result.failed} invalid — project: ${importProject}`,
+          result
+        );
+      }
+
+      if (result.imported === 0 && result.overwritten === 0) {
+        return buildResponse(
+          `No records imported (${result.skipped} skipped, ${result.failed} invalid) — project: ${importProject}`,
+          result
+        );
+      }
+
+      const parts: string[] = [];
+      if (result.imported > 0) parts.push(`${result.imported} imported`);
+      if (result.overwritten > 0) parts.push(`${result.overwritten} overwritten`);
+      if (result.skipped > 0) parts.push(`${result.skipped} skipped`);
+      if (result.failed > 0) parts.push(`${result.failed} failed`);
+
+      return buildResponse(
+        `✓ Import complete: ${parts.join(', ')} — project: ${importProject}`,
+        result
+      );
+    } catch (error: any) {
+      return handleToolError(error);
+    }
+  }
+);
+
 function getDatabaseStats(dbPath: string) {
   let totalSize = 0;
   let walSize = 0;

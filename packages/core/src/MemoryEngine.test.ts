@@ -453,4 +453,306 @@ describe('MemoryEngine', () => {
       expect(searchResult.observations[0].id).toBe(obs.id);
     });
   });
+
+  describe('Export Functionality', () => {
+    let session: Session;
+
+    beforeEach(async () => {
+      session = await engine.createSession({
+        projectId: 'export-project',
+        endedAt: null,
+        metadata: {},
+      });
+
+      await engine.createObservation({
+        sessionId: session.id,
+        title: 'Export Decision',
+        content: 'Decision content for export',
+        type: 'decision',
+        topicKey: 'export',
+        projectId: 'export-project',
+        metadata: { source: 'test' },
+      });
+
+      await engine.createObservation({
+        sessionId: session.id,
+        title: 'Export Bug',
+        content: 'Bug content for export',
+        type: 'bug',
+        topicKey: null,
+        projectId: 'export-project',
+        metadata: {},
+      });
+    });
+
+    it('should export all observations as JSON', async () => {
+      const data = await engine.exportToJson();
+
+      expect(data.version).toBe('1.0');
+      expect(data.exportedAt).toBeDefined();
+      expect(data.observations).toBeInstanceOf(Array);
+      expect(data.observations.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('should export observations filtered by project', async () => {
+      const data = await engine.exportToJson({ projectId: 'export-project' });
+
+      expect(data.observations).toHaveLength(2);
+      expect(data.project).toBe('export-project');
+      data.observations.forEach((obs) => {
+        expect(obs.projectId).toBe('export-project');
+      });
+    });
+
+    it('should export observations with correct schema', async () => {
+      const data = await engine.exportToJson({ projectId: 'export-project' });
+      const obs = data.observations[0];
+
+      expect(obs.uuid).toBeDefined();
+      expect(obs.title).toBeDefined();
+      expect(obs.content).toBeDefined();
+      expect(obs.type).toBeDefined();
+      expect(obs.projectId).toBeDefined();
+      expect(obs.createdAt).toBeDefined();
+      expect(typeof obs.createdAt).toBe('string');
+    });
+
+    it('should include sessions when requested', async () => {
+      const data = await engine.exportToJson({
+        projectId: 'export-project',
+        includeSessions: true,
+      });
+
+      expect(data.sessions).toBeDefined();
+      expect(data.sessions!.length).toBeGreaterThanOrEqual(1);
+      expect(data.sessions![0].uuid).toBeDefined();
+      expect(data.sessions![0].projectId).toBe('export-project');
+    });
+
+    it('should not include sessions by default', async () => {
+      const data = await engine.exportToJson({ projectId: 'export-project' });
+
+      expect(data.sessions).toBeUndefined();
+    });
+
+    it('should export empty project', async () => {
+      const data = await engine.exportToJson({ projectId: 'non-existent' });
+
+      expect(data.observations).toHaveLength(0);
+    });
+  });
+
+  describe('Import Functionality', () => {
+    let session: Session;
+
+    beforeEach(async () => {
+      session = await engine.createSession({
+        projectId: 'import-project',
+        endedAt: null,
+        metadata: {},
+      });
+    });
+
+    it('should import valid observations from JSON', async () => {
+      const data = {
+        version: '1.0',
+        project: 'import-project',
+        observations: [
+          { title: 'Imported Decision', content: 'Content 1', type: 'decision' },
+          { title: 'Imported Bug', content: 'Content 2', type: 'bug' },
+          { title: 'Imported Note', content: 'Content 3', type: 'note' },
+        ],
+      };
+
+      const result = await engine.importFromJson(data);
+
+      expect(result.imported).toBe(3);
+      expect(result.failed).toBe(0);
+      expect(result.observations).toHaveLength(3);
+      expect(result.observations[0].title).toBe('Imported Decision');
+    });
+
+    it('should reject invalid import data (missing version)', async () => {
+      const data = { observations: [] };
+
+      expect(engine.importFromJson(data as any)).rejects.toThrow('Invalid import data');
+    });
+
+    it('should reject invalid import data (missing observations)', async () => {
+      const data = { version: '1.0' };
+
+      expect(engine.importFromJson(data as any)).rejects.toThrow('Invalid import data');
+    });
+
+    it('should import 0 records gracefully', async () => {
+      const data = { version: '1.0', observations: [] };
+
+      const result = await engine.importFromJson(data);
+
+      expect(result.imported).toBe(0);
+      expect(result.observations).toHaveLength(0);
+    });
+
+    it('should skip observations with missing required fields', async () => {
+      const data = {
+        version: '1.0',
+        observations: [
+          { title: 'Valid', content: 'Content', type: 'note' },
+          { title: '', content: 'Missing title', type: 'note' },
+          { title: 'Missing content', content: '', type: 'note' },
+          { title: 'Missing type', content: 'Content', type: '' },
+        ],
+      };
+
+      const result = await engine.importFromJson(data, { conflictStrategy: 'skip', dryRun: false });
+
+      expect(result.imported).toBe(1);
+      expect(result.failed).toBe(3);
+    });
+
+    it('should reject invalid types', async () => {
+      const data = {
+        version: '1.0',
+        observations: [
+          { title: 'Valid', content: 'Content', type: 'note' },
+          { title: 'Bad Type', content: 'Content', type: 'invalid-type' },
+        ],
+      };
+
+      const result = await engine.importFromJson(data, { conflictStrategy: 'skip', dryRun: false });
+
+      expect(result.imported).toBe(1);
+      expect(result.failed).toBe(1);
+      expect(result.errors[0]).toContain('Invalid type');
+    });
+
+    it('should use dryRun mode without writing to database', async () => {
+      const data = {
+        version: '1.0',
+        observations: [
+          { title: 'Dry Run', content: 'Content', type: 'note' },
+        ],
+      };
+
+      const result = await engine.importFromJson(data, { conflictStrategy: 'skip', dryRun: true });
+
+      expect(result.imported).toBe(1);
+      expect(result.observations).toHaveLength(0); // dryRun doesn't return observations
+
+      // Verify nothing was actually written
+      const search = await engine.search({ projectId: 'import-project' });
+      // Only the dry run would have imported — check it's not there
+      const dryRunObs = search.observations.find((o) => o.title === 'Dry Run');
+      expect(dryRunObs).toBeUndefined();
+    });
+
+    it('should override project with options.projectId', async () => {
+      const data = {
+        version: '1.0',
+        project: 'original-project',
+        observations: [
+          { title: 'Override Project', content: 'Content', type: 'note' },
+        ],
+      };
+
+      const result = await engine.importFromJson(data, {
+        projectId: 'override-project',
+        conflictStrategy: 'skip',
+        dryRun: false,
+      });
+
+      expect(result.imported).toBe(1);
+      expect(result.observations[0].projectId).toBe('override-project');
+    });
+
+    describe('Conflict Strategies', () => {
+      it('should skip duplicates by uuid (skip strategy)', async () => {
+        // Create existing observation
+        const existing = await engine.createObservation({
+          sessionId: session.id,
+          title: 'Existing',
+          content: 'Original content',
+          type: 'note',
+          topicKey: null,
+          projectId: 'import-project',
+          metadata: {},
+        });
+
+        const data = {
+          version: '1.0',
+          observations: [
+            { uuid: existing.uuid, title: 'Updated', content: 'New content', type: 'note' },
+            { title: 'New Obs', content: 'Fresh content', type: 'decision' },
+          ],
+        };
+
+        const result = await engine.importFromJson(data, { conflictStrategy: 'skip', dryRun: false });
+
+        expect(result.imported).toBe(1);
+        expect(result.skipped).toBe(1);
+
+        // Verify existing was NOT overwritten
+        const check = await engine.getObservation(existing.id);
+        expect(check?.title).toBe('Existing');
+      });
+
+      it('should overwrite duplicates by uuid (overwrite strategy)', async () => {
+        const existing = await engine.createObservation({
+          sessionId: session.id,
+          title: 'Existing',
+          content: 'Original content',
+          type: 'note',
+          topicKey: null,
+          projectId: 'import-project',
+          metadata: {},
+        });
+
+        const data = {
+          version: '1.0',
+          observations: [
+            { uuid: existing.uuid, title: 'Updated', content: 'New content', type: 'note' },
+            { title: 'New Obs', content: 'Fresh content', type: 'decision' },
+          ],
+        };
+
+        const result = await engine.importFromJson(data, { conflictStrategy: 'overwrite', dryRun: false });
+
+        expect(result.imported).toBe(1);
+        expect(result.overwritten).toBe(1);
+
+        // Verify existing WAS overwritten
+        const check = await engine.getObservation(existing.id);
+        expect(check?.title).toBe('Updated');
+        expect(check?.content).toBe('New content');
+      });
+
+      it('should abort on duplicate with fail strategy', async () => {
+        const existing = await engine.createObservation({
+          sessionId: session.id,
+          title: 'Existing',
+          content: 'Original content',
+          type: 'note',
+          topicKey: null,
+          projectId: 'import-project',
+          metadata: {},
+        });
+
+        const data = {
+          version: '1.0',
+          observations: [
+            { title: 'New Obs', content: 'Fresh content', type: 'decision' },
+            { uuid: existing.uuid, title: 'Duplicate', content: 'Dup content', type: 'note' },
+          ],
+        };
+
+        const result = await engine.importFromJson(data, { conflictStrategy: 'fail', dryRun: false });
+
+        expect(result.failed).toBe(1);
+        expect(result.errors[0]).toContain('Duplicate uuid');
+        // The first observation should have been rolled back
+        const search = await engine.search({ projectId: 'import-project' });
+        expect(search.observations.length).toBe(1); // Only the original
+      });
+    });
+  });
 });
