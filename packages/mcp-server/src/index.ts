@@ -517,6 +517,96 @@ server.tool(
   }
 );
 
+server.tool(
+  'mem_reset',
+  'Reset database (full or by project). DESTRUCTIVE — requires explicit confirmation.',
+  {
+    mode: z.enum(['full', 'project']).describe('Reset scope: "full" or "project"'),
+    project_id: z.string().optional().describe('Required when mode = "project"'),
+    confirm: z.string().describe('"FULL_RESET" for full mode, "true" for project mode'),
+    create_backup: z.boolean().optional().describe('Auto-export before reset (default: true)'),
+    dry_run: z.boolean().optional().describe('Preview what will be deleted (default: false)'),
+  },
+  async ({ mode, project_id, confirm, create_backup, dry_run }) => {
+    try {
+      // Safety: validate confirm parameter
+      if (mode === 'full') {
+        if (confirm !== 'FULL_RESET') {
+          return {
+            content: [{ type: 'text', text: `✗ Full reset requires confirm: "FULL_RESET" — project: ${projectId}` }],
+          };
+        }
+      } else if (mode === 'project') {
+        if (!project_id) {
+          return {
+            content: [{ type: 'text', text: `✗ Project reset requires project_id — project: ${projectId}` }],
+          };
+        }
+        if (confirm !== 'true') {
+          return {
+            content: [{ type: 'text', text: `✗ Project reset requires confirm: "true" — project: ${projectId}` }],
+          };
+        }
+      }
+
+      // Dry run: just count
+      if (dry_run) {
+        if (mode === 'full') {
+          const allObs = await engine.search({ limit: 100000 });
+          return buildResponse(
+            `✓ Dry run: ${allObs.total} observations would be deleted (full reset) — project: ${projectId}`,
+            { mode, wouldDelete: allObs.total }
+          );
+        } else {
+          const counts = await engine.countByProject(project_id!);
+          return buildResponse(
+            `✓ Dry run: ${counts.observations} observations, ${counts.prompts} prompts would be deleted — project: ${project_id}`,
+            { mode, project: project_id, ...counts }
+          );
+        }
+      }
+
+      // Backup before reset (default: true)
+      let backupPath: string | null = null;
+      if (create_backup !== false) {
+        const backupDir = join(process.env.HOME || '/tmp', '.memento', 'backups');
+        if (!existsSync(backupDir)) {
+          fs.mkdirSync(backupDir, { recursive: true });
+        }
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const scopeLabel = mode === 'full' ? 'full' : project_id;
+        backupPath = join(backupDir, `reset-${scopeLabel}-${timestamp}.json`);
+
+        const exportData = await engine.exportToJson({
+          projectId: mode === 'project' ? project_id : undefined,
+          includeSessions: true,
+        });
+        fs.writeFileSync(backupPath, JSON.stringify(exportData, null, 2));
+      }
+
+      // Execute reset
+      if (mode === 'full') {
+        const result = await engine.resetFull();
+        return buildResponse(
+          `✓ Full reset complete: ${result.deleted} records deleted — project: ${projectId}` +
+          (backupPath ? ` | Backup: ${backupPath}` : ''),
+          { mode, deleted: result.deleted, backupPath }
+        );
+      } else {
+        const result = await engine.resetProject(project_id!);
+        return buildResponse(
+          `✓ Project reset complete: ${result.deleted} records deleted, ${result.orphanSessions} orphan sessions cleaned — project: ${project_id}` +
+          (backupPath ? ` | Backup: ${backupPath}` : ''),
+          { mode, project: project_id, ...result, backupPath }
+        );
+      }
+    } catch (error: any) {
+      return handleToolError(error);
+    }
+  }
+);
+
 function getDatabaseStats(dbPath: string) {
   let totalSize = 0;
   let walSize = 0;

@@ -755,4 +755,179 @@ describe('MemoryEngine', () => {
       });
     });
   });
+
+  describe('Reset Functionality', () => {
+    it('should perform full reset', async () => {
+      // Create data
+      const session = await engine.createSession({
+        projectId: 'reset-test',
+        endedAt: null,
+        metadata: {},
+      });
+
+      await engine.createObservation({
+        sessionId: session.id,
+        title: 'Will be deleted',
+        content: 'Content',
+        type: 'note',
+        topicKey: null,
+        projectId: 'reset-test',
+        metadata: {},
+      });
+
+      // Verify data exists
+      const before = await engine.search({});
+      expect(before.total).toBeGreaterThanOrEqual(1);
+
+      // Full reset
+      const result = await engine.resetFull();
+
+      expect(result.deleted).toBeGreaterThanOrEqual(1);
+
+      // Verify data is gone
+      const after = await engine.search({});
+      expect(after.total).toBe(0);
+
+      // Verify DB is still healthy (tables recreated)
+      expect(engine.isHealthy()).toBe(true);
+    });
+
+    it('should recreate schema after full reset', async () => {
+      await engine.resetFull();
+
+      // Should be able to create new observations
+      const session = await engine.createSession({
+        projectId: 'post-reset',
+        endedAt: null,
+        metadata: {},
+      });
+
+      const obs = await engine.createObservation({
+        sessionId: session.id,
+        title: 'After Reset',
+        content: 'New content',
+        type: 'decision',
+        topicKey: 'fresh',
+        projectId: 'post-reset',
+        metadata: {},
+      });
+
+      expect(obs.id).toBeDefined();
+      expect(obs.title).toBe('After Reset');
+    });
+
+    it('should perform project reset', async () => {
+      // Create data for two projects
+      const session1 = await engine.createSession({
+        projectId: 'project-a',
+        endedAt: null,
+        metadata: {},
+      });
+      const session2 = await engine.createSession({
+        projectId: 'project-b',
+        endedAt: null,
+        metadata: {},
+      });
+
+      await engine.createObservation({
+        sessionId: session1.id,
+        title: 'Project A Obs',
+        content: 'Content A',
+        type: 'note',
+        topicKey: null,
+        projectId: 'project-a',
+        metadata: {},
+      });
+      await engine.createObservation({
+        sessionId: session2.id,
+        title: 'Project B Obs',
+        content: 'Content B',
+        type: 'note',
+        topicKey: null,
+        projectId: 'project-b',
+        metadata: {},
+      });
+
+      // Reset project-a only
+      const result = await engine.resetProject('project-a');
+
+      expect(result.deleted).toBe(1);
+
+      // Project A should be empty
+      const searchA = await engine.search({ projectId: 'project-a' });
+      expect(searchA.total).toBe(0);
+
+      // Project B should be untouched
+      const searchB = await engine.search({ projectId: 'project-b' });
+      expect(searchB.total).toBe(1);
+      expect(searchB.observations[0].title).toBe('Project B Obs');
+    });
+
+    it('should clean up orphan sessions on project reset', async () => {
+      const session = await engine.createSession({
+        projectId: 'orphan-test',
+        endedAt: null,
+        metadata: {},
+      });
+
+      await engine.createObservation({
+        sessionId: session.id,
+        title: 'Will be deleted',
+        content: 'Content',
+        type: 'note',
+        topicKey: null,
+        projectId: 'orphan-test',
+        metadata: {},
+      });
+
+      const result = await engine.resetProject('orphan-test');
+
+      expect(result.deleted).toBe(1);
+      expect(result.orphanSessions).toBeGreaterThanOrEqual(1);
+
+      // Session should be gone (was orphan)
+      const checkSession = await engine.getSession(session.id);
+      expect(checkSession).toBeNull();
+    });
+
+    it('should count records by project', async () => {
+      const session = await engine.createSession({
+        projectId: 'count-test',
+        endedAt: null,
+        metadata: {},
+      });
+
+      await engine.createObservation({
+        sessionId: session.id,
+        title: 'Obs 1',
+        content: 'Content 1',
+        type: 'note',
+        topicKey: null,
+        projectId: 'count-test',
+        metadata: {},
+      });
+      await engine.createObservation({
+        sessionId: session.id,
+        title: 'Obs 2',
+        content: 'Content 2',
+        type: 'bug',
+        topicKey: null,
+        projectId: 'count-test',
+        metadata: {},
+      });
+
+      const counts = await engine.countByProject('count-test');
+
+      expect(counts.observations).toBe(2);
+      expect(counts.sessions).toBe(1);
+    });
+
+    it('should return zero counts for non-existent project', async () => {
+      const counts = await engine.countByProject('non-existent');
+
+      expect(counts.observations).toBe(0);
+      expect(counts.prompts).toBe(0);
+      expect(counts.sessions).toBe(0);
+    });
+  });
 });
