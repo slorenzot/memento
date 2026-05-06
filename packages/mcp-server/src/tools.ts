@@ -11,7 +11,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { MemoryEngine } from '@slorenzot/memento-core';
-import type { ExportFormat, MergeStrategy } from '@slorenzot/memento-core';
+import type { ExportFormat, MergeStrategy, Observation } from '@slorenzot/memento-core';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import * as fs from 'fs';
@@ -27,8 +27,9 @@ export interface McpServerContext {
 
 // ─── Error Helper ───────────────────────────────────────────
 
-function handleToolError(error: any, ctx: McpServerContext): any {
-  console.error('Tool execution error:', error.message);
+function handleToolError(error: unknown, ctx: McpServerContext): { content: Array<{ type: 'text'; text: string }> } {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error('Tool execution error:', message);
 
   let hint = 'An error occurred during operation';
   if (!ctx.engine.isHealthy()) {
@@ -40,7 +41,7 @@ function handleToolError(error: any, ctx: McpServerContext): any {
     content: [
       {
         type: 'text',
-        text: JSON.stringify({ success: false, error: error.message, hint }, null, 2),
+        text: JSON.stringify({ success: false, error: message, hint }, null, 2),
       },
     ],
   };
@@ -88,7 +89,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           sessionId,
           title,
           content,
-          type: (type as any) || 'note',
+          type: (type as Observation['type']) || 'note',
           topicKey: topic_key || null,
           projectId: currentProjectId,
           metadata: metadata || {},
@@ -102,7 +103,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -125,7 +126,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
       try {
         const result = await ctx.engine.search({
           query,
-          type: type as any,
+          type: type as Observation['type'] | undefined,
           projectId: project_id,
           topicKey: topic_key,
           limit: limit || 10,
@@ -136,7 +137,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -156,7 +157,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         return {
           content: [{ type: 'text', text: JSON.stringify(obs, null, 2) }],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -178,7 +179,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         const updated = await ctx.engine.updateObservation(id, {
           title,
           content,
-          type: type as any,
+          type: type as Observation['type'] | undefined,
           topicKey: topic_key,
         });
         return {
@@ -186,7 +187,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             { type: 'text', text: JSON.stringify({ id: updated.id, success: true }, null, 2) },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -210,7 +211,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             { type: 'text', text: JSON.stringify({ id, deleted: true, success: true }, null, 2) },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -234,7 +235,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -277,7 +278,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         return {
           content: [{ type: 'text', text: JSON.stringify({ ...result, success: true }, null, 2) }],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -297,7 +298,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -354,7 +355,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -380,7 +381,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         const result = await ctx.engine.exportObservations({
           format: (format as ExportFormat) || 'json',
           projectId: project_id,
-          type: type as any,
+          type: type as Observation['type'] | undefined,
           topicKey: topic_key,
           dateFrom: date_from ? new Date(date_from) : undefined,
           dateTo: date_to ? new Date(date_to) : undefined,
@@ -405,7 +406,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -438,7 +439,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -467,7 +468,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -500,7 +501,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -520,7 +521,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         return {
           content: [{ type: 'text', text: JSON.stringify(s, null, 2) }],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -567,7 +568,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -591,7 +592,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -638,7 +639,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -690,7 +691,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -792,7 +793,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -819,7 +820,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -852,7 +853,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -891,7 +892,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }
@@ -944,7 +945,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
                     nodeVersion: process.version,
                     platform: process.platform,
                     arch: process.arch,
-                    bunVersion: (process as any).versions?.bun || 'unknown',
+                    bunVersion: (process as { versions?: { bun?: string } }).versions?.bun || 'unknown',
                   },
                   tools: [
                     'mem_save',
@@ -978,7 +979,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             },
           ],
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
     }

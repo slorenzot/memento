@@ -38,7 +38,11 @@ function createTestDbPath(): string {
  * Parse the JSON content from an MCP tool response.
  * MCP responses come as { content: [{ type: 'text', text: '...' }] }
  */
-export function parseResult(response: any): any {
+interface McpToolResponse {
+  content: Array<{ type: 'text'; text: string }>;
+}
+
+export function parseResult(response: McpToolResponse): Record<string, unknown> {
   if (!response?.content?.[0]?.text) {
     throw new Error('Invalid MCP response: no content[0].text');
   }
@@ -49,12 +53,12 @@ export function parseResult(response: any): any {
  * Parse an error response from an MCP tool.
  * Returns { success, error, hint } from the structured error format.
  */
-export function parseError(response: any): { success: false; error: string; hint: string } {
-  const parsed = parseResult(response);
+export function parseError(response: McpToolResponse): { success: false; error: string; hint: string } {
+  const parsed = JSON.parse(response.content[0].text) as { success: boolean; error?: string; hint?: string };
   if (parsed.success !== false) {
     throw new Error(`Expected error response but got success: ${JSON.stringify(parsed)}`);
   }
-  return parsed;
+  return parsed as { success: false; error: string; hint: string };
 }
 
 // ─── Server Setup ───────────────────────────────────────────

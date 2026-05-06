@@ -18,6 +18,7 @@ import { mkdirSync } from 'fs';
 import { dirname } from 'path';
 
 export class MemoryEngine {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Bun Database type is incompatible with mock pattern
   private db: any;
   private dbPath: string;
   private initError: Error | null = null;
@@ -30,12 +31,13 @@ export class MemoryEngine {
       mkdirSync(dbDir, { recursive: true });
       this.db = new Database(dbPath, { create: true });
       this.initializeDatabase();
-    } catch (error: any) {
-      this.initError = error;
+    } catch (error: unknown) {
+      this.initError = error instanceof Error ? error : new Error(String(error));
       this.db = this.createMockDatabase();
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Mock fallback for failed DB init
   private createMockDatabase(): any {
     const throwError = () => {
       throw new Error(`Database not initialized: ${this.initError?.message || 'Unknown error'}`);
@@ -643,7 +645,7 @@ export class MemoryEngine {
         content = this.exportToTXT(observations, exportedAt, params);
         break;
       default:
-        throw new Error(`Unsupported export format: ${format}`);
+        throw new Error(`Unsupported export format: ${format as string}`);
     }
 
     return {

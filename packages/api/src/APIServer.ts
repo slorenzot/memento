@@ -1,9 +1,11 @@
+import type { Server } from 'node:http';
+
 import { MemoryEngine } from '@slorenzot/memento-core';
 
 export class APIServer {
   private port: number;
   private memory: MemoryEngine;
-  private server: any;
+  private server: Server | null = null;
 
   constructor(port: number, dbPath: string) {
     this.port = port;

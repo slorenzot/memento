@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
+import type { Server } from 'node:http';
+
 import { MemoryEngine } from "@slorenzot/memento-core";
+import type { Observation } from "@slorenzot/memento-core";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -9,7 +12,7 @@ export class APIServer {
   private port: number;
   private memory: MemoryEngine;
   private app: express.Application;
-  private server: any;
+  private server: Server | null = null;
 
   constructor(port: number, dbPath: string) {
     this.port = port;
@@ -40,14 +43,14 @@ export class APIServer {
       try {
         const result = await this.memory.search({
           query: req.query.query as string,
-          type: req.query.type as any,
+          type: req.query.type as Observation['type'] | undefined,
           projectId: req.query.project_id as string,
           limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
           offset: req.query.offset ? parseInt(req.query.offset as string) : undefined,
         });
         res.json(result);
-      } catch (error: any) {
-        res.status(500).json({ error: error.message });
+      } catch (error: unknown) {
+        res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
       }
     });
 
@@ -56,8 +59,8 @@ export class APIServer {
         const obs = await this.memory.getObservation(parseInt(req.params.id));
         if (!obs) { res.status(404).json({ error: "Not found" }); return; }
         res.json(obs);
-      } catch (error: any) {
-        res.status(500).json({ error: error.message });
+      } catch (error: unknown) {
+        res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
       }
     });
 
@@ -73,8 +76,8 @@ export class APIServer {
           metadata: req.body.metadata || {},
         });
         res.status(201).json(obs);
-      } catch (error: any) {
-        res.status(500).json({ error: error.message });
+      } catch (error: unknown) {
+        res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
       }
     });
 
@@ -82,8 +85,8 @@ export class APIServer {
       try {
         await this.memory.deleteObservation(parseInt(req.params.id));
         res.json({ success: true });
-      } catch (error: any) {
-        res.status(500).json({ error: error.message });
+      } catch (error: unknown) {
+        res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
       }
     });
   }
