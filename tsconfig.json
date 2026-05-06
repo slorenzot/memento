@@ -26,5 +26,5 @@
     "isolatedModules": true,
     "incremental": true
   },
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.test.tsx", "packages/web-ui"]
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.test.tsx", "packages/web-ui", "apps/tui"]
 }

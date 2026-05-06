@@ -3,6 +3,14 @@ import type {
   Observation,
   Session,
   Prompt,
+  SearchParams,
+  SearchResult,
+  MergeParams,
+  MergeResult,
+  MergeCandidates,
+  MergeCandidateGroup,
+  ExportParams,
+  ExportResult,
   ExportData,
   ExportedObservation,
   ExportedSession,
@@ -16,6 +24,7 @@ import { mkdirSync } from 'fs';
 import { dirname } from 'path';
 
 export class MemoryEngine {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Bun Database type is incompatible with mock pattern
   private db: any;
   private dbPath: string;
   private initError: Error | null = null;
@@ -25,37 +34,21 @@ export class MemoryEngine {
 
     try {
       const dbDir = dirname(dbPath);
-
-      // Create directory structure if it doesn't exist
       mkdirSync(dbDir, { recursive: true });
-
-      // Create database connection
       this.db = new Database(dbPath, { create: true });
       this.initializeDatabase();
-
-      console.error(`✓ Database initialized successfully at: ${dbPath}`);
-    } catch (error: any) {
-      this.initError = error;
-      console.error(`✗ Failed to initialize database at ${dbPath}:`, error.message);
-      console.error(
-        '  The server will start but database operations will fail until this is resolved.'
-      );
-
-      // Create a mock database object to prevent null reference errors
+    } catch (error: unknown) {
+      this.initError = error instanceof Error ? error : new Error(String(error));
       this.db = this.createMockDatabase();
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Mock fallback for failed DB init
   private createMockDatabase(): any {
     const throwError = () => {
       throw new Error(`Database not initialized: ${this.initError?.message || 'Unknown error'}`);
     };
-
-    return {
-      prepare: throwError,
-      exec: throwError,
-      close: () => {},
-    };
+    return { prepare: throwError, exec: throwError, close: () => {}, transaction: throwError };
   }
 
   isHealthy(): boolean {
@@ -73,6 +66,7 @@ export class MemoryEngine {
   private initializeDatabase(): void {
     this.db.exec('PRAGMA journal_mode = WAL');
     this.db.exec('PRAGMA foreign_keys = ON');
+    this.db.exec('PRAGMA busy_timeout = 5000');
 
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS sessions (
@@ -94,6 +88,7 @@ export class MemoryEngine {
         topic_key TEXT,
         project_id TEXT NOT NULL,
         created_at INTEGER NOT NULL,
+        deleted_at INTEGER DEFAULT NULL,
         metadata TEXT,
         FOREIGN KEY (session_id) REFERENCES sessions(id)
       );
@@ -115,25 +110,99 @@ export class MemoryEngine {
         created_at INTEGER NOT NULL,
         metadata TEXT
       );
+    `);
 
+    // Migrate: add deleted_at column if missing
+    try {
+      this.db.exec('SELECT deleted_at FROM observations LIMIT 0');
+    } catch {
+      try {
+        this.db.exec('ALTER TABLE observations ADD COLUMN deleted_at INTEGER DEFAULT NULL');
+        console.error('✓ Migration: added deleted_at column to observations');
+      } catch {
+        // Column may already exist in a concurrent scenario
+      }
+    }
+
+    // Create index for deleted_at if not exists
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_observations_deleted ON observations(deleted_at)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_observations_created ON observations(created_at)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_observations_type ON observations(type)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_observations_project ON observations(project_id)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_observations_topic ON observations(topic_key)');
+
+    // Migrate: add scope column if missing
+    try {
+      this.db.exec('SELECT scope FROM observations LIMIT 0');
+    } catch {
+      try {
+        this.db.exec("ALTER TABLE observations ADD COLUMN scope TEXT NOT NULL DEFAULT 'project'");
+        console.error('✓ Migration: added scope column to observations');
+      } catch {
+        // Column may already exist in a concurrent scenario
+      }
+    }
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_observations_scope ON observations(scope)');
+
+    // Migrate: add revision_count column if missing
+    try {
+      this.db.exec('SELECT revision_count FROM observations LIMIT 0');
+    } catch {
+      try {
+        this.db.exec('ALTER TABLE observations ADD COLUMN revision_count INTEGER NOT NULL DEFAULT 0');
+        console.error('✓ Migration: added revision_count column to observations');
+      } catch {
+        // Column may already exist in a concurrent scenario
+      }
+    }
+
+    // FTS5
+    this.db.exec(`
       CREATE VIRTUAL TABLE IF NOT EXISTS observations_fts USING fts5(
         title, content, topic_key, project_id,
-        content='observations'
+        content='observations',
+        tokenize='porter unicode61'
       );
+    `);
 
-      CREATE TRIGGER IF NOT EXISTS observations_ai AFTER INSERT ON observations BEGIN
+    // FTS triggers — drop and recreate to ensure latest version
+    this.db.exec('DROP TRIGGER IF EXISTS observations_ai');
+    this.db.exec('DROP TRIGGER IF EXISTS observations_ad');
+    this.db.exec('DROP TRIGGER IF EXISTS observations_au');
+    this.db.exec('DROP TRIGGER IF EXISTS observations_soft_delete');
+    this.db.exec('DROP TRIGGER IF EXISTS observations_undelete');
+
+    this.db.exec(`
+      CREATE TRIGGER observations_ai AFTER INSERT ON observations BEGIN
         INSERT INTO observations_fts(rowid, title, content, topic_key, project_id)
         VALUES (new.id, new.title, new.content, new.topic_key, new.project_id);
       END;
 
-      CREATE TRIGGER IF NOT EXISTS observations_ad AFTER DELETE ON observations BEGIN
+      CREATE TRIGGER observations_ad AFTER DELETE ON observations BEGIN
         DELETE FROM observations_fts WHERE rowid = old.id;
       END;
 
-      CREATE TRIGGER IF NOT EXISTS observations_au AFTER UPDATE ON observations BEGIN
+      CREATE TRIGGER observations_au AFTER UPDATE ON observations
+        WHEN NEW.deleted_at IS NULL AND OLD.deleted_at IS NULL
+      BEGIN
         DELETE FROM observations_fts WHERE rowid = old.id;
         INSERT INTO observations_fts(rowid, title, content, topic_key, project_id)
         VALUES (new.id, new.title, new.content, new.topic_key, new.project_id);
+      END;
+
+      CREATE TRIGGER observations_soft_delete
+        AFTER UPDATE OF deleted_at ON observations
+        WHEN NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL
+      BEGIN
+        DELETE FROM observations_fts WHERE rowid = OLD.id;
+      END;
+
+      CREATE TRIGGER observations_undelete
+        AFTER UPDATE OF deleted_at ON observations
+        WHEN NEW.deleted_at IS NULL AND OLD.deleted_at IS NOT NULL
+      BEGIN
+        INSERT INTO observations_fts(rowid, title, content, topic_key, project_id)
+        VALUES (NEW.id, NEW.title, NEW.content, NEW.topic_key, NEW.project_id);
       END;
     `);
   }
@@ -157,6 +226,37 @@ export class MemoryEngine {
     }
   }
 
+  /**
+   * Retry wrapper with exponential backoff for SQLITE_BUSY errors.
+   * Dual defense: PRAGMA busy_timeout (5s) catches most contention,
+   * this catches the rest with retries.
+   */
+  private async withRetry<T>(
+    operation: () => T,
+    maxRetries: number = 3,
+    baseDelay: number = 100
+  ): Promise<T> {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return operation();
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        const isBusy =
+          message.includes('SQLITE_BUSY') || message.includes('database is locked');
+
+        if (!isBusy || attempt === maxRetries) {
+          throw error;
+        }
+
+        const delay = baseDelay * Math.pow(2, attempt);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+    throw new Error('Max retries exceeded');
+  }
+
+  // ─── Observations CRUD ─────────────────────────────────────
+
   async createObservation(data: {
     sessionId: number;
     title: string;
@@ -165,33 +265,37 @@ export class MemoryEngine {
     topicKey: string | null;
     projectId: string;
     metadata: Record<string, unknown>;
+    scope?: 'project' | 'personal';
   }): Promise<Observation> {
     this.checkHealth();
     const uuid = crypto.randomUUID();
     const createdAt = new Date();
     const metadata = this.serialize(data.metadata);
+    const scope = data.scope || 'project';
 
-    const result = this.db
-      .prepare(
-        `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        uuid,
-        data.sessionId,
-        data.title,
-        data.content,
-        data.type,
-        data.topicKey ?? null,
-        data.projectId,
-        createdAt.getTime(),
-        metadata
-      );
-
-    const id =
-      typeof result.lastInsertRowid === 'bigint'
+    const id = await this.withRetry(() => {
+      const result = this.db
+        .prepare(
+          `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, deleted_at, metadata, scope) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`
+        )
+        .run(
+          uuid,
+          data.sessionId,
+          data.title,
+          data.content,
+          data.type,
+          data.topicKey ?? null,
+          data.projectId,
+          createdAt.getTime(),
+          metadata,
+          scope
+        );
+      return typeof result.lastInsertRowid === 'bigint'
         ? Number(result.lastInsertRowid)
         : result.lastInsertRowid;
-    const observation = await this.getObservationById(id);
+    });
+
+    const observation = await this.getObservationById(id, true);
     if (!observation) throw new Error('Failed to retrieve created observation');
     return observation;
   }
@@ -208,6 +312,7 @@ export class MemoryEngine {
   ): Promise<Observation> {
     const current = await this.getObservationById(id);
     if (!current) throw new Error('Observation not found');
+    if (current.deletedAt) throw new Error('Cannot update a soft-deleted observation');
 
     const fields: string[] = [];
     const values: (string | number | null)[] = [];
@@ -235,38 +340,506 @@ export class MemoryEngine {
 
     if (fields.length === 0) return current;
 
+    fields.push('revision_count = revision_count + 1');
     values.push(id);
-    this.db.prepare(`UPDATE observations SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+    await this.withRetry(() =>
+      this.db.prepare(`UPDATE observations SET ${fields.join(', ')} WHERE id = ?`).run(...values)
+    );
 
-    const updated = await this.getObservationById(id);
+    const updated = await this.getObservationById(id, true);
     if (!updated) throw new Error('Failed to update observation');
     return updated;
   }
 
-  async deleteObservation(id: number): Promise<void> {
-    this.db.prepare('DELETE FROM observations WHERE id = ?').run(id);
+  // ─── Soft Delete / Restore / Purge ─────────────────────────
+
+  async deleteObservation(id: number, reason?: string): Promise<void> {
+    this.checkHealth();
+    const obs = await this.getObservationById(id, true);
+    if (!obs) throw new Error('Observation not found');
+    if (obs.deletedAt) throw new Error('Observation already deleted');
+
+    const now = Date.now();
+
+    // If there's a reason, store it in metadata
+    if (reason) {
+      const meta = { ...obs.metadata, deleteReason: reason };
+      await this.withRetry(() =>
+        this.db
+          .prepare('UPDATE observations SET deleted_at = ?, metadata = ? WHERE id = ?')
+          .run(now, this.serialize(meta), id)
+      );
+    } else {
+      await this.withRetry(() =>
+        this.db.prepare('UPDATE observations SET deleted_at = ? WHERE id = ?').run(now, id)
+      );
+    }
   }
 
-  async getObservation(id: number): Promise<Observation | null> {
-    return await this.getObservationById(id);
+  async restoreObservation(id: number): Promise<Observation> {
+    this.checkHealth();
+    const obs = await this.getObservationById(id, true);
+    if (!obs) throw new Error('Observation not found');
+    if (!obs.deletedAt) throw new Error('Observation is not deleted');
+
+    await this.withRetry(() =>
+      this.db.prepare('UPDATE observations SET deleted_at = NULL WHERE id = ?').run(id)
+    );
+
+    const restored = await this.getObservationById(id, true);
+    if (!restored) throw new Error('Failed to restore observation');
+    return restored;
   }
 
-  async search(params: {
-    query?: string;
-    type?: Observation['type'];
+  async purgeObservations(params: {
     projectId?: string;
-    topicKey?: string;
+    observationIds?: number[];
+  }): Promise<{ purgedCount: number; purgedIds: number[] }> {
+    this.checkHealth();
+
+    let sql = 'SELECT id FROM observations WHERE deleted_at IS NOT NULL';
+    const values: (string | number)[] = [];
+
+    if (params.observationIds && params.observationIds.length > 0) {
+      const placeholders = params.observationIds.map(() => '?').join(',');
+      sql += ` AND id IN (${placeholders})`;
+      values.push(...params.observationIds);
+    }
+    if (params.projectId) {
+      sql += ' AND project_id = ?';
+      values.push(params.projectId);
+    }
+
+    const rows = this.db.prepare(sql).all(...values) as { id: number }[];
+    const ids = rows.map((r) => r.id);
+
+    if (ids.length === 0) return { purgedCount: 0, purgedIds: [] };
+
+    const placeholders = ids.map(() => '?').join(',');
+    this.db.prepare(`DELETE FROM observations WHERE id IN (${placeholders})`).run(...ids);
+
+    return { purgedCount: ids.length, purgedIds: ids };
+  }
+
+  async listDeleted(params: {
+    projectId?: string;
     limit?: number;
-    offset?: number;
   }): Promise<{ observations: Observation[]; total: number }> {
-    const { query, type, projectId, topicKey, limit = 100, offset = 0 } = params;
+    this.checkHealth();
+    const { projectId, limit = 20 } = params;
+
+    let countSql = 'SELECT COUNT(*) as count FROM observations WHERE deleted_at IS NOT NULL';
+    let sql = 'SELECT * FROM observations WHERE deleted_at IS NOT NULL';
+    const values: (string | number)[] = [];
+
+    if (projectId) {
+      countSql += ' AND project_id = ?';
+      sql += ' AND project_id = ?';
+      values.push(projectId);
+    }
+
+    const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;
+    const total = countResult ? countResult.count : 0;
+
+    sql += ' ORDER BY deleted_at DESC LIMIT ?';
+    const rows = this.db.prepare(sql).all(...values, limit) as Record<string, unknown>[];
+    const observations = rows.map((row) => this.mapObservation(row));
+
+    return { observations, total };
+  }
+
+  // ─── Merge ─────────────────────────────────────────────────
+
+  async findMergeCandidates(params: {
+    projectId: string;
+    strategy: 'by_topic' | 'by_similarity';
+    similarityThreshold?: number;
+  }): Promise<MergeCandidates> {
+    this.checkHealth();
+    const { projectId, strategy, similarityThreshold = 0.85 } = params;
+    const groups: MergeCandidateGroup[] = [];
+
+    if (strategy === 'by_topic') {
+      const rows = this.db
+        .prepare(
+          `SELECT topic_key, COUNT(*) as cnt FROM observations
+           WHERE project_id = ? AND deleted_at IS NULL AND topic_key IS NOT NULL AND topic_key != ''
+           GROUP BY topic_key HAVING cnt >= 2
+           ORDER BY cnt DESC`
+        )
+        .all(projectId) as { topic_key: string; cnt: number }[];
+
+      for (const row of rows) {
+        const obs = this.db
+          .prepare(
+            'SELECT * FROM observations WHERE project_id = ? AND topic_key = ? AND deleted_at IS NULL ORDER BY created_at ASC'
+          )
+          .all(projectId, row.topic_key) as Record<string, unknown>[];
+
+        groups.push({
+          reason: `topic_key: ${row.topic_key}`,
+          observations: obs.map((o) => this.mapObservation(o)),
+          estimatedReduction: obs.length - 1,
+        });
+      }
+    } else {
+      // by_similarity — compare recent observations pairwise
+      const allObs = this.db
+        .prepare(
+          'SELECT * FROM observations WHERE project_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 200'
+        )
+        .all(projectId) as Record<string, unknown>[];
+
+      const mapped = allObs.map((o) => this.mapObservation(o));
+      const visited = new Set<number>();
+
+      for (let i = 0; i < mapped.length; i++) {
+        if (visited.has(mapped[i].id)) continue;
+        const group: Observation[] = [mapped[i]];
+
+        for (let j = i + 1; j < mapped.length; j++) {
+          if (visited.has(mapped[j].id)) continue;
+          const sim = this.jaccardSimilarity(mapped[i].content, mapped[j].content);
+          if (sim >= similarityThreshold) {
+            group.push(mapped[j]);
+            visited.add(mapped[j].id);
+          }
+        }
+
+        if (group.length >= 2) {
+          visited.add(mapped[i].id);
+          groups.push({
+            reason: `similarity >= ${similarityThreshold}`,
+            observations: group,
+            estimatedReduction: group.length - 1,
+          });
+        }
+      }
+    }
+
+    const totalCandidates = groups.reduce((acc, g) => acc + g.observations.length, 0);
+    const estimatedReduction = groups.reduce((acc, g) => acc + g.estimatedReduction, 0);
+
+    return { groups, totalCandidates, estimatedReduction };
+  }
+
+  async mergeObservations(params: MergeParams): Promise<MergeResult[]> {
+    this.checkHealth();
+    const { projectId, topicKey, observationIds, strategy, dryRun = false } = params;
+
+    let groups: { observations: Observation[] }[] = [];
+
+    if (strategy === 'by_ids' && observationIds && observationIds.length >= 2) {
+      const obs: Observation[] = [];
+      for (const id of observationIds) {
+        const o = await this.getObservationById(id);
+        if (!o) throw new Error(`Observation ${id} not found`);
+        if (o.deletedAt) throw new Error(`Observation ${id} is soft-deleted`);
+        if (o.projectId !== projectId) {
+          throw new Error(
+            `Observation ${id} belongs to project '${o.projectId}', not '${projectId}'`
+          );
+        }
+        obs.push(o);
+      }
+      groups = [{ observations: obs }];
+    } else if (strategy === 'by_topic') {
+      const candidates = await this.findMergeCandidates({
+        projectId,
+        strategy: 'by_topic',
+      });
+      if (topicKey) {
+        groups = candidates.groups.filter((g) => g.reason === `topic_key: ${topicKey}`);
+      } else {
+        groups = candidates.groups;
+      }
+    } else {
+      const candidates = await this.findMergeCandidates({
+        projectId,
+        strategy: 'by_similarity',
+      });
+      groups = candidates.groups;
+    }
+
+    if (groups.length === 0) return [];
+    if (dryRun) {
+      return groups.map((g) => ({
+        mergedObservation: g.observations[0], // placeholder
+        deletedIds: g.observations.map((o) => o.id),
+        originalCount: g.observations.length,
+        strategy,
+      }));
+    }
+
+    const results: MergeResult[] = [];
+
+    const doMerge = this.db.transaction(() => {
+      for (const group of groups) {
+        const obs = group.observations.sort(
+          (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+        );
+
+        // Synthesize content
+        const synthTitle = obs[obs.length - 1].title; // most recent title
+        const synthContent = obs
+          .map((o) => `--- [${o.createdAt.toISOString()}] ${o.title} ---\n${o.content}`)
+          .join('\n\n');
+
+        // Most frequent type
+        const typeCounts: Record<string, number> = {};
+        for (const o of obs) {
+          typeCounts[o.type] = (typeCounts[o.type] || 0) + 1;
+        }
+        const synthType = Object.entries(typeCounts).sort(
+          (a, b) => b[1] - a[1]
+        )[0][0] as Observation['type'];
+
+        const synthTopicKey = obs.find((o) => o.topicKey)?.topicKey ?? null;
+        const sourceIds = obs.map((o) => o.id);
+        const synthMetadata = this.serialize({
+          merged: true,
+          sourceIds,
+          mergedAt: new Date().toISOString(),
+          originalCount: obs.length,
+        });
+
+        const uuid = crypto.randomUUID();
+        const createdAt = Date.now();
+        const sessionId = obs[obs.length - 1].sessionId;
+
+        const insertResult = this.db
+          .prepare(
+            `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, deleted_at, metadata)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`
+          )
+          .run(
+            uuid,
+            sessionId,
+            synthTitle,
+            synthContent,
+            synthType,
+            synthTopicKey,
+            projectId,
+            createdAt,
+            synthMetadata
+          );
+
+        const newId =
+          typeof insertResult.lastInsertRowid === 'bigint'
+            ? Number(insertResult.lastInsertRowid)
+            : insertResult.lastInsertRowid;
+
+        // Delete originals
+        const placeholders = sourceIds.map(() => '?').join(',');
+        this.db.prepare(`DELETE FROM observations WHERE id IN (${placeholders})`).run(...sourceIds);
+
+        // Fetch the newly created merged observation
+        const merged = this.db.prepare('SELECT * FROM observations WHERE id = ?').get(newId);
+
+        results.push({
+          mergedObservation: this.mapObservation(merged as Record<string, unknown>),
+          deletedIds: sourceIds,
+          originalCount: obs.length,
+          strategy,
+        });
+      }
+    });
+
+    doMerge();
+    return results;
+  }
+
+  jaccardSimilarity(text1: string, text2: string): number {
+    const tokenize = (t: string) =>
+      new Set(
+        t
+          .toLowerCase()
+          .split(/\s+/)
+          .filter((w) => w.length > 2)
+      );
+
+    const set1 = tokenize(text1);
+    const set2 = tokenize(text2);
+
+    const intersection = [...set1].filter((x) => set2.has(x)).length;
+    const union = new Set([...set1, ...set2]).size;
+
+    return union === 0 ? 0 : intersection / union;
+  }
+
+  // ─── Export ────────────────────────────────────────────────
+
+  async exportObservations(params: ExportParams): Promise<ExportResult> {
+    this.checkHealth();
+    const { format, projectId, type, topicKey, dateFrom, dateTo, includeDeleted = false } = params;
+
     let sql = 'SELECT * FROM observations WHERE 1=1';
+    const values: (string | number)[] = [];
+
+    if (!includeDeleted) {
+      sql += ' AND deleted_at IS NULL';
+    }
+    if (projectId) {
+      sql += ' AND project_id = ?';
+      values.push(projectId);
+    }
+    if (type) {
+      sql += ' AND type = ?';
+      values.push(type);
+    }
+    if (topicKey) {
+      sql += ' AND topic_key = ?';
+      values.push(topicKey);
+    }
+    if (dateFrom) {
+      sql += ' AND created_at >= ?';
+      values.push(dateFrom.getTime());
+    }
+    if (dateTo) {
+      sql += ' AND created_at <= ?';
+      values.push(dateTo.getTime());
+    }
+
+    sql += ' ORDER BY created_at ASC';
+
+    const rows = this.db.prepare(sql).all(...values) as Record<string, unknown>[];
+    const observations = rows.map((row) => this.mapObservation(row));
+    const exportedAt = new Date();
+
+    let content: string;
+
+    switch (format) {
+      case 'json':
+        content = this.exportToJSON(observations, exportedAt, params);
+        break;
+      case 'xml':
+        content = this.exportToXML(observations, exportedAt, params);
+        break;
+      case 'txt':
+        content = this.exportToTXT(observations, exportedAt, params);
+        break;
+      default:
+        throw new Error(`Unsupported export format: ${format as string}`);
+    }
+
+    return {
+      content,
+      format,
+      recordCount: observations.length,
+      exportedAt,
+    };
+  }
+
+  private exportToJSON(
+    observations: Observation[],
+    exportedAt: Date,
+    params: ExportParams
+  ): string {
+    const data = {
+      exportedAt: exportedAt.toISOString(),
+      version: '1.0',
+      project: params.projectId || 'all',
+      filters: {
+        ...(params.type && { type: params.type }),
+        ...(params.topicKey && { topicKey: params.topicKey }),
+        ...(params.dateFrom && { dateFrom: params.dateFrom.toISOString() }),
+        ...(params.dateTo && { dateTo: params.dateTo.toISOString() }),
+        ...(params.includeDeleted && { includeDeleted: true }),
+      },
+      totalRecords: observations.length,
+      observations: observations.map((o) => ({
+        id: o.id,
+        uuid: o.uuid,
+        title: o.title,
+        content: o.content,
+        type: o.type,
+        topicKey: o.topicKey,
+        projectId: o.projectId,
+        createdAt: o.createdAt.toISOString(),
+        ...(o.deletedAt && { deletedAt: o.deletedAt.toISOString() }),
+        metadata: o.metadata,
+      })),
+    };
+    return JSON.stringify(data, null, 2);
+  }
+
+  private exportToXML(observations: Observation[], exportedAt: Date, params: ExportParams): string {
+    const escapeXml = (s: string) =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+    xml += `<memento-export version="1.0" exportedAt="${exportedAt.toISOString()}">\n`;
+    xml += `  <project>${escapeXml(params.projectId || 'all')}</project>\n`;
+    xml += `  <observations count="${observations.length}">\n`;
+
+    for (const o of observations) {
+      xml += `    <observation id="${o.id}" uuid="${escapeXml(o.uuid)}">\n`;
+      xml += `      <title>${escapeXml(o.title)}</title>\n`;
+      xml += `      <content><![CDATA[${o.content}]]></content>\n`;
+      xml += `      <type>${escapeXml(o.type)}</type>\n`;
+      if (o.topicKey) xml += `      <topicKey>${escapeXml(o.topicKey)}</topicKey>\n`;
+      xml += `      <projectId>${escapeXml(o.projectId)}</projectId>\n`;
+      xml += `      <createdAt>${o.createdAt.toISOString()}</createdAt>\n`;
+      if (o.deletedAt) xml += `      <deletedAt>${o.deletedAt.toISOString()}</deletedAt>\n`;
+      xml += `    </observation>\n`;
+    }
+
+    xml += `  </observations>\n`;
+    xml += `</memento-export>\n`;
+    return xml;
+  }
+
+  private exportToTXT(observations: Observation[], exportedAt: Date, params: ExportParams): string {
+    const sep = '═'.repeat(50);
+    const thinSep = '─'.repeat(50);
+    const dateStr = exportedAt.toISOString().split('T')[0];
+
+    let txt = `${sep}\n`;
+    txt += `MEMENTO EXPORT — Project: ${params.projectId || 'all'}\n`;
+    txt += `Exported: ${dateStr} | Records: ${observations.length}\n`;
+    txt += `${sep}\n\n`;
+
+    for (const o of observations) {
+      txt += `[#${o.id}] ${o.title}\n`;
+      txt += `Type: ${o.type}`;
+      if (o.topicKey) txt += ` | Topic: ${o.topicKey}`;
+      txt += `\nDate: ${o.createdAt.toISOString().split('T')[0]}`;
+      if (o.deletedAt) txt += ` | DELETED: ${o.deletedAt.toISOString().split('T')[0]}`;
+      txt += `\n\n  ${o.content}\n\n${thinSep}\n\n`;
+    }
+
+    return txt;
+  }
+
+  // ─── Search ────────────────────────────────────────────────
+
+  async getObservation(id: number, includeDeleted: boolean = false): Promise<Observation | null> {
+    return await this.getObservationById(id, includeDeleted);
+  }
+
+  async search(params: SearchParams): Promise<SearchResult> {
+    const {
+      query,
+      type,
+      projectId,
+      topicKey,
+      limit = 100,
+      offset = 0,
+      includeDeleted = false,
+      scope,
+    } = params;
+
+    let sql: string;
     const values: (string | number | null)[] = [];
 
     if (query) {
       sql =
         'SELECT observations.* FROM observations JOIN observations_fts ON observations.id = observations_fts.rowid WHERE observations_fts MATCH ?';
       values.push(query);
+
+      if (!includeDeleted) {
+        sql += ' AND observations.deleted_at IS NULL';
+      }
       if (type) {
         sql += ' AND observations.type = ?';
         values.push(type);
@@ -279,7 +852,16 @@ export class MemoryEngine {
         sql += ' AND observations.topic_key = ?';
         values.push(topicKey);
       }
+      if (scope) {
+        sql += ' AND observations.scope = ?';
+        values.push(scope);
+      }
     } else {
+      sql = 'SELECT * FROM observations WHERE 1=1';
+
+      if (!includeDeleted) {
+        sql += ' AND deleted_at IS NULL';
+      }
       if (type) {
         sql += ' AND type = ?';
         values.push(type);
@@ -291,6 +873,10 @@ export class MemoryEngine {
       if (topicKey) {
         sql += ' AND topic_key = ?';
         values.push(topicKey);
+      }
+      if (scope) {
+        sql += ' AND scope = ?';
+        values.push(scope);
       }
     }
 
@@ -305,6 +891,8 @@ export class MemoryEngine {
     const observations = (rows as Record<string, unknown>[]).map((row) => this.mapObservation(row));
     return { observations, total };
   }
+
+  // ─── Sessions ──────────────────────────────────────────────
 
   async createSession(data: {
     projectId: string;
@@ -344,6 +932,8 @@ export class MemoryEngine {
     return await this.getSessionById(id);
   }
 
+  // ─── Prompts ───────────────────────────────────────────────
+
   async savePrompt(data: {
     sessionId: number;
     content: string;
@@ -369,10 +959,31 @@ export class MemoryEngine {
     return prompt;
   }
 
-  private async getObservationById(id: number): Promise<Observation | null> {
-    const row = this.db.prepare('SELECT * FROM observations WHERE id = ?').get(id);
+  // ─── Private helpers ───────────────────────────────────────
+
+  private async getObservationById(
+    id: number,
+    includeDeleted: boolean = false
+  ): Promise<Observation | null> {
+    let sql = 'SELECT * FROM observations WHERE id = ?';
+    if (!includeDeleted) {
+      sql += ' AND deleted_at IS NULL';
+    }
+    const row = this.db.prepare(sql).get(id);
     if (!row) return null;
-    return this.mapObservation(row as Record<string, unknown>);
+    const observation = this.mapObservation(row as Record<string, unknown>);
+
+    // Calculate duplicatesCount when topicKey is present
+    if (observation.topicKey) {
+      const dupResult = this.db
+        .prepare(
+          'SELECT COUNT(*) as count FROM observations WHERE topic_key = ? AND deleted_at IS NULL'
+        )
+        .get(observation.topicKey) as { count: number } | undefined;
+      observation.duplicatesCount = dupResult?.count ?? 0;
+    }
+
+    return observation;
   }
 
   private async getSessionById(id: number): Promise<Session | null> {
@@ -398,7 +1009,10 @@ export class MemoryEngine {
       topic_key: string | null;
       project_id: string;
       created_at: number;
+      deleted_at: number | null;
       metadata: string | null;
+      scope: string | null;
+      revision_count: number | null;
     };
     return {
       id: r.id,
@@ -410,7 +1024,10 @@ export class MemoryEngine {
       topicKey: r.topic_key,
       projectId: r.project_id,
       createdAt: new Date(r.created_at),
+      deletedAt: r.deleted_at ? new Date(r.deleted_at) : null,
       metadata: this.deserialize(r.metadata),
+      scope: (r.scope as 'project' | 'personal') || 'project',
+      revisionCount: r.revision_count ?? 0,
     };
   }
 
@@ -453,6 +1070,270 @@ export class MemoryEngine {
       metadata: this.deserialize(r.metadata),
     };
   }
+
+  // ─── Timeline & Context ──────────────────────────────────────
+
+  async getTimeline(params: {
+    projectId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ observations: Observation[]; total: number }> {
+    this.checkHealth();
+    const { projectId, limit = 50, offset = 0 } = params;
+
+    let countSql = 'SELECT COUNT(*) as count FROM observations WHERE deleted_at IS NULL';
+    let sql = 'SELECT * FROM observations WHERE deleted_at IS NULL';
+    const values: (string | number)[] = [];
+
+    if (projectId) {
+      countSql += ' AND project_id = ?';
+      sql += ' AND project_id = ?';
+      values.push(projectId);
+    }
+
+    const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;
+    const total = countResult?.count ?? 0;
+
+    sql += ' ORDER BY created_at ASC, id ASC LIMIT ? OFFSET ?';
+    const rows = this.db.prepare(sql).all(...values, limit, offset);
+    const observations = (rows as Record<string, unknown>[]).map((row) => this.mapObservation(row));
+
+    return { observations, total };
+  }
+
+  async getRecentContext(params: {
+    projectId?: string;
+    limit?: number;
+  }): Promise<{ observations: Observation[]; total: number }> {
+    this.checkHealth();
+    const { projectId, limit = 20 } = params;
+
+    let sql = 'SELECT * FROM observations WHERE deleted_at IS NULL';
+    const values: (string | number)[] = [];
+
+    if (projectId) {
+      sql += ' AND project_id = ?';
+      values.push(projectId);
+    }
+
+    sql += ' ORDER BY created_at DESC, id DESC LIMIT ?';
+    const rows = this.db.prepare(sql).all(...values, limit);
+    const observations = (rows as Record<string, unknown>[]).map((row) => this.mapObservation(row));
+
+    // Get total for context
+    let countSql = 'SELECT COUNT(*) as count FROM observations WHERE deleted_at IS NULL';
+    const countValues: string[] = [];
+    if (projectId) {
+      countSql += ' AND project_id = ?';
+      countValues.push(projectId);
+    }
+    const countResult = this.db.prepare(countSql).get(...countValues) as { count: number } | undefined;
+    const total = countResult?.count ?? 0;
+
+    return { observations, total };
+  }
+
+  // ─── TUI Explorer API ──────────────────────────────────────
+
+  async listSessions(params: {
+    projectId?: string;
+    activeOnly?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ sessions: Session[]; total: number }> {
+    this.checkHealth();
+
+    const { projectId, activeOnly = false, limit = 50, offset = 0 } = params;
+
+    let sql = 'SELECT * FROM sessions WHERE 1=1';
+    const values: (string | number)[] = [];
+
+    if (projectId) {
+      sql += ' AND project_id = ?';
+      values.push(projectId);
+    }
+    if (activeOnly) {
+      sql += ' AND ended_at IS NULL';
+    }
+
+    // Count
+    const countSql = sql.replace(/SELECT.*?FROM/, 'SELECT COUNT(*) as count FROM');
+    const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;
+    const total = countResult?.count ?? 0;
+
+    // Fetch (id DESC as tiebreaker for same-millisecond timestamps)
+    sql += ' ORDER BY started_at DESC, id DESC LIMIT ? OFFSET ?';
+    values.push(limit, offset);
+
+    const rows = this.db.prepare(sql).all(...values);
+    const sessions = (rows as Record<string, unknown>[]).map((row) => this.mapSession(row));
+
+    return { sessions, total };
+  }
+
+  async listProjects(): Promise<
+    Array<{
+      name: string;
+      activeCount: number;
+      deletedCount: number;
+      lastActivity: Date | null;
+      byType: Record<string, number>;
+    }>
+  > {
+    this.checkHealth();
+
+    // Get all distinct project_ids with their stats
+    const rows = this.db
+      .prepare(
+        `
+      SELECT
+        project_id,
+        SUM(CASE WHEN deleted_at IS NULL THEN 1 ELSE 0 END) as active_count,
+        SUM(CASE WHEN deleted_at IS NOT NULL THEN 1 ELSE 0 END) as deleted_count,
+        MAX(created_at) as last_activity,
+        MAX(id) as max_id
+      FROM observations
+      GROUP BY project_id
+      ORDER BY last_activity DESC, max_id DESC
+    `
+      )
+      .all();
+
+    const projects = (rows as Record<string, unknown>[]).map((row) => {
+      const projectId = row.project_id as string;
+
+      // Get type distribution for this project
+      const typeRows = this.db
+        .prepare(
+          `
+        SELECT type, COUNT(*) as count
+        FROM observations
+        WHERE project_id = ?
+        GROUP BY type
+      `
+        )
+        .all(projectId) as Record<string, unknown>[];
+
+      const byType: Record<string, number> = {
+        decision: 0,
+        bug: 0,
+        discovery: 0,
+        note: 0,
+        summary: 0,
+        learning: 0,
+        pattern: 0,
+        architecture: 0,
+        config: 0,
+        preference: 0,
+      };
+      for (const tr of typeRows) {
+        byType[tr.type as string] = tr.count as number;
+      }
+
+      return {
+        name: projectId,
+        activeCount: row.active_count as number,
+        deletedCount: row.deleted_count as number,
+        lastActivity: row.last_activity ? new Date(row.last_activity as number) : null,
+        byType,
+      };
+    });
+
+    return projects;
+  }
+
+  async getDashboardStats(): Promise<{
+    totalObservations: number;
+    activeObservations: number;
+    deletedObservations: number;
+    byType: Record<string, number>;
+    byProject: Record<string, number>;
+    activeSessions: number;
+    recentObservations: Observation[];
+  }> {
+    this.checkHealth();
+
+    // Total counts
+    const countRow = this.db
+      .prepare(
+        `
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN deleted_at IS NULL THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN deleted_at IS NOT NULL THEN 1 ELSE 0 END) as deleted
+      FROM observations
+    `
+      )
+      .get() as Record<string, unknown>;
+
+    // By type
+    const typeRows = this.db
+      .prepare(
+        `
+      SELECT type, COUNT(*) as count
+      FROM observations
+      WHERE deleted_at IS NULL
+      GROUP BY type
+    `
+      )
+      .all() as Record<string, unknown>[];
+
+    const byType: Record<string, number> = { decision: 0, bug: 0, discovery: 0, note: 0, summary: 0, learning: 0, pattern: 0, architecture: 0, config: 0, preference: 0 };
+    for (const tr of typeRows) {
+      byType[tr.type as string] = tr.count as number;
+    }
+
+    // By project (active only)
+    const projectRows = this.db
+      .prepare(
+        `
+      SELECT project_id, COUNT(*) as count
+      FROM observations
+      WHERE deleted_at IS NULL
+      GROUP BY project_id
+      ORDER BY count DESC
+    `
+      )
+      .all() as Record<string, unknown>[];
+
+    const byProject: Record<string, number> = {};
+    for (const pr of projectRows) {
+      byProject[pr.project_id as string] = pr.count as number;
+    }
+
+    // Active sessions
+    const sessionRow = this.db
+      .prepare('SELECT COUNT(*) as count FROM sessions WHERE ended_at IS NULL')
+      .get() as { count: number };
+
+    // Recent 5 observations (active only)
+    const recentRows = this.db
+      .prepare(
+        `
+      SELECT * FROM observations
+      WHERE deleted_at IS NULL
+      ORDER BY created_at DESC, id DESC
+      LIMIT 5
+    `
+      )
+      .all();
+
+    const recentObservations = (recentRows as Record<string, unknown>[]).map((row) =>
+      this.mapObservation(row)
+    );
+
+    return {
+      totalObservations: (countRow.total as number) ?? 0,
+      activeObservations: (countRow.active as number) ?? 0,
+      deletedObservations: (countRow.deleted as number) ?? 0,
+      byType,
+      byProject,
+      activeSessions: sessionRow.count,
+      recentObservations,
+    };
+  }
+
+  // ─── Import/Export ──────────────────────────────────────────
 
   async exportToJson(options?: {
     projectId?: string;
@@ -507,7 +1388,7 @@ export class MemoryEngine {
       throw new Error('Invalid import data: missing version or observations array');
     }
 
-    const validTypes: Observation['type'][] = ['decision', 'bug', 'discovery', 'note'];
+    const validTypes: Observation['type'][] = ['decision', 'bug', 'discovery', 'note', 'summary', 'learning', 'pattern', 'architecture', 'config', 'preference'];
     const targetProject = projectId || data.project || 'import';
 
     const result: ImportResult = {

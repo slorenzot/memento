@@ -16,6 +16,12 @@ export class CLI {
 
     this.program = new Command();
     this.memory = new MemoryEngine(dbPath);
+    if (this.memory.isHealthy()) {
+      console.error(`✓ Database initialized successfully at: ${dbPath}`);
+    } else {
+      const initError = this.memory.getInitError();
+      console.error(`✗ Failed to initialize database at ${dbPath}:`, initError?.message);
+    }
     this.setupCommands();
   }
 

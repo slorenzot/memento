@@ -1,11 +1,13 @@
 {
   "name": "@slorenzot/memento-cli",
-  "version": "0.3.0",
-  "description": "CLI interface for Memento memory system",
+  "version": "1.0.0",
+  "description": "CLI interface for Memento memory system with merge, export, soft-delete, and skill installation",
   "keywords": [
     "memento",
     "memory",
-    "cli"
+    "cli",
+    "merge",
+    "export"
   ],
   "license": "CC-BY-NC-ND-4.0",
   "author": "Soulberto Lorenzo",
@@ -21,7 +23,7 @@
     "prepare": "npm run build"
   },
   "dependencies": {
-    "@slorenzot/memento-core": "^0.6.0",
+    "@slorenzot/memento-core": "^1.0.0",
     "commander": "^12.0.0"
   },
   "devDependencies": {

@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "bun run --filter @memento/dev dev",
     "build": "bun run --filter '*' build",
-    "test": "bun test",
+    "test": "bun run build && bun test",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
     "typecheck": "tsc --noEmit",
