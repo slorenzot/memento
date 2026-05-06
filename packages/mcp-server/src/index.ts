@@ -36,7 +36,6 @@ const server = new McpServer({
 registerTools(server, ctx);
 
 // ─── Server Startup ─────────────────────────────────────────
-
 const BANNER = `
  ╔══════════════════════════════════════════════════╗
  ║                                                  ║

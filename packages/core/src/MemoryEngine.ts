@@ -11,6 +11,12 @@ import type {
   MergeCandidateGroup,
   ExportParams,
   ExportResult,
+  ExportData,
+  ExportedObservation,
+  ExportedSession,
+  ImportData,
+  ImportOptions,
+  ImportResult,
 } from './types.js';
 
 import { Database } from 'bun:sqlite';
@@ -1324,6 +1330,247 @@ export class MemoryEngine {
       byProject,
       activeSessions: sessionRow.count,
       recentObservations,
+    };
+  }
+
+  // ─── Import/Export ──────────────────────────────────────────
+
+  async exportToJson(options?: {
+    projectId?: string;
+    includeSessions?: boolean;
+  }): Promise<ExportData> {
+    this.checkHealth();
+    const { projectId, includeSessions = false } = options || {};
+
+    const searchResult = await this.search({ projectId, limit: 100000 });
+
+    const observations: ExportedObservation[] = searchResult.observations.map((obs) => ({
+      uuid: obs.uuid,
+      title: obs.title,
+      content: obs.content,
+      type: obs.type,
+      topicKey: obs.topicKey,
+      projectId: obs.projectId,
+      metadata: obs.metadata,
+      createdAt: obs.createdAt.toISOString(),
+    }));
+
+    let sessions: ExportedSession[] | undefined;
+    if (includeSessions) {
+      const sessionIds = [...new Set(searchResult.observations.map((o) => o.sessionId))];
+      const sessionResults = await Promise.all(sessionIds.map((id) => this.getSession(id)));
+      sessions = sessionResults
+        .filter((s): s is Session => s !== null)
+        .map((s) => ({
+          uuid: s.uuid,
+          projectId: s.projectId,
+          startedAt: s.startedAt.toISOString(),
+          endedAt: s.endedAt?.toISOString() || null,
+          metadata: s.metadata,
+        }));
+    }
+
+    return {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      project: projectId,
+      observations,
+      ...(includeSessions && sessions && { sessions }),
+    };
+  }
+
+  async importFromJson(data: ImportData, options?: ImportOptions): Promise<ImportResult> {
+    this.checkHealth();
+    const { conflictStrategy = 'skip', dryRun = false, projectId } = options || {};
+
+    // Validate schema
+    if (!data.version || !Array.isArray(data.observations)) {
+      throw new Error('Invalid import data: missing version or observations array');
+    }
+
+    const validTypes: Observation['type'][] = ['decision', 'bug', 'discovery', 'note', 'summary', 'learning', 'pattern', 'architecture', 'config', 'preference'];
+    const targetProject = projectId || data.project || 'import';
+
+    const result: ImportResult = {
+      imported: 0,
+      skipped: 0,
+      overwritten: 0,
+      failed: 0,
+      errors: [],
+      observations: [],
+    };
+
+    if (data.observations.length === 0) {
+      return result;
+    }
+
+    // Create import session
+    const session = await this.createSession({
+      projectId: targetProject,
+      endedAt: null,
+      metadata: { type: 'import', source: 'mem_import', timestamp: new Date().toISOString() },
+    });
+
+    // Use transaction for atomic import
+    this.db.exec('BEGIN');
+
+    try {
+      for (const obs of data.observations) {
+        // Validate required fields
+        if (!obs.title || !obs.content || !obs.type) {
+          result.errors.push(`Invalid observation: missing required fields (title, content, type)`);
+          if (conflictStrategy === 'fail') {
+            this.db.exec('ROLLBACK');
+            result.failed++;
+            return result;
+          }
+          result.failed++;
+          continue;
+        }
+
+        // Validate type
+        if (!validTypes.includes(obs.type as Observation['type'])) {
+          result.errors.push(`Invalid type: "${obs.type}". Valid types: ${validTypes.join(', ')}`);
+          if (conflictStrategy === 'fail') {
+            this.db.exec('ROLLBACK');
+            result.failed++;
+            return result;
+          }
+          result.failed++;
+          continue;
+        }
+
+        // Check for duplicates by uuid
+        if (obs.uuid) {
+          const existing = this.findObservationByUuid(obs.uuid);
+          if (existing) {
+            if (conflictStrategy === 'skip') {
+              result.skipped++;
+              continue;
+            }
+            if (conflictStrategy === 'overwrite') {
+              if (!dryRun) {
+                await this.updateObservation(existing.id, {
+                  title: obs.title,
+                  content: obs.content,
+                  type: obs.type as Observation['type'],
+                  topicKey: obs.topicKey ?? null,
+                  metadata: obs.metadata || {},
+                });
+              }
+              result.overwritten++;
+              continue;
+            }
+            if (conflictStrategy === 'fail') {
+              this.db.exec('ROLLBACK');
+              result.errors.push(`Duplicate uuid: ${obs.uuid}`);
+              result.failed++;
+              return result;
+            }
+          }
+        }
+
+        if (!dryRun) {
+          const imported = await this.createObservation({
+            sessionId: session.id,
+            title: obs.title,
+            content: obs.content,
+            type: obs.type as Observation['type'],
+            topicKey: obs.topicKey || null,
+            projectId: targetProject,
+            metadata: obs.metadata || {},
+          });
+          result.observations.push(imported);
+        }
+        result.imported++;
+      }
+
+      this.db.exec('COMMIT');
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+
+    return result;
+  }
+
+  private findObservationByUuid(uuid: string): Observation | null {
+    const row = this.db.prepare('SELECT * FROM observations WHERE uuid = ?').get(uuid);
+    if (!row) return null;
+    return this.mapObservation(row as Record<string, unknown>);
+  }
+
+  async resetFull(): Promise<{ deleted: number }> {
+    this.checkHealth();
+
+    // Count before reset
+    const countResult = this.db.prepare('SELECT COUNT(*) as count FROM observations').get() as { count: number } | undefined;
+    const deleted = countResult?.count || 0;
+
+    // Drop everything
+    this.db.exec('DROP TABLE IF EXISTS observations_fts');
+    this.db.exec('DROP TRIGGER IF EXISTS observations_ai');
+    this.db.exec('DROP TRIGGER IF EXISTS observations_ad');
+    this.db.exec('DROP TRIGGER IF EXISTS observations_au');
+    this.db.exec('DROP TABLE IF EXISTS observations');
+    this.db.exec('DROP TABLE IF EXISTS prompts');
+    this.db.exec('DROP TABLE IF EXISTS sessions');
+    this.db.exec('DROP TABLE IF EXISTS projects');
+
+    // Recreate schema
+    this.initializeDatabase();
+
+    return { deleted };
+  }
+
+  async resetProject(projectId: string): Promise<{ deleted: number; orphanSessions: number }> {
+    this.checkHealth();
+
+    // Count observations to delete
+    const obsCount = this.db
+      .prepare('SELECT COUNT(*) as count FROM observations WHERE project_id = ?')
+      .get(projectId) as { count: number };
+    const promptCount = this.db
+      .prepare('SELECT COUNT(*) as count FROM prompts WHERE project_id = ?')
+      .get(projectId) as { count: number };
+    const deleted = obsCount.count + promptCount.count;
+
+    // Delete observations and prompts for this project
+    this.db.prepare('DELETE FROM observations WHERE project_id = ?').run(projectId);
+    this.db.prepare('DELETE FROM prompts WHERE project_id = ?').run(projectId);
+
+    // Clean up orphan sessions (no observations AND no prompts)
+    const orphanResult = this.db.prepare(`
+      DELETE FROM sessions WHERE id NOT IN (
+        SELECT DISTINCT session_id FROM observations
+        UNION
+        SELECT DISTINCT session_id FROM prompts
+      )
+    `).run();
+    const orphanSessions = typeof orphanResult.changes === 'bigint'
+      ? Number(orphanResult.changes)
+      : orphanResult.changes;
+
+    return { deleted, orphanSessions };
+  }
+
+  async countByProject(projectId: string): Promise<{ observations: number; prompts: number; sessions: number }> {
+    this.checkHealth();
+
+    const obsCount = this.db
+      .prepare('SELECT COUNT(*) as count FROM observations WHERE project_id = ?')
+      .get(projectId) as { count: number };
+    const promptCount = this.db
+      .prepare('SELECT COUNT(*) as count FROM prompts WHERE project_id = ?')
+      .get(projectId) as { count: number };
+    const sessionCount = this.db
+      .prepare('SELECT COUNT(DISTINCT session_id) as count FROM observations WHERE project_id = ?')
+      .get(projectId) as { count: number };
+
+    return {
+      observations: obsCount.count,
+      prompts: promptCount.count,
+      sessions: sessionCount.count,
     };
   }
 

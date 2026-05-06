@@ -295,3 +295,41 @@ across observations with BM25 ranking.
 
 Closes #42
 ```
+
+## Workflows
+
+### Memento vs Engram Comparison Test
+
+**Trigger**: When user asks to compare "Memento vs Engram" or "ejecuta la prueba comparativa"
+
+**Workflow**:
+
+1. **Read the test plan**: Issue #31 → `docs/comparison-plan.md`
+2. **Execute 5 phases** using `memento_mem_*` tools against project `memento-comparison-test`:
+   - Phase 1: Initialization — `mem_session_start` + `mem_health`
+   - Phase 2: Decision Capture — 4 fixtures (decision, note, discovery, bug) via `mem_save`
+   - Phase 3: Context Retrieval — search by keyword, type, project + `mem_get_observation`
+   - Phase 4: Mutation & Lifecycle — `mem_update`, `mem_delete`, `mem_restore`, `mem_merge` (dry_run), `mem_export`
+   - Phase 5: Session Close — manual session summary via `mem_save` + `mem_session_end`
+3. **Also test Memento-exclusive tools**: `mem_timeline`, `mem_stats`, `mem_config`, `mem_list_deleted`
+4. **Generate results** using the comment template from [#31 comment](https://github.com/slorenzot/memento/issues/31#issuecomment-4387993340):
+   - Scoring table (Functionality 40%, Data Model 25%, API Ergonomics 20%, Exclusive 15%)
+   - Results by phase table
+   - Capability matrix (exclusive tools per system)
+   - Key findings
+   - Verdict
+5. **Post results as comment** on Issue #31 via `gh issue comment 31`
+6. **Save full report** to `docs/comparison-results.md`
+7. **Update Issue #31 body** with checkbox status and scores
+
+**Fixture data**: 4 observations with topic_keys (`architecture/validation`, `pattern/fts5-triggers`, `discovery/sqlite-wal`, `bugfix/fts5-special-chars`)
+
+**Honesty Rules (mandatory)**:
+
+- ✅ ONLY for operations that were **EXECUTED AND VERIFIED** during the test
+- ⚠️ Operation works but via manual workaround (no native tool)
+- ❌ Operation failed or tool doesn't exist
+- ❓ Operation **cannot be verified** — tool not available in session
+- **NEVER** mark ✅ for capabilities documented but not tested
+- If Engram tools (`engram_mem_*`) are not connected: mark as `❓ No verificable`, NOT `✅ Nativo`
+- Document what was **actually tested** vs what was **assumed from specs**

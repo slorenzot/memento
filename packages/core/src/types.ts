@@ -140,3 +140,65 @@ export interface DashboardStats {
   activeSessions: number;
   recentObservations: Observation[];
 }
+
+// --- Import/Export data types ---
+
+export interface ExportData {
+  version: string;
+  exportedAt: string;
+  project?: string;
+  observations: ExportedObservation[];
+  sessions?: ExportedSession[];
+}
+
+export interface ExportedObservation {
+  uuid: string;
+  title: string;
+  content: string;
+  type: Observation['type'];
+  topicKey: string | null;
+  projectId: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface ExportedSession {
+  uuid: string;
+  projectId: string;
+  startedAt: string;
+  endedAt: string | null;
+  metadata: Record<string, unknown>;
+}
+
+// Import types
+export interface ImportData {
+  version: string;
+  project?: string;
+  observations: ImportedObservation[];
+}
+
+export interface ImportedObservation {
+  title: string;
+  content: string;
+  type: string;
+  topicKey?: string | null;
+  metadata?: Record<string, unknown>;
+  uuid?: string;
+}
+
+export type ConflictStrategy = 'skip' | 'overwrite' | 'fail';
+
+export interface ImportOptions {
+  projectId?: string;
+  conflictStrategy: ConflictStrategy;
+  dryRun: boolean;
+}
+
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  overwritten: number;
+  failed: number;
+  errors: string[];
+  observations: Observation[];
+}

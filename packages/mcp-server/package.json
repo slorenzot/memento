@@ -40,6 +40,7 @@
     "@types/node": "^20.11.0",
     "typescript": "^5.3.3"
   },
+  "files": ["dist", "skills", "commands"],
   "engines": {
     "bun": ">=1.0.0"
   }

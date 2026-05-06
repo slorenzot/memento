@@ -3,7 +3,7 @@
 import { Command } from 'commander';
 import { MemoryEngine, loadConfig, resolveDbPath, getProjectId } from '@slorenzot/memento-core';
 import type { Observation, ExportFormat } from '@slorenzot/memento-core';
-import { existsSync, mkdirSync, copyFileSync } from 'fs';
+import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
 
@@ -299,77 +299,233 @@ program
 
 program
   .command('install-skill')
-  .description('Install Memento AI skill for coding agents')
+  .description('Install Memento AI skill and slash commands for coding agents')
   .option('--target <target>', 'Target: opencode, claude, or a custom path', 'opencode')
   .action(async (options: any) => {
     const target = options.target;
 
     // Resolve SKILL.md source — try multiple locations
-    const possiblePaths = [
-      // When installed as npm package
-      join(
-        dirname(require.resolve('@slorenzot/memento-mcp-server/package.json')),
-        'skills',
-        'memento',
-        'SKILL.md'
-      ),
-    ].filter(() => {
-      try {
-        require.resolve('@slorenzot/memento-mcp-server/package.json');
-        return true;
-      } catch {
-        return false;
-      }
-    });
+    const skillPaths: string[] = [];
+
+    // npm package location
+    try {
+      const pkgRoot = dirname(require.resolve('@slorenzot/memento-mcp-server/package.json'));
+      skillPaths.push(join(pkgRoot, 'skills', 'memento', 'SKILL.md'));
+    } catch { /* not installed as package */ }
 
     // Fallback: relative to this CLI package (monorepo dev)
-    possiblePaths.push(
+    skillPaths.push(
       join(__dirname, '..', '..', 'mcp-server', 'skills', 'memento', 'SKILL.md'),
       join(__dirname, '..', '..', '..', 'packages', 'mcp-server', 'skills', 'memento', 'SKILL.md')
     );
 
     let sourcePath: string | null = null;
-    for (const p of possiblePaths) {
-      if (existsSync(p)) {
-        sourcePath = p;
-        break;
-      }
+    for (const p of skillPaths) {
+      if (existsSync(p)) { sourcePath = p; break; }
     }
 
-    if (!sourcePath) {
-      console.error('Error: Could not find SKILL.md file.');
-      console.error('Searched in:', possiblePaths);
-      console.error('Make sure @slorenzot/memento-mcp-server is installed.');
-      process.exit(1);
-    }
-
-    // Determine destination
-    let destDir: string;
+    // Determine destination directories
+    let skillDestDir: string;
+    let commandsDestDir: string;
 
     switch (target) {
       case 'opencode':
-        destDir = join(homedir(), '.config', 'opencode', 'skills', 'memento');
+        skillDestDir = join(homedir(), '.config', 'opencode', 'skills', 'memento');
+        commandsDestDir = join(homedir(), '.config', 'opencode', 'commands');
         break;
       case 'claude':
-        destDir = join(homedir(), '.claude', 'skills', 'memento');
+        skillDestDir = join(homedir(), '.claude', 'skills', 'memento');
+        commandsDestDir = join(homedir(), '.claude', 'commands');
         break;
       default:
-        // Custom path
-        destDir = join(target, 'memento');
+        skillDestDir = join(target, 'skills', 'memento');
+        commandsDestDir = join(target, 'commands');
         break;
     }
 
-    const destPath = join(destDir, 'SKILL.md');
+    // Install SKILL.md
+    if (sourcePath) {
+      mkdirSync(skillDestDir, { recursive: true });
+      copyFileSync(sourcePath, join(skillDestDir, 'SKILL.md'));
+      console.log(`  ✓ Skill: ${join(skillDestDir, 'SKILL.md')}`);
+    } else {
+      console.error('  ⚠ SKILL.md not found (skill skipped)');
+    }
 
-    // Create directory and copy
-    mkdirSync(destDir, { recursive: true });
-    copyFileSync(sourcePath, destPath);
+    // Install slash commands
+    const cmdPaths: string[] = [];
 
-    console.log(`✓ Memento skill installed successfully!`);
-    console.log(`  Source: ${sourcePath}`);
-    console.log(`  Target: ${destPath}`);
-    console.log(`  Agent: ${target}`);
-    console.log(`\n  The AI agent will now know how to use all mem_* tools.`);
+    try {
+      const pkgRoot = dirname(require.resolve('@slorenzot/memento-mcp-server/package.json'));
+      cmdPaths.push(join(pkgRoot, 'commands'));
+    } catch { /* not installed as package */ }
+
+    cmdPaths.push(
+      join(__dirname, '..', '..', 'mcp-server', 'commands'),
+      join(__dirname, '..', '..', '..', 'packages', 'mcp-server', 'commands')
+    );
+
+    let commandsDir: string | null = null;
+    for (const d of cmdPaths) {
+      if (existsSync(d)) { commandsDir = d; break; }
+    }
+
+    if (commandsDir) {
+      const commandFiles = readdirSync(commandsDir).filter((f: string) => f.endsWith('.md'));
+      if (commandFiles.length > 0) {
+        mkdirSync(commandsDestDir, { recursive: true });
+        for (const file of commandFiles) {
+          const src = join(commandsDir, file);
+          const dest = join(commandsDestDir, file);
+          copyFileSync(src, dest);
+          console.log(`  ✓ Command: /${file.replace('.md', '')}`);
+        }
+      } else {
+        console.error('  ⚠ No command files found in commands/');
+      }
+    } else {
+      console.error('  ⚠ commands/ directory not found (commands skipped)');
+    }
+
+    console.log(`\n  Target: ${target}`);
+    console.log('  The AI agent will now know how to use all mem_* tools.');
+  });
+
+// ─── Helpers ────────────────────────────────────────────────
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+}
+
+function getDbSize(path: string): string {
+  try {
+    let total = statSync(path).size;
+    try { total += statSync(`${path}-wal`).size; } catch { /* no WAL */ }
+    try { total += statSync(`${path}-shm`).size; } catch { /* no SHM */ }
+    return formatBytes(total);
+  } catch {
+    return 'unknown';
+  }
+}
+
+function relativeTime(date: Date): string {
+  const now = Date.now();
+  const diff = now - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString();
+}
+
+// ─── Status ─────────────────────────────────────────────────
+
+program
+  .command('status')
+  .description('Quick health check and executive summary')
+  .action(async () => {
+    const healthy = memory.isHealthy();
+    const dbSize = getDbSize(dbPath);
+    const dashboard = healthy ? await memory.getDashboardStats() : null;
+    const initError = memory.getInitError();
+
+    const W = 42;
+    const line = (s: string) => `│ ${s.padEnd(W - 2)}│`;
+    const border = (l: string, r: string) => l + '─'.repeat(W - 2) + r;
+
+    console.log(border('╭', '╮'));
+    console.log(line('MEMENTO STATUS'));
+    console.log(border('├', '┤'));
+    console.log(line(`Database:   ${healthy ? '✓' : '✗'} ${healthy ? 'healthy' : 'unhealthy'}`));
+
+    if (!healthy && initError) {
+      console.log(line(`Error:      ${initError.message.substring(0, W - 14)}`));
+    }
+
+    console.log(line(`Path:       ${dbPath}`));
+    console.log(line(`Project:    ${projectId}`));
+
+    if (dashboard) {
+      console.log(line(`Session:    ${dashboard.activeSessions > 0 ? `#${dashboard.activeSessions} (active)` : 'none'}`));
+      console.log(line(''));
+      console.log(line(`Observations: ${dashboard.activeObservations} active, ${dashboard.deletedObservations} deleted`));
+
+      const types = Object.entries(dashboard.byType)
+        .filter(([, c]) => c > 0)
+        .map(([t, c]) => `${t}: ${c}`)
+        .join('  │  ');
+      if (types) console.log(line(`  ${types}`));
+
+      if (dashboard.recentObservations.length > 0) {
+        const last = dashboard.recentObservations[0];
+        console.log(line(''));
+        console.log(line(`Last activity: ${last.createdAt.toLocaleString()}`));
+      }
+    }
+
+    console.log(line(`DB size:    ${dbSize}`));
+    console.log(border('╰', '╯'));
+
+    memory.close();
+  });
+
+// ─── Recents ────────────────────────────────────────────────
+
+program
+  .command('recents')
+  .description('Show recent observations in compact format')
+  .option('-l, --limit <n>', 'Max results', '10')
+  .option('-p, --project <project>', 'Filter by project')
+  .option('-t, --type <type>', 'Filter by type')
+  .option('--hours <n>', 'Only observations from last N hours', '24')
+  .action(async (options: any) => {
+    const hours = parseInt(options.hours);
+    const limit = parseInt(options.limit);
+    const since = new Date(Date.now() - hours * 3600000);
+
+    const result = await memory.search({
+      projectId: options.project,
+      type: options.type,
+      limit,
+    });
+
+    const observations = result.observations.filter((obs: Observation) => obs.createdAt >= since);
+
+    const W = 58;
+    const line = (s: string) => `│ ${s.padEnd(W - 2)}│`;
+    const border = (l: string, r: string) => l + '─'.repeat(W - 2) + r;
+
+    console.log(border('╭', '╮'));
+    console.log(line(`RECENT OBSERVATIONS (last ${hours}h)`));
+    console.log(border('├', '┤'));
+
+    if (observations.length === 0) {
+      console.log(line('  No observations in this period.'));
+    } else {
+      for (const obs of observations) {
+        const badge = `[${obs.type}]`.padEnd(12);
+        const time = relativeTime(obs.createdAt).padStart(12);
+        const maxTitleLen = W - badge.length - time.length - 6;
+        const title = obs.title.length > maxTitleLen
+          ? obs.title.substring(0, maxTitleLen - 1) + '…'
+          : obs.title;
+        console.log(line(`#${obs.id} ${badge}${title.padEnd(maxTitleLen)}${time}`));
+      }
+    }
+
+    console.log(border('╰', '╯'));
+    console.log(`  Showing ${observations.length} of ${result.total} total observations.`);
+
+    memory.close();
   });
 
 program.parseAsync(process.argv);
