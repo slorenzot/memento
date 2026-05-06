@@ -22,7 +22,7 @@
     "prepare": "npm run build"
   },
   "dependencies": {
-    "@slorenzot/memento-core": "^0.2.0",
+    "@slorenzot/memento-core": "workspace:*",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "helmet": "^7.1.0"
