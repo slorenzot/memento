@@ -3,7 +3,7 @@ import { Text } from 'ink';
 import { TYPE_COLORS, TYPE_ICONS, colors } from '../theme';
 
 interface BadgeProps {
-  type: 'decision' | 'bug' | 'discovery' | 'note';
+  type: 'decision' | 'bug' | 'discovery' | 'note' | 'summary' | 'learning';
   deleted?: boolean;
 }
 

@@ -47,7 +47,7 @@ export function Dashboard({ stats }: DashboardProps) {
             .filter(([, count]) => count > 0)
             .map(([type, count]) => (
               <Box key={type}>
-                <Badge type={type as 'decision' | 'bug' | 'discovery' | 'note'} />
+                <Badge type={type as 'decision' | 'bug' | 'discovery' | 'note' | 'summary' | 'learning'} />
                 <Text>: {count}</Text>
                 <Text dimColor>
                   {' '}

@@ -23,7 +23,7 @@ export function MiniBar({ label, values, total, width = 20 }: MiniBarProps) {
     );
   }
 
-  const types = ['decision', 'bug', 'discovery', 'note'] as const;
+  const types = ['decision', 'bug', 'discovery', 'note', 'summary', 'learning'] as const;
   let bar = '';
   for (const type of types) {
     const count = values[type] ?? 0;

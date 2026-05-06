@@ -8,6 +8,8 @@ export const TYPE_COLORS: Record<string, ChalkInstance> = {
   bug: chalk.red,
   discovery: chalk.green,
   note: chalk.yellow,
+  summary: chalk.magenta,
+  learning: chalk.blue,
 };
 
 export const TYPE_ICONS: Record<string, string> = {
@@ -15,6 +17,8 @@ export const TYPE_ICONS: Record<string, string> = {
   bug: '✖',
   discovery: '●',
   note: '►',
+  summary: '★',
+  learning: '◈',
 };
 
 // ─── Semantic Colors ─────────────────────────────────────────
