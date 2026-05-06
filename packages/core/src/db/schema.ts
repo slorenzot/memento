@@ -21,6 +21,7 @@ export const observations = sqliteTable('observations', {
   createdAt: integer('created_at').notNull(),
   deletedAt: integer('deleted_at'),
   metadata: text('metadata'),
+  scope: text('scope').notNull().default('project'),
 });
 
 export const prompts = sqliteTable('prompts', {

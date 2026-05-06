@@ -2,6 +2,7 @@ import { expect } from 'bun:test';
 import { mkdirSync, rmSync, existsSync } from 'fs';
 import { join } from 'path';
 import { MemoryEngine } from './MemoryEngine';
+import type { Observation } from './types';
 
 // ─── Timing Utilities ───────────────────────────────────────
 
@@ -82,10 +83,11 @@ export async function seedObservation(
   overrides: {
     title?: string;
     content?: string;
-    type?: 'decision' | 'bug' | 'discovery' | 'note';
+    type?: Observation['type'];
     topicKey?: string | null;
     projectId?: string;
     metadata?: Record<string, unknown>;
+    scope?: 'project' | 'personal';
   } = {}
 ) {
   return engine.createObservation({
@@ -96,6 +98,7 @@ export async function seedObservation(
     topicKey: overrides.topicKey ?? null,
     projectId: overrides.projectId ?? _lastSessionProjectId,
     metadata: overrides.metadata ?? {},
+    scope: overrides.scope,
   });
 }
 

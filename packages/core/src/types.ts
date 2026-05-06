@@ -4,12 +4,15 @@ export interface Observation {
   sessionId: number;
   title: string;
   content: string;
-  type: 'decision' | 'bug' | 'discovery' | 'note' | 'summary' | 'learning';
+  type: 'decision' | 'bug' | 'discovery' | 'note' | 'summary' | 'learning' | 'pattern' | 'architecture' | 'config' | 'preference';
   topicKey: string | null;
   projectId: string;
   createdAt: Date;
   deletedAt: Date | null;
   metadata: Record<string, unknown>;
+  scope: 'project' | 'personal';
+  revisionCount: number;
+  duplicatesCount?: number;
 }
 
 export interface Session {
@@ -46,6 +49,7 @@ export interface SearchParams {
   limit?: number;
   offset?: number;
   includeDeleted?: boolean;
+  scope?: 'project' | 'personal';
 }
 
 export interface SearchResult {

@@ -59,7 +59,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
       title: z.string().describe('Short, searchable title (e.g. "Fixed N+1 in UserList")'),
       content: z.string().describe('Structured content: What/Why/Where/Learned format'),
       type: z
-        .enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning'])
+        .enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning', 'pattern', 'architecture', 'config', 'preference'])
         .optional()
         .describe('Type of observation (default: note)'),
       topic_key: z
@@ -68,9 +68,10 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         .describe('Stable topic key for grouping (e.g. "architecture/auth-model")'),
       project_id: z.string().optional().describe('Project identifier'),
       metadata: z.record(z.unknown()).optional().describe('Additional metadata'),
+      scope: z.enum(['project', 'personal']).optional().describe('Scope: project (default) or personal'),
     },
     { title: 'Save observation', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    async ({ title, content, type, topic_key, project_id, metadata }) => {
+    async ({ title, content, type, topic_key, project_id, metadata, scope }) => {
       try {
         const currentProjectId = project_id || ctx.projectId;
         let sessionId = ctx.activeSessionId;
@@ -93,6 +94,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           topicKey: topic_key || null,
           projectId: currentProjectId,
           metadata: metadata || {},
+          scope: scope as 'project' | 'personal' | undefined,
         });
 
         return {
@@ -114,15 +116,16 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     'Search observations using full-text search (FTS5). Start with small limits and expand only if needed. Results are TRUNCATED — use mem_get_observation with the returned ID for full content. Returns: { total, observations: [{ id, title, type, topicKey, projectId, createdAt }] }.',
     {
       query: z.string().optional().describe('Search query (FTS5 syntax)'),
-      type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning']).optional().describe('Filter by observation type'),
+      type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning', 'pattern', 'architecture', 'config', 'preference']).optional().describe('Filter by observation type'),
       project_id: z.string().optional().describe('Filter by project identifier'),
       topic_key: z.string().optional().describe('Filter by topic key (exact match)'),
       limit: z.number().optional().describe('Max results (default: 10)'),
       offset: z.number().optional().describe('Offset for pagination'),
       include_deleted: z.boolean().optional().describe('Include soft-deleted observations'),
+      scope: z.enum(['project', 'personal']).optional().describe('Filter by scope'),
     },
     { title: 'Search observations', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    async ({ query, type, project_id, topic_key, limit, offset, include_deleted }) => {
+    async ({ query, type, project_id, topic_key, limit, offset, include_deleted, scope }) => {
       try {
         const result = await ctx.engine.search({
           query,
@@ -132,6 +135,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           limit: limit || 10,
           offset,
           includeDeleted: include_deleted,
+          scope: scope as 'project' | 'personal' | undefined,
         });
 
         return {
@@ -148,11 +152,12 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     'Get full untruncated content of a specific observation by ID. Use this AFTER mem_search, which returns truncated results — pass the observation ID from search results to get the complete content including the full content field. Returns: full observation object with all fields.',
     {
       id: z.number().describe('Observation ID (from mem_search results)'),
+      include_deleted: z.boolean().optional().describe('Include soft-deleted observations (default: false)'),
     },
     { title: 'Get observation details', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    async ({ id }) => {
+    async ({ id, include_deleted }) => {
       try {
-        const obs = await ctx.engine.getObservation(id);
+        const obs = await ctx.engine.getObservation(id, include_deleted);
         if (!obs) throw new Error(`Observation ${id} not found`);
         return {
           content: [{ type: 'text', text: JSON.stringify(obs, null, 2) }],
@@ -170,7 +175,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
       id: z.number().describe('Observation ID to update'),
       title: z.string().optional().describe('New title (short, searchable)'),
       content: z.string().optional().describe('New content (What/Why/Where/Learned format)'),
-      type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning']).optional().describe('New observation type'),
+      type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning', 'pattern', 'architecture', 'config', 'preference']).optional().describe('New observation type'),
       topic_key: z.string().optional().describe('New or updated topic key for grouping'),
     },
     { title: 'Update observation', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
@@ -369,7 +374,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     {
       format: z.enum(['json', 'xml', 'txt']).optional().describe('Export format (default: json)'),
       project_id: z.string().optional().describe('Filter by project identifier'),
-      type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning']).optional().describe('Filter by observation type'),
+      type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning', 'pattern', 'architecture', 'config', 'preference']).optional().describe('Filter by observation type'),
       topic_key: z.string().optional().describe('Filter by topic key'),
       date_from: z.string().optional().describe('ISO date string — export from this date'),
       date_to: z.string().optional().describe('ISO date string — export until this date'),
@@ -604,7 +609,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     {
       title: z.string().optional().describe('Observation title to derive key from'),
       content: z.string().optional().describe('Observation content to derive key from'),
-      type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning']).optional().describe('Observation type for prefix'),
+      type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning', 'pattern', 'architecture', 'config', 'preference']).optional().describe('Observation type for prefix'),
     },
     { title: 'Suggest topic key', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     async ({ title, content, type }) => {

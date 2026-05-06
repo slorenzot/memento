@@ -60,6 +60,7 @@ export class MemoryEngine {
   private initializeDatabase(): void {
     this.db.exec('PRAGMA journal_mode = WAL');
     this.db.exec('PRAGMA foreign_keys = ON');
+    this.db.exec('PRAGMA busy_timeout = 5000');
 
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS sessions (
@@ -123,6 +124,31 @@ export class MemoryEngine {
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_observations_type ON observations(type)');
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_observations_project ON observations(project_id)');
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_observations_topic ON observations(topic_key)');
+
+    // Migrate: add scope column if missing
+    try {
+      this.db.exec('SELECT scope FROM observations LIMIT 0');
+    } catch {
+      try {
+        this.db.exec("ALTER TABLE observations ADD COLUMN scope TEXT NOT NULL DEFAULT 'project'");
+        console.error('✓ Migration: added scope column to observations');
+      } catch {
+        // Column may already exist in a concurrent scenario
+      }
+    }
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_observations_scope ON observations(scope)');
+
+    // Migrate: add revision_count column if missing
+    try {
+      this.db.exec('SELECT revision_count FROM observations LIMIT 0');
+    } catch {
+      try {
+        this.db.exec('ALTER TABLE observations ADD COLUMN revision_count INTEGER NOT NULL DEFAULT 0');
+        console.error('✓ Migration: added revision_count column to observations');
+      } catch {
+        // Column may already exist in a concurrent scenario
+      }
+    }
 
     // FTS5
     this.db.exec(`
@@ -194,6 +220,35 @@ export class MemoryEngine {
     }
   }
 
+  /**
+   * Retry wrapper with exponential backoff for SQLITE_BUSY errors.
+   * Dual defense: PRAGMA busy_timeout (5s) catches most contention,
+   * this catches the rest with retries.
+   */
+  private async withRetry<T>(
+    operation: () => T,
+    maxRetries: number = 3,
+    baseDelay: number = 100
+  ): Promise<T> {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return operation();
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        const isBusy =
+          message.includes('SQLITE_BUSY') || message.includes('database is locked');
+
+        if (!isBusy || attempt === maxRetries) {
+          throw error;
+        }
+
+        const delay = baseDelay * Math.pow(2, attempt);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+    throw new Error('Max retries exceeded');
+  }
+
   // ─── Observations CRUD ─────────────────────────────────────
 
   async createObservation(data: {
@@ -204,32 +259,36 @@ export class MemoryEngine {
     topicKey: string | null;
     projectId: string;
     metadata: Record<string, unknown>;
+    scope?: 'project' | 'personal';
   }): Promise<Observation> {
     this.checkHealth();
     const uuid = crypto.randomUUID();
     const createdAt = new Date();
     const metadata = this.serialize(data.metadata);
+    const scope = data.scope || 'project';
 
-    const result = this.db
-      .prepare(
-        `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, deleted_at, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`
-      )
-      .run(
-        uuid,
-        data.sessionId,
-        data.title,
-        data.content,
-        data.type,
-        data.topicKey ?? null,
-        data.projectId,
-        createdAt.getTime(),
-        metadata
-      );
-
-    const id =
-      typeof result.lastInsertRowid === 'bigint'
+    const id = await this.withRetry(() => {
+      const result = this.db
+        .prepare(
+          `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, deleted_at, metadata, scope) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`
+        )
+        .run(
+          uuid,
+          data.sessionId,
+          data.title,
+          data.content,
+          data.type,
+          data.topicKey ?? null,
+          data.projectId,
+          createdAt.getTime(),
+          metadata,
+          scope
+        );
+      return typeof result.lastInsertRowid === 'bigint'
         ? Number(result.lastInsertRowid)
         : result.lastInsertRowid;
+    });
+
     const observation = await this.getObservationById(id, true);
     if (!observation) throw new Error('Failed to retrieve created observation');
     return observation;
@@ -275,8 +334,11 @@ export class MemoryEngine {
 
     if (fields.length === 0) return current;
 
+    fields.push('revision_count = revision_count + 1');
     values.push(id);
-    this.db.prepare(`UPDATE observations SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+    await this.withRetry(() =>
+      this.db.prepare(`UPDATE observations SET ${fields.join(', ')} WHERE id = ?`).run(...values)
+    );
 
     const updated = await this.getObservationById(id, true);
     if (!updated) throw new Error('Failed to update observation');
@@ -296,11 +358,15 @@ export class MemoryEngine {
     // If there's a reason, store it in metadata
     if (reason) {
       const meta = { ...obs.metadata, deleteReason: reason };
-      this.db
-        .prepare('UPDATE observations SET deleted_at = ?, metadata = ? WHERE id = ?')
-        .run(now, this.serialize(meta), id);
+      await this.withRetry(() =>
+        this.db
+          .prepare('UPDATE observations SET deleted_at = ?, metadata = ? WHERE id = ?')
+          .run(now, this.serialize(meta), id)
+      );
     } else {
-      this.db.prepare('UPDATE observations SET deleted_at = ? WHERE id = ?').run(now, id);
+      await this.withRetry(() =>
+        this.db.prepare('UPDATE observations SET deleted_at = ? WHERE id = ?').run(now, id)
+      );
     }
   }
 
@@ -310,7 +376,9 @@ export class MemoryEngine {
     if (!obs) throw new Error('Observation not found');
     if (!obs.deletedAt) throw new Error('Observation is not deleted');
 
-    this.db.prepare('UPDATE observations SET deleted_at = NULL WHERE id = ?').run(id);
+    await this.withRetry(() =>
+      this.db.prepare('UPDATE observations SET deleted_at = NULL WHERE id = ?').run(id)
+    );
 
     const restored = await this.getObservationById(id, true);
     if (!restored) throw new Error('Failed to restore observation');
@@ -739,8 +807,8 @@ export class MemoryEngine {
 
   // ─── Search ────────────────────────────────────────────────
 
-  async getObservation(id: number): Promise<Observation | null> {
-    return await this.getObservationById(id);
+  async getObservation(id: number, includeDeleted: boolean = false): Promise<Observation | null> {
+    return await this.getObservationById(id, includeDeleted);
   }
 
   async search(params: SearchParams): Promise<SearchResult> {
@@ -752,6 +820,7 @@ export class MemoryEngine {
       limit = 100,
       offset = 0,
       includeDeleted = false,
+      scope,
     } = params;
 
     let sql: string;
@@ -777,6 +846,10 @@ export class MemoryEngine {
         sql += ' AND observations.topic_key = ?';
         values.push(topicKey);
       }
+      if (scope) {
+        sql += ' AND observations.scope = ?';
+        values.push(scope);
+      }
     } else {
       sql = 'SELECT * FROM observations WHERE 1=1';
 
@@ -794,6 +867,10 @@ export class MemoryEngine {
       if (topicKey) {
         sql += ' AND topic_key = ?';
         values.push(topicKey);
+      }
+      if (scope) {
+        sql += ' AND scope = ?';
+        values.push(scope);
       }
     }
 
@@ -888,7 +965,19 @@ export class MemoryEngine {
     }
     const row = this.db.prepare(sql).get(id);
     if (!row) return null;
-    return this.mapObservation(row as Record<string, unknown>);
+    const observation = this.mapObservation(row as Record<string, unknown>);
+
+    // Calculate duplicatesCount when topicKey is present
+    if (observation.topicKey) {
+      const dupResult = this.db
+        .prepare(
+          'SELECT COUNT(*) as count FROM observations WHERE topic_key = ? AND deleted_at IS NULL'
+        )
+        .get(observation.topicKey) as { count: number } | undefined;
+      observation.duplicatesCount = dupResult?.count ?? 0;
+    }
+
+    return observation;
   }
 
   private async getSessionById(id: number): Promise<Session | null> {
@@ -916,6 +1005,8 @@ export class MemoryEngine {
       created_at: number;
       deleted_at: number | null;
       metadata: string | null;
+      scope: string | null;
+      revision_count: number | null;
     };
     return {
       id: r.id,
@@ -929,6 +1020,8 @@ export class MemoryEngine {
       createdAt: new Date(r.created_at),
       deletedAt: r.deleted_at ? new Date(r.deleted_at) : null,
       metadata: this.deserialize(r.metadata),
+      scope: (r.scope as 'project' | 'personal') || 'project',
+      revisionCount: r.revision_count ?? 0,
     };
   }
 
@@ -1122,6 +1215,10 @@ export class MemoryEngine {
         note: 0,
         summary: 0,
         learning: 0,
+        pattern: 0,
+        architecture: 0,
+        config: 0,
+        preference: 0,
       };
       for (const tr of typeRows) {
         byType[tr.type as string] = tr.count as number;
@@ -1175,7 +1272,7 @@ export class MemoryEngine {
       )
       .all() as Record<string, unknown>[];
 
-    const byType: Record<string, number> = { decision: 0, bug: 0, discovery: 0, note: 0, summary: 0, learning: 0 };
+    const byType: Record<string, number> = { decision: 0, bug: 0, discovery: 0, note: 0, summary: 0, learning: 0, pattern: 0, architecture: 0, config: 0, preference: 0 };
     for (const tr of typeRows) {
       byType[tr.type as string] = tr.count as number;
     }
