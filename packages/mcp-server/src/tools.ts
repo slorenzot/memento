@@ -704,7 +704,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_capture_passive',
-    'Parse text to extract learnings from sections like "## Key Learnings:" or "## Aprendizajes Clave:". Creates individual observations with type "learning". Deduplicates by content similarity. Returns: { captured: number, observations: [{ id, title }] }.',
+    'Parse text to extract learnings from sections like "## Key Learnings:" or "## Aprendizajes Clave:". Creates individual observations with type "learning". Deduplicates by content similarity (within batch AND against existing DB learnings). Returns: { captured: number, duplicates: number, observations: [{ id, title }] }.',
     {
       content: z.string().describe('Text content to parse for learnings'),
       project_id: z.string().optional().describe('Project identifier'),
@@ -756,31 +756,53 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           }
         }
 
-        // Deduplicate by content similarity (simple Jaccard)
+        // Jaccard similarity helper
+        const jaccardSimilar = (a: string, b: string): boolean => {
+          const setA = new Set(a.toLowerCase().split(/\s+/));
+          const setB = new Set(b.toLowerCase().split(/\s+/));
+          const intersection = [...setA].filter((x) => setB.has(x)).length;
+          const union = new Set([...setA, ...setB]).size;
+          return union > 0 && intersection / union > 0.85;
+        };
+
+        // Step 1: Deduplicate within batch
         const uniqueItems: string[] = [];
         for (const item of items) {
-          const isDuplicate = uniqueItems.some((existing) => {
-            const setA = new Set(existing.toLowerCase().split(/\s+/));
-            const setB = new Set(item.toLowerCase().split(/\s+/));
-            const intersection = [...setA].filter((x) => setB.has(x)).length;
-            const union = new Set([...setA, ...setB]).size;
-            return union > 0 && intersection / union > 0.85;
-          });
-          if (!isDuplicate) {
+          if (!uniqueItems.some((existing) => jaccardSimilar(existing, item))) {
             uniqueItems.push(item);
           }
         }
 
-        // Create observations
-        const observations: { id: number; title: string }[] = [];
+        // Step 2: Deduplicate against existing learnings in DB
+        const topicKey = source ? `learnings/${source.toLowerCase().replace(/\s+/g, '-')}` : null;
+        const existingResult = await ctx.engine.search({
+          type: 'learning',
+          projectId: currentProjectId,
+          ...(topicKey ? { topicKey } : {}),
+          limit: 100,
+        });
+        const existingContents = existingResult.observations.map((obs) => obs.content);
+
+        const newItems: string[] = [];
+        let duplicatesCount = 0;
         for (const item of uniqueItems) {
+          if (existingContents.some((existing) => jaccardSimilar(existing, item))) {
+            duplicatesCount++;
+          } else {
+            newItems.push(item);
+          }
+        }
+
+        // Step 3: Create observations only for new items
+        const observations: { id: number; title: string }[] = [];
+        for (const item of newItems) {
           const title = item.length > 80 ? item.slice(0, 77) + '...' : item;
           const obs = await ctx.engine.createObservation({
             sessionId,
             title,
             content: item,
             type: 'learning',
-            topicKey: source ? `learnings/${source.toLowerCase().replace(/\s+/g, '-')}` : null,
+            topicKey,
             projectId: currentProjectId,
             metadata: {
               source: source || 'passive-capture',
@@ -794,7 +816,15 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ captured: observations.length, observations }, null, 2),
+              text: JSON.stringify(
+                {
+                  captured: observations.length,
+                  duplicates: duplicatesCount,
+                  observations,
+                },
+                null,
+                2
+              ),
             },
           ],
         };
