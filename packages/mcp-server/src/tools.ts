@@ -54,7 +54,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_save',
-    'Save an observation to persistent memory. Types: decision, bug, discovery, note. Call this PROACTIVELY after making decisions, fixing bugs, or discovering something non-obvious. Returns: { id, uuid, success }.',
+    'Save an observation to persistent memory. Types: decision, bug, discovery, note. Call this PROACTIVELY after making decisions, fixing bugs, or discovering something non-obvious. Returns: human-readable confirmation with observation ID.',
     {
       title: z.string().describe('Short, searchable title (e.g. "Fixed N+1 in UserList")'),
       content: z.string().describe('Structured content: What/Why/Where/Learned format'),
@@ -101,7 +101,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ id: obs.id, uuid: obs.uuid, success: true }, null, 2),
+              text: `Observation #${obs.id} "${obs.title}" saved (${obs.type}, ${currentProjectId})`,
             },
           ],
         };
@@ -170,7 +170,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_update',
-    'Update an existing observation\'s title, content, type, or topic_key. Use this to correct or refine previously saved observations. All fields are optional — only provided fields will be updated. Returns: { id, success }.',
+    'Update an existing observation\'s title, content, type, or topic_key. Use this to correct or refine previously saved observations. All fields are optional — only provided fields will be updated. Returns: human-readable confirmation.',
     {
       id: z.number().describe('Observation ID to update'),
       title: z.string().optional().describe('New title (short, searchable)'),
@@ -189,7 +189,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         });
         return {
           content: [
-            { type: 'text', text: JSON.stringify({ id: updated.id, success: true }, null, 2) },
+            { type: 'text', text: `Observation #${updated.id} "${updated.title}" updated` },
           ],
         };
       } catch (error: unknown) {
@@ -202,7 +202,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_delete',
-    'Soft-delete an observation. The record is hidden from searches but can be restored with mem_restore. For permanent deletion, use mem_purge after soft-deleting. Soft-delete is the safe default — always prefer this over purge. Returns: { id, deleted, success }.',
+    'Soft-delete an observation. The record is hidden from searches but can be restored with mem_restore. For permanent deletion, use mem_purge after soft-deleting. Soft-delete is the safe default — always prefer this over purge. Returns: human-readable confirmation.',
     {
       id: z.number().describe('Observation ID to soft-delete'),
       reason: z.string().optional().describe('Reason for deletion (stored in metadata)'),
@@ -213,7 +213,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         await ctx.engine.deleteObservation(id, reason);
         return {
           content: [
-            { type: 'text', text: JSON.stringify({ id, deleted: true, success: true }, null, 2) },
+            { type: 'text', text: `Observation #${id} soft-deleted` },
           ],
         };
       } catch (error: unknown) {
@@ -224,7 +224,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_restore',
-    'Restore a soft-deleted observation back to active state. Use mem_list_deleted to find deleted observation IDs, then restore them with this tool. Returns: { id, restored, success }.',
+    'Restore a soft-deleted observation back to active state. Use mem_list_deleted to find deleted observation IDs, then restore them with this tool. Returns: human-readable confirmation.',
     {
       id: z.number().describe('Observation ID to restore (from mem_list_deleted)'),
     },
@@ -236,7 +236,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ id: restored.id, restored: true, success: true }, null, 2),
+              text: `Observation #${restored.id} restored`,
             },
           ],
         };
@@ -248,7 +248,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_purge',
-    'PERMANENTLY delete soft-deleted observations. This is IRREVERSIBLE — soft-deleted observations are gone forever. Requires confirm: true. Use mem_list_deleted first to review what will be purged. Prefer soft-delete (mem_delete) + review before purging. Returns: { purgedCount, success }.',
+    'PERMANENTLY delete soft-deleted observations. This is IRREVERSIBLE — soft-deleted observations are gone forever. Requires confirm: true. Use mem_list_deleted first to review what will be purged. Prefer soft-delete (mem_delete) + review before purging. Returns: human-readable confirmation with purge count.',
     {
       confirm: z.boolean().describe('Must be true to execute purge'),
       project_id: z.string().optional().describe('Purge all deleted obs in this project'),
@@ -265,11 +265,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             content: [
               {
                 type: 'text',
-                text: JSON.stringify(
-                  { success: false, error: 'confirm must be true to execute purge' },
-                  null,
-                  2
-                ),
+                text: 'Error: confirm must be true to execute purge',
               },
             ],
           };
@@ -281,7 +277,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         });
 
         return {
-          content: [{ type: 'text', text: JSON.stringify({ ...result, success: true }, null, 2) }],
+          content: [{ type: 'text', text: `Purged ${result.purgedCount} deleted observation${result.purgedCount !== 1 ? 's' : ''}` }],
         };
       } catch (error: unknown) {
         return handleToolError(error, ctx);
@@ -313,7 +309,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_merge',
-    'Merge related observations into a single synthesized record. Identifies candidates automatically by topic_key or content similarity (Jaccard > 0.85). ALWAYS use dry_run: true first to preview candidates before executing. Strategies: by_topic (same topic_key), by_similarity (Jaccard > 0.85), by_ids (specific IDs). Returns: { success, dryRun, mergeCount, results }.',
+    'Merge related observations into a single synthesized record. Identifies candidates automatically by topic_key or content similarity (Jaccard > 0.85). ALWAYS use dry_run: true first to preview candidates before executing. Strategies: by_topic (same topic_key), by_similarity (Jaccard > 0.85), by_ids (specific IDs). Returns: human-readable summary.',
     {
       project_id: z.string().describe('Project to merge observations in (required)'),
       topic_key: z.string().optional().describe('Merge all observations with this topic_key'),
@@ -338,25 +334,24 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           dryRun: dry_run,
         });
 
+        const totalObs = results.reduce((sum, r) => sum + r.originalCount, 0);
+
+        if (dry_run) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Preview: ${results.length} merge group${results.length !== 1 ? 's' : ''} found (dry run)`,
+              },
+            ],
+          };
+        }
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(
-                {
-                  success: true,
-                  dryRun: dry_run || false,
-                  mergeCount: results.length,
-                  results: results.map((r) => ({
-                    mergedObservationId: r.mergedObservation.id,
-                    deletedIds: r.deletedIds,
-                    originalCount: r.originalCount,
-                    strategy: r.strategy,
-                  })),
-                },
-                null,
-                2
-              ),
+              text: `Merged ${results.length} group${results.length !== 1 ? 's' : ''} (${totalObs} observations consolidated)`,
             },
           ],
         };
@@ -421,7 +416,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_session_start',
-    'Start a new memory session for tracking a coding conversation. Call this at the BEGINNING of a session to group all subsequent observations together. Only one session is active at a time — starting a new one replaces the previous. Returns: { id, uuid, success }.',
+    'Start a new memory session for tracking a coding conversation. Call this at the BEGINNING of a session to group all subsequent observations together. Only one session is active at a time — starting a new one replaces the previous. Returns: human-readable confirmation with session ID.',
     {
       project_id: z.string().describe('Project identifier'),
       metadata: z.record(z.unknown()).optional().describe('Additional session metadata (e.g. agent name, environment)'),
@@ -440,7 +435,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ id: session.id, uuid: session.uuid, success: true }, null, 2),
+              text: `Session #${session.id} started (project: ${project_id})`,
             },
           ],
         };
@@ -452,7 +447,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_session_end',
-    'End the current active session. Call this BEFORE closing a conversation to properly close the session tracking. This is MANDATORY for clean session lifecycle — do not skip it. Returns: { id, uuid, endedAt, success }.',
+    'End the current active session. Call this BEFORE closing a conversation to properly close the session tracking. This is MANDATORY for clean session lifecycle — do not skip it. Returns: human-readable confirmation.',
     {},
     { title: 'End session', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     async () => {
@@ -465,11 +460,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(
-                { id: ended.id, uuid: ended.uuid, endedAt: ended.endedAt, success: true },
-                null,
-                2
-              ),
+              text: `Session #${ended.id} ended`,
             },
           ],
         };
@@ -536,7 +527,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_save_prompt',
-    'Save a user prompt to persistent memory for conversation tracking. Auto-creates a session if none is active. Returns: { id, uuid, success }.',
+    'Save a user prompt to persistent memory for conversation tracking. Auto-creates a session if none is active. Returns: human-readable confirmation.',
     {
       content: z.string().describe('The prompt text to save'),
       project_id: z.string().optional().describe('Project identifier'),
@@ -569,7 +560,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ id: prompt.id, uuid: prompt.uuid, success: true }, null, 2),
+              text: `Prompt saved for project "${currentProjectId}"`,
             },
           ],
         };
@@ -605,7 +596,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_suggest_topic_key',
-    'Suggest a stable topic_key from a title, content, or type. Pure computation — does NOT touch the database. Normalizes text to lowercase-kebab-case with a type prefix. Returns: { suggested_key }.',
+    'Suggest a stable topic_key from a title, content, or type. Pure computation — does NOT touch the database. Normalizes text to lowercase-kebab-case with a type prefix. Returns: human-readable suggestion.',
     {
       title: z.string().optional().describe('Observation title to derive key from'),
       content: z.string().optional().describe('Observation content to derive key from'),
@@ -620,7 +611,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             content: [
               {
                 type: 'text',
-                text: JSON.stringify({ suggested_key: '', error: 'Provide at least a title or content' }, null, 2),
+                text: 'Error: provide at least a title or content',
               },
             ],
           };
@@ -640,7 +631,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ suggested_key }, null, 2),
+              text: `Suggested topic key: ${suggested_key}`,
             },
           ],
         };
@@ -652,7 +643,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_session_summary',
-    'Create a session summary observation at the END of a conversation. Saves an observation with type "summary" and a structured format (Goal/Discoveries/Accomplished/Files). Call this BEFORE closing a conversation. Returns: { id, uuid, success }.',
+    'Create a session summary observation at the END of a conversation. Saves an observation with type "summary" and a structured format (Goal/Discoveries/Accomplished/Files). Call this BEFORE closing a conversation. Returns: human-readable confirmation with observation ID.',
     {
       content: z.string().describe('Structured summary content (Goal/Discoveries/Accomplished/Files format)'),
       project_id: z.string().describe('Project identifier'),
@@ -692,7 +683,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ id: obs.id, uuid: obs.uuid, success: true }, null, 2),
+              text: `Session summary saved for project "${currentProjectId}" (observation #${obs.id})`,
             },
           ],
         };
@@ -704,7 +695,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_capture_passive',
-    'Parse text to extract learnings from sections like "## Key Learnings:" or "## Aprendizajes Clave:". Creates individual observations with type "learning". Deduplicates by content similarity (within batch AND against existing DB learnings). Returns: { captured: number, duplicates: number, observations: [{ id, title }] }.',
+    'Parse text to extract learnings from sections like "## Key Learnings:" or "## Aprendizajes Clave:". Creates individual observations with type "learning". Deduplicates by content similarity (within batch AND against existing DB learnings). Returns: human-readable summary with capture and duplicate counts.',
     {
       content: z.string().describe('Text content to parse for learnings'),
       project_id: z.string().optional().describe('Project identifier'),
@@ -736,7 +727,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             content: [
               {
                 type: 'text',
-                text: JSON.stringify({ captured: 0, observations: [], message: 'No learning sections found' }, null, 2),
+                text: 'No learning sections found',
               },
             ],
           };
@@ -816,15 +807,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(
-                {
-                  captured: observations.length,
-                  duplicates: duplicatesCount,
-                  observations,
-                },
-                null,
-                2
-              ),
+              text: `Captured ${observations.length} learning${observations.length !== 1 ? 's' : ''}, ${duplicatesCount} duplicate${duplicatesCount !== 1 ? 's' : ''} (project: ${currentProjectId})`,
             },
           ],
         };

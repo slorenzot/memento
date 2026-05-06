@@ -12,6 +12,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import {
   createIntegrationSetup,
   parseResult,
+  parseActionText,
+  extractId,
   parseError,
   type IntegrationSetup,
 } from './helpers';
@@ -70,9 +72,9 @@ describe('MCP Integration', () => {
           project_id: 'test-project',
         },
       });
-      const saved = parseResult(saveResponse);
-      expect(saved.success).toBe(true);
-      const obsId = saved.id;
+      const saveText = parseActionText(saveResponse);
+      expect(saveText).toContain('saved');
+      const obsId = extractId(saveText);
 
       // 2. Search
       const searchResponse = await setup.client.callTool({
@@ -99,8 +101,8 @@ describe('MCP Integration', () => {
         name: 'mem_update',
         arguments: { id: obsId, content: 'Updated lifecycle content', type: 'note' },
       });
-      const updated = parseResult(updateResponse);
-      expect(updated.success).toBe(true);
+      const updateText = parseActionText(updateResponse);
+      expect(updateText).toContain('updated');
 
       // Verify update
       const getUpdated = await setup.client.callTool({
@@ -117,8 +119,7 @@ describe('MCP Integration', () => {
         name: 'mem_delete',
         arguments: { id: obsId, reason: 'lifecycle test' },
       });
-      const deleted = parseResult(deleteResponse);
-      expect(deleted.success).toBe(true);
+      expect(parseActionText(deleteResponse)).toContain('soft-deleted');
 
       // Verify excluded from search
       const afterDelete = await setup.client.callTool({
@@ -132,8 +133,7 @@ describe('MCP Integration', () => {
         name: 'mem_restore',
         arguments: { id: obsId },
       });
-      const restored = parseResult(restoreResponse);
-      expect(restored.success).toBe(true);
+      expect(parseActionText(restoreResponse)).toContain('restored');
 
       // Verify visible again
       const afterRestore = await setup.client.callTool({
@@ -148,8 +148,7 @@ describe('MCP Integration', () => {
         name: 'mem_purge',
         arguments: { confirm: true, project_id: 'test-project' },
       });
-      const purged = parseResult(purgeResponse);
-      expect(purged.success).toBe(true);
+      expect(parseActionText(purgeResponse)).toContain('Purged');
 
       // Verify gone from deleted list
       const deletedList = await setup.client.callTool({
@@ -169,9 +168,9 @@ describe('MCP Integration', () => {
         name: 'mem_session_start',
         arguments: { project_id: 'test-project', metadata: { env: 'test' } },
       });
-      const session = parseResult(startResponse);
-      expect(session.success).toBe(true);
-      const sessionId = session.id;
+      const startText = parseActionText(startResponse);
+      expect(startText).toContain('started');
+      const sessionId = extractId(startText);
 
       // 2. Save observations (should use active session)
       const saveResponse = await setup.client.callTool({
@@ -182,8 +181,7 @@ describe('MCP Integration', () => {
           project_id: 'test-project',
         },
       });
-      const saved = parseResult(saveResponse);
-      expect(saved.success).toBe(true);
+      expect(parseActionText(saveResponse)).toContain('saved');
 
       // 3. Verify session contains observations
       const getSessionResponse = await setup.client.callTool({
@@ -200,9 +198,9 @@ describe('MCP Integration', () => {
         name: 'mem_session_end',
         arguments: {},
       });
-      const ended = parseResult(endResponse);
-      expect(ended.success).toBe(true);
-      expect(ended.endedAt).not.toBeNull();
+      const endText = parseActionText(endResponse);
+      expect(endText).toContain('ended');
+      expect(setup.ctx.activeSessionId).toBeNull();
     });
   });
 
@@ -336,9 +334,9 @@ describe('MCP Integration', () => {
           dry_run: true,
         },
       });
-      const dryRun = parseResult(dryRunResponse);
-      expect(dryRun.dryRun).toBe(true);
-      expect(dryRun.mergeCount).toBe(1);
+      const dryRunText = parseActionText(dryRunResponse);
+      expect(dryRunText).toContain('Preview');
+      expect(dryRunText).toContain('dry run');
 
       // Verify still 2 observations
       const beforeMerge = await setup.client.callTool({
@@ -356,10 +354,9 @@ describe('MCP Integration', () => {
           strategy: 'by_topic',
         },
       });
-      const merged = parseResult(mergeResponse);
-      expect(merged.success).toBe(true);
-      expect(merged.mergeCount).toBe(1);
-      expect(merged.results[0].originalCount).toBe(2);
+      const mergeText = parseActionText(mergeResponse);
+      expect(mergeText).toContain('Merged');
+      expect(mergeText).toContain('consolidated');
 
       // Verify only 1 observation remains
       const afterMerge = await setup.client.callTool({

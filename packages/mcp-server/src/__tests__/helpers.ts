@@ -50,6 +50,27 @@ export function parseResult(response: McpToolResponse): Record<string, unknown> 
 }
 
 /**
+ * Parse the text content from an ACTION tool response (human-readable format).
+ * Returns the raw text string.
+ */
+export function parseActionText(response: McpToolResponse): string {
+  if (!response?.content?.[0]?.text) {
+    throw new Error('Invalid MCP response: no content[0].text');
+  }
+  return response.content[0].text;
+}
+
+/**
+ * Extract an observation or session ID from a human-readable message.
+ * Matches patterns like "Observation #123" or "Session #456".
+ */
+export function extractId(text: string): number {
+  const match = text.match(/#(\d+)/);
+  if (!match) throw new Error(`No ID found in text: ${text}`);
+  return parseInt(match[1], 10);
+}
+
+/**
  * Parse an error response from an MCP tool.
  * Returns { success, error, hint } from the structured error format.
  */
