@@ -37,6 +37,9 @@ function createTestDbPath(): string {
 /**
  * Parse the JSON content from an MCP tool response.
  * MCP responses come as { content: [{ type: 'text', text: '...' }] }
+ *
+ * @deprecated Only used by mem_export tests. All other tools now return Markdown.
+ * Use parseActionText() for Markdown responses.
  */
 interface McpToolResponse {
   content: Array<{ type: 'text'; text: string }>;

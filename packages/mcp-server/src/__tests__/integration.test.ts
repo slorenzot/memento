@@ -81,20 +81,19 @@ describe('MCP Integration', () => {
         name: 'mem_search',
         arguments: { query: 'Lifecycle', project_id: 'test-project' },
       });
-      const searchResult = parseResult(searchResponse);
-      expect(searchResult.total).toBe(1);
-      expect(searchResult.observations[0].id).toBe(obsId);
+      const searchText = parseActionText(searchResponse);
+      expect(searchText).toContain('Found 1 observation');
+      expect(searchText).toContain(`#${obsId}`);
 
       // 3. Get full content
       const getResponse = await setup.client.callTool({
         name: 'mem_get_observation',
         arguments: { id: obsId },
       });
-      const obs = parseResult(getResponse);
-      expect(obs.id).toBe(obsId);
-      expect(obs.content).toBe('Testing full lifecycle');
-      expect(obs.type).toBe('discovery');
-      expect(obs.topicKey).toBe('test/lifecycle');
+      const obsText = parseActionText(getResponse);
+      expect(obsText).toContain(`#${obsId}`);
+      expect(obsText).toContain('Testing full lifecycle');
+      expect(obsText).toContain('[discovery]');
 
       // 4. Update
       const updateResponse = await setup.client.callTool({
@@ -109,10 +108,10 @@ describe('MCP Integration', () => {
         name: 'mem_get_observation',
         arguments: { id: obsId },
       });
-      const afterUpdate = parseResult(getUpdated);
-      expect(afterUpdate.content).toBe('Updated lifecycle content');
-      expect(afterUpdate.type).toBe('note');
-      expect(afterUpdate.title).toBe('Lifecycle Test'); // unchanged
+      const afterUpdateText = parseActionText(getUpdated);
+      expect(afterUpdateText).toContain('Updated lifecycle content');
+      expect(afterUpdateText).toContain('[note]');
+      expect(afterUpdateText).toContain('Lifecycle Test'); // unchanged
 
       // 5. Delete (soft)
       const deleteResponse = await setup.client.callTool({
@@ -126,7 +125,7 @@ describe('MCP Integration', () => {
         name: 'mem_search',
         arguments: { project_id: 'test-project' },
       });
-      expect(parseResult(afterDelete).total).toBe(0);
+      expect(parseActionText(afterDelete)).toContain('Found 0 observations');
 
       // 6. Restore
       const restoreResponse = await setup.client.callTool({
@@ -140,7 +139,7 @@ describe('MCP Integration', () => {
         name: 'mem_search',
         arguments: { project_id: 'test-project' },
       });
-      expect(parseResult(afterRestore).total).toBe(1);
+      expect(parseActionText(afterRestore)).toContain('Found 1 observation');
 
       // 7. Purge (delete first, then purge)
       await setup.client.callTool({ name: 'mem_delete', arguments: { id: obsId } });
@@ -155,7 +154,7 @@ describe('MCP Integration', () => {
         name: 'mem_list_deleted',
         arguments: { project_id: 'test-project' },
       });
-      expect(parseResult(deletedList).total).toBe(0);
+      expect(parseActionText(deletedList)).toContain('Found 0 observations');
     });
   });
 
@@ -188,10 +187,10 @@ describe('MCP Integration', () => {
         name: 'mem_get_session',
         arguments: { id: sessionId },
       });
-      const sessionData = parseResult(getSessionResponse);
-      expect(sessionData.id).toBe(sessionId);
-      expect(sessionData.projectId).toBe('test-project');
-      expect(sessionData.endedAt).toBeNull();
+      const sessionText = parseActionText(getSessionResponse);
+      expect(sessionText).toContain(`Session #${sessionId}`);
+      expect(sessionText).toContain('test-project');
+      expect(sessionText).toContain('Active');
 
       // 4. End session
       const endResponse = await setup.client.callTool({
@@ -343,7 +342,7 @@ describe('MCP Integration', () => {
         name: 'mem_search',
         arguments: { project_id: 'test-project' },
       });
-      expect(parseResult(beforeMerge).total).toBe(2);
+      expect(parseActionText(beforeMerge)).toContain('Found 2 observations');
 
       // Execute merge
       const mergeResponse = await setup.client.callTool({
@@ -363,7 +362,7 @@ describe('MCP Integration', () => {
         name: 'mem_search',
         arguments: { project_id: 'test-project' },
       });
-      expect(parseResult(afterMerge).total).toBe(1);
+      expect(parseActionText(afterMerge)).toContain('Found 1 observation');
     });
   });
 });
