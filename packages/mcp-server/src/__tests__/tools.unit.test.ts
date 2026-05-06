@@ -13,6 +13,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import {
   createIntegrationSetup,
   parseResult,
+  parseActionText,
+  extractId,
   parseError,
   seedSession,
   seedObservation,
@@ -33,7 +35,7 @@ describe('Tool Handlers', () => {
   // ─── mem_save ─────────────────────────────────────────────
 
   describe('mem_save', () => {
-    it('should save with valid params and return { id, uuid, success }', async () => {
+    it('should save with valid params and return human-readable confirmation', async () => {
       const response = await setup.client.callTool({
         name: 'mem_save',
         arguments: {
@@ -45,11 +47,12 @@ describe('Tool Handlers', () => {
         },
       });
 
-      const result = parseResult(response);
-      expect(result.success).toBe(true);
-      expect(result.id).toBeDefined();
-      expect(result.uuid).toBeDefined();
-      expect(typeof result.id).toBe('number');
+      const text = parseActionText(response);
+      expect(text).toContain('saved');
+      expect(text).toContain('decision');
+      expect(text).toContain('Architecture Decision');
+      const id = extractId(text);
+      expect(typeof id).toBe('number');
     });
 
     it('should use default project_id when not provided', async () => {
@@ -61,8 +64,8 @@ describe('Tool Handlers', () => {
         },
       });
 
-      const result = parseResult(response);
-      expect(result.success).toBe(true);
+      const text = parseActionText(response);
+      expect(text).toContain('saved');
     });
 
     it('should create auto-session if none exists', async () => {
@@ -75,8 +78,8 @@ describe('Tool Handlers', () => {
         },
       });
 
-      const result = parseResult(response);
-      expect(result.success).toBe(true);
+      const text = parseActionText(response);
+      expect(text).toContain('saved');
       expect(setup.ctx.activeSessionId).not.toBeNull();
     });
 
@@ -203,8 +206,8 @@ describe('Tool Handlers', () => {
         arguments: { id: obs.id, title: 'Updated Title', type: 'bug' },
       });
 
-      const result = parseResult(response);
-      expect(result.success).toBe(true);
+      const text = parseActionText(response);
+      expect(text).toContain('updated');
 
       // Verify via get
       const getResponse = await setup.client.callTool({
@@ -240,9 +243,8 @@ describe('Tool Handlers', () => {
         arguments: { id: obs.id, reason: 'duplicate' },
       });
 
-      const delResult = parseResult(delResponse);
-      expect(delResult.success).toBe(true);
-      expect(delResult.deleted).toBe(true);
+      const delText = parseActionText(delResponse);
+      expect(delText).toContain('soft-deleted');
 
       // Excluded from search
       const searchResponse = await setup.client.callTool({
@@ -264,9 +266,8 @@ describe('Tool Handlers', () => {
         arguments: { id: obs.id },
       });
 
-      const restoreResult = parseResult(restoreResponse);
-      expect(restoreResult.success).toBe(true);
-      expect(restoreResult.restored).toBe(true);
+      const restoreText = parseActionText(restoreResponse);
+      expect(restoreText).toContain('restored');
 
       // Visible in search again
       const searchResponse = await setup.client.callTool({
@@ -287,9 +288,8 @@ describe('Tool Handlers', () => {
         arguments: { confirm: false },
       });
 
-      const result = parseResult(response);
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('confirm must be true');
+      const text = parseActionText(response);
+      expect(text).toContain('confirm must be true');
     });
 
     it('should purge with confirm: true', async () => {
@@ -302,9 +302,8 @@ describe('Tool Handlers', () => {
         arguments: { confirm: true, project_id: 'test-project' },
       });
 
-      const result = parseResult(response);
-      expect(result.success).toBe(true);
-      expect(result.purgedCount).toBe(1);
+      const text = parseActionText(response);
+      expect(text).toContain('Purged');
 
       // Gone from deleted list
       const deletedResponse = await setup.client.callTool({
@@ -361,10 +360,9 @@ describe('Tool Handlers', () => {
         },
       });
 
-      const result = parseResult(response);
-      expect(result.success).toBe(true);
-      expect(result.dryRun).toBe(true);
-      expect(result.mergeCount).toBe(1);
+      const text = parseActionText(response);
+      expect(text).toContain('Preview');
+      expect(text).toContain('dry run');
     });
 
     it('should merge by topic_key', async () => {
@@ -389,11 +387,9 @@ describe('Tool Handlers', () => {
         },
       });
 
-      const result = parseResult(response);
-      expect(result.success).toBe(true);
-      expect(result.dryRun).toBe(false);
-      expect(result.mergeCount).toBe(1);
-      expect(result.results[0].originalCount).toBe(2);
+      const text = parseActionText(response);
+      expect(text).toContain('Merged');
+      expect(text).toContain('consolidated');
     });
   });
 
@@ -443,11 +439,11 @@ describe('Tool Handlers', () => {
         arguments: { project_id: 'test-project', metadata: { agent: 'test' } },
       });
 
-      const result = parseResult(response);
-      expect(result.success).toBe(true);
-      expect(result.id).toBeDefined();
-      expect(result.uuid).toBeDefined();
-      expect(setup.ctx.activeSessionId).toBe(result.id);
+      const text = parseActionText(response);
+      expect(text).toContain('started');
+      expect(text).toContain('test-project');
+      const sessionId = extractId(text);
+      expect(setup.ctx.activeSessionId).toBe(sessionId);
     });
 
     it('should end active session', async () => {
@@ -461,10 +457,8 @@ describe('Tool Handlers', () => {
         arguments: {},
       });
 
-      const result = parseResult(response);
-      expect(result.success).toBe(true);
-      expect(result.endedAt).toBeDefined();
-      expect(result.endedAt).not.toBeNull();
+      const text = parseActionText(response);
+      expect(text).toContain('ended');
       expect(setup.ctx.activeSessionId).toBeNull();
     });
 
@@ -549,7 +543,7 @@ describe('Tool Handlers', () => {
   // ─── Agent Convenience Tools ───────────────────────────────
 
   describe('mem_save_prompt', () => {
-    it('should save a prompt and return { id, uuid, success }', async () => {
+    it('should save a prompt and return human-readable confirmation', async () => {
       const response = await setup.client.callTool({
         name: 'mem_save_prompt',
         arguments: {
@@ -558,10 +552,9 @@ describe('Tool Handlers', () => {
         },
       });
 
-      const result = parseResult(response);
-      expect(result.success).toBe(true);
-      expect(result.id).toBeDefined();
-      expect(result.uuid).toBeDefined();
+      const text = parseActionText(response);
+      expect(text).toContain('saved');
+      expect(text).toContain('test-project');
     });
 
     it('should auto-create session if none active', async () => {
@@ -572,8 +565,8 @@ describe('Tool Handlers', () => {
         arguments: { content: 'Test prompt' },
       });
 
-      const result = parseResult(response);
-      expect(result.success).toBe(true);
+      const text = parseActionText(response);
+      expect(text).toContain('saved');
       expect(setup.ctx.activeSessionId).not.toBeNull();
     });
   });
@@ -617,8 +610,8 @@ describe('Tool Handlers', () => {
         arguments: { title: 'Fixed N+1 Query in UserList' },
       });
 
-      const result = parseResult(response);
-      expect(result.suggested_key).toBe('fixed-n-1-query-in-userlist');
+      const text = parseActionText(response);
+      expect(text).toContain('fixed-n-1-query-in-userlist');
     });
 
     it('should add type prefix when provided', async () => {
@@ -627,18 +620,18 @@ describe('Tool Handlers', () => {
         arguments: { title: 'Auth Model', type: 'decision' },
       });
 
-      const result = parseResult(response);
-      expect(result.suggested_key).toBe('decision/auth-model');
+      const text = parseActionText(response);
+      expect(text).toContain('decision/auth-model');
     });
 
-    it('should return empty when no input provided', async () => {
+    it('should return error when no input provided', async () => {
       const response = await setup.client.callTool({
         name: 'mem_suggest_topic_key',
         arguments: {},
       });
 
-      const result = parseResult(response);
-      expect(result.suggested_key).toBe('');
+      const text = parseActionText(response);
+      expect(text).toContain('provide at least');
     });
   });
 
@@ -652,14 +645,15 @@ describe('Tool Handlers', () => {
         },
       });
 
-      const result = parseResult(response);
-      expect(result.success).toBe(true);
-      expect(result.id).toBeDefined();
+      const text = parseActionText(response);
+      expect(text).toContain('Session summary saved');
+      expect(text).toContain('test-project');
 
-      // Verify it's a summary type
+      // Extract observation ID from message and verify via get_observation
+      const obsId = extractId(text);
       const getResponse = await setup.client.callTool({
         name: 'mem_get_observation',
-        arguments: { id: result.id },
+        arguments: { id: obsId },
       });
       const obs = parseResult(getResponse);
       expect(obs.type).toBe('summary');
@@ -678,20 +672,19 @@ describe('Tool Handlers', () => {
         },
       });
 
-      const result = parseResult(response);
-      expect(result.captured).toBe(3);
-      expect(result.observations).toHaveLength(3);
+      const text = parseActionText(response);
+      expect(text).toContain('Captured 3 learnings');
 
-      // Verify type is learning
-      const getResponse = await setup.client.callTool({
-        name: 'mem_get_observation',
-        arguments: { id: result.observations[0].id },
+      // Verify learnings were created via search
+      const searchResponse = await setup.client.callTool({
+        name: 'mem_search',
+        arguments: { type: 'learning', project_id: 'test-project' },
       });
-      const obs = parseResult(getResponse);
-      expect(obs.type).toBe('learning');
+      const searchResult = parseResult(searchResponse);
+      expect(searchResult.total).toBe(3);
     });
 
-    it('should return 0 when no learning sections found', async () => {
+    it('should return message when no learning sections found', async () => {
       const response = await setup.client.callTool({
         name: 'mem_capture_passive',
         arguments: {
@@ -700,9 +693,8 @@ describe('Tool Handlers', () => {
         },
       });
 
-      const result = parseResult(response);
-      expect(result.captured).toBe(0);
-      expect(result.observations).toHaveLength(0);
+      const text = parseActionText(response);
+      expect(text).toContain('No learning sections found');
     });
 
     it('should deduplicate similar learnings within batch', async () => {
@@ -714,10 +706,12 @@ describe('Tool Handlers', () => {
         },
       });
 
-      const result = parseResult(response);
+      const text = parseActionText(response);
       // The first two are very similar, should deduplicate to 1 + the different one
-      expect(result.captured).toBeLessThanOrEqual(3);
-      expect(result.captured).toBeGreaterThanOrEqual(2);
+      const capturedMatch = text.match(/Captured (\d+) learning/);
+      const captured = capturedMatch ? parseInt(capturedMatch[1], 10) : 0;
+      expect(captured).toBeLessThanOrEqual(3);
+      expect(captured).toBeGreaterThanOrEqual(2);
     });
 
     it('should deduplicate against existing learnings in DB (cross-call)', async () => {
@@ -733,9 +727,8 @@ describe('Tool Handlers', () => {
         },
       });
 
-      const firstResult = parseResult(firstResponse);
-      expect(firstResult.captured).toBe(3);
-      expect(firstResult.observations).toHaveLength(3);
+      const firstText = parseActionText(firstResponse);
+      expect(firstText).toContain('Captured 3 learnings');
 
       // Second call with identical content — should detect all as duplicates
       const secondResponse = await setup.client.callTool({
@@ -747,10 +740,9 @@ describe('Tool Handlers', () => {
         },
       });
 
-      const secondResult = parseResult(secondResponse);
-      expect(secondResult.captured).toBe(0);
-      expect(secondResult.duplicates).toBe(3);
-      expect(secondResult.observations).toHaveLength(0);
+      const secondText = parseActionText(secondResponse);
+      expect(secondText).toContain('Captured 0 learnings');
+      expect(secondText).toContain('3 duplicates');
     });
   });
 
