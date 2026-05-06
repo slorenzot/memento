@@ -298,38 +298,73 @@ Closes #42
 
 ## Workflows
 
+### Issue & Fix Workflow (MANDATORY)
+
+**Trigger**: Any code change — bug fix, feature, refactor, docs update
+
+**NO se commitea directo a `main`. SIEMPRE branch + PR.**
+
+```
+1. Crear Issue (bug/feature/docs) en GitHub
+2. Crear branch desde main:
+   - fix/{issue}-{description}   (bugs)
+   - feat/{issue}-{description}  (features)
+   - docs/{issue}-{description}  (docs)
+3. Implementar cambio + tests en el branch
+4. Ejecutar tests: bun test
+5. Crear PR con formato:
+   - Título: tipo(scope): descripción
+   - Body: descripción del cambio + "Fixes #{issue}" o "Closes #{issue}"
+6. PR merge → cierra Issue automáticamente
+```
+
+**Reglas**:
+- NUNCA commit directo a `main` — siempre branch + PR
+- El commit message usa `Fixes #{issue}` o `Closes #{issue}` en el body del PR, NO en el commit
+- Un Issue se cierra cuando el PR se mergea, no cuando se commitea
+- Si el Issue no existe, crearlo ANTES de empezar a codear
+- Los tests (`bun test`) DEBEN pasar antes de crear el PR
+
 ### Memento vs Engram Comparison Test
 
 **Trigger**: When user asks to compare "Memento vs Engram" or "ejecuta la prueba comparativa"
 
+**Issue tracker**: #42 (reemplaza #31, cerrado con 6 runs)
+
 **Workflow**:
 
-1. **Read the test plan**: Issue #31 → `docs/comparison-plan.md`
-2. **Execute 5 phases** using `memento_mem_*` tools against project `memento-comparison-test`:
-   - Phase 1: Initialization — `mem_session_start` + `mem_health`
-   - Phase 2: Decision Capture — 4 fixtures (decision, note, discovery, bug) via `mem_save`
-   - Phase 3: Context Retrieval — search by keyword, type, project + `mem_get_observation`
-   - Phase 4: Mutation & Lifecycle — `mem_update`, `mem_delete`, `mem_restore`, `mem_merge` (dry_run), `mem_export`
-   - Phase 5: Session Close — manual session summary via `mem_save` + `mem_session_end`
-3. **Also test Memento-exclusive tools**: `mem_timeline`, `mem_stats`, `mem_config`, `mem_list_deleted`
-4. **Generate results** using the comment template from [#31 comment](https://github.com/slorenzot/memento/issues/31#issuecomment-4387993340):
-   - Scoring table (Functionality 40%, Data Model 25%, API Ergonomics 20%, Exclusive 15%)
-   - Results by phase table
-   - Capability matrix (exclusive tools per system)
+1. **Read the test plan**: `docs/comparison-plan.md`
+2. **Read previous results**: `docs/comparison-results.md`
+3. **Execute 5 phases** using BOTH `memento_mem_*` AND `engram_mem_*` tools against project `memento-comparison-test`:
+   - Phase 1: Initialization — `mem_session_start` + `mem_health` (Memento) / `engram_mem_session_start` + `engram_mem_context` (Engram)
+   - Phase 2: Decision Capture — 4 fixtures via `mem_save` + 5 Issue #33 tools (`mem_save_prompt`, `mem_context`, `mem_suggest_topic_key`, `mem_session_summary`, `mem_capture_passive`)
+   - Phase 3: Context Retrieval — search by keyword, type, project + `mem_get_observation` + verify new types (`learning`, `summary`)
+   - Phase 4: Mutation & Lifecycle — `mem_update`, `mem_delete`, `mem_restore`, `mem_merge` (dry_run), `mem_export` + cross-call dedup verification
+   - Phase 5: Session Close — `mem_session_summary` (NATIVE) + `mem_capture_passive` (dedup test) + `mem_session_end`
+4. **Also test Memento-exclusive tools**: `mem_timeline`, `mem_stats`, `mem_config`, `mem_health`, `mem_list_deleted`
+5. **Generate results** with scoring table:
+   - Scoring: Functionality 40%, Data Model 25%, API Ergonomics 20%, Exclusive 15%
+   - Results by phase table (AMBOS sistemas)
+   - Capability matrix (23 Memento tools, 11 Engram tools)
+   - Bugs found table
    - Key findings
    - Verdict
-5. **Post results as comment** on Issue #31 via `gh issue comment 31`
-6. **Save full report** to `docs/comparison-results.md`
-7. **Update Issue #31 body** with checkbox status and scores
+6. **Post results as comment** on Issue #42 via `gh issue comment 42`
+7. **Update** `docs/comparison-results.md` with latest run data
+8. **Commit changes** following Issue & Fix Workflow (branch + PR)
+
+**Current state**: Run 6 completed — Memento 9.07 vs Engram 8.30
 
 **Fixture data**: 4 observations with topic_keys (`architecture/validation`, `pattern/fts5-triggers`, `discovery/sqlite-wal`, `bugfix/fts5-special-chars`)
 
 **Honesty Rules (mandatory)**:
 
 - ✅ ONLY for operations that were **EXECUTED AND VERIFIED** during the test
-- ⚠️ Operation works but via manual workaround (no native tool)
+- ⚠️ Operation works but has known limitations (document them)
 - ❌ Operation failed or tool doesn't exist
 - ❓ Operation **cannot be verified** — tool not available in session
-- **NEVER** mark ✅ for capabilities documented but not tested
-- If Engram tools (`engram_mem_*`) are not connected: mark as `❓ No verificable`, NOT `✅ Nativo`
+- **NEVER** mark ✅ for capabilities documented but not tested (Run 5 did this — Run 6 caught it)
+- **ALWAYS** execute `mem_capture_passive` twice with same content to verify dedup
+- **ALWAYS** use `mem_session_summary` NATIVE tool, not `mem_save` with type "summary"
 - Document what was **actually tested** vs what was **assumed from specs**
+- If a tool is marked ✅ in the capability matrix, it MUST have been executed in at least one run
