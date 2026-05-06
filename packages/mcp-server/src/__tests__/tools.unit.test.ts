@@ -100,7 +100,7 @@ describe('Tool Handlers', () => {
   // ─── mem_search ───────────────────────────────────────────
 
   describe('mem_search', () => {
-    it('should search with FTS5 query and return { total, observations }', async () => {
+    it('should search with FTS5 query and return Markdown observation list', async () => {
       // Seed data
       const session = await seedSession(setup.engine, 'test-project');
       await seedObservation(setup.engine, session.id, {
@@ -119,10 +119,10 @@ describe('Tool Handlers', () => {
         arguments: { query: 'React', project_id: 'test-project' },
       });
 
-      const result = parseResult(response);
-      expect(result.total).toBe(1);
-      expect(result.observations).toHaveLength(1);
-      expect(result.observations[0].title).toBe('React patterns');
+      const text = parseActionText(response);
+      expect(text).toContain('Found 1 observation');
+      expect(text).toContain('React patterns');
+      expect(text).not.toContain('Vue patterns');
     });
 
     it('should filter by type', async () => {
@@ -135,9 +135,10 @@ describe('Tool Handlers', () => {
         arguments: { type: 'bug', project_id: 'test-project' },
       });
 
-      const result = parseResult(response);
-      expect(result.total).toBe(1);
-      expect(result.observations[0].type).toBe('bug');
+      const text = parseActionText(response);
+      expect(text).toContain('Found 1 observation');
+      expect(text).toContain('[bug]');
+      expect(text).not.toContain('[decision]');
     });
 
     it('should return all when no query provided', async () => {
@@ -150,15 +151,15 @@ describe('Tool Handlers', () => {
         arguments: { project_id: 'test-project' },
       });
 
-      const result = parseResult(response);
-      expect(result.total).toBe(2);
+      const text = parseActionText(response);
+      expect(text).toContain('Found 2 observations');
     });
   });
 
   // ─── mem_get_observation ──────────────────────────────────
 
   describe('mem_get_observation', () => {
-    it('should return full observation by ID', async () => {
+    it('should return full observation by ID as Markdown', async () => {
       const session = await seedSession(setup.engine, 'test-project');
       const obs = await seedObservation(setup.engine, session.id, {
         title: 'Full Content Test',
@@ -171,10 +172,10 @@ describe('Tool Handlers', () => {
         arguments: { id: obs.id },
       });
 
-      const result = parseResult(response);
-      expect(result.id).toBe(obs.id);
-      expect(result.title).toBe('Full Content Test');
-      expect(result.content).toContain('full content');
+      const text = parseActionText(response);
+      expect(text).toContain(`#${obs.id}`);
+      expect(text).toContain('Full Content Test');
+      expect(text).toContain('full content that should be returned');
     });
 
     it('should return error for non-existent ID', async () => {
@@ -214,10 +215,10 @@ describe('Tool Handlers', () => {
         name: 'mem_get_observation',
         arguments: { id: obs.id },
       });
-      const updated = parseResult(getResponse);
-      expect(updated.title).toBe('Updated Title');
-      expect(updated.type).toBe('bug');
-      expect(updated.content).toBe('Original content'); // unchanged
+      const updatedText = parseActionText(getResponse);
+      expect(updatedText).toContain('Updated Title');
+      expect(updatedText).toContain('[bug]');
+      expect(updatedText).toContain('Original content'); // unchanged
     });
 
     it('should return error for non-existent ID', async () => {
@@ -251,8 +252,8 @@ describe('Tool Handlers', () => {
         name: 'mem_search',
         arguments: { project_id: 'test-project' },
       });
-      const searchResult = parseResult(searchResponse);
-      expect(searchResult.total).toBe(0);
+      const searchText = parseActionText(searchResponse);
+      expect(searchText).toContain('Found 0 observations');
     });
 
     it('should restore soft-deleted observation', async () => {
@@ -274,8 +275,8 @@ describe('Tool Handlers', () => {
         name: 'mem_search',
         arguments: { project_id: 'test-project' },
       });
-      const searchResult = parseResult(searchResponse);
-      expect(searchResult.total).toBe(1);
+      const searchText = parseActionText(searchResponse);
+      expect(searchText).toContain('Found 1 observation');
     });
 
     it('should reject purge without confirm', async () => {
@@ -310,15 +311,15 @@ describe('Tool Handlers', () => {
         name: 'mem_list_deleted',
         arguments: { project_id: 'test-project' },
       });
-      const deleted = parseResult(deletedResponse);
-      expect(deleted.total).toBe(0);
+      const deletedText = parseActionText(deletedResponse);
+      expect(deletedText).toContain('Found 0 observations');
     });
   });
 
   // ─── mem_list_deleted ─────────────────────────────────────
 
   describe('mem_list_deleted', () => {
-    it('should list deleted observations', async () => {
+    it('should list deleted observations as Markdown', async () => {
       const session = await seedSession(setup.engine, 'test-project');
       const obs = await seedObservation(setup.engine, session.id, { projectId: 'test-project' });
       await setup.client.callTool({ name: 'mem_delete', arguments: { id: obs.id } });
@@ -328,9 +329,9 @@ describe('Tool Handlers', () => {
         arguments: { project_id: 'test-project' },
       });
 
-      const result = parseResult(response);
-      expect(result.total).toBe(1);
-      expect(result.observations[0].id).toBe(obs.id);
+      const text = parseActionText(response);
+      expect(text).toContain('Found 1 observation');
+      expect(text).toContain(`#${obs.id}`);
     });
   });
 
@@ -477,7 +478,7 @@ describe('Tool Handlers', () => {
   // ─── Utility Tools ────────────────────────────────────────
 
   describe('mem_timeline', () => {
-    it('should return chronological observations', async () => {
+    it('should return chronological observations as Markdown', async () => {
       const session = await seedSession(setup.engine, 'test-project');
       await seedObservation(setup.engine, session.id, { title: 'First', projectId: 'test-project' });
       await seedObservation(setup.engine, session.id, { title: 'Second', projectId: 'test-project' });
@@ -487,14 +488,15 @@ describe('Tool Handlers', () => {
         arguments: { project_id: 'test-project' },
       });
 
-      const result = parseResult(response);
-      expect(result.total).toBe(2);
-      expect(result.observations).toHaveLength(2);
+      const text = parseActionText(response);
+      expect(text).toContain('Found 2 observations');
+      expect(text).toContain('First');
+      expect(text).toContain('Second');
     });
   });
 
   describe('mem_stats', () => {
-    it('should return memory statistics', async () => {
+    it('should return memory statistics as Markdown', async () => {
       const session = await seedSession(setup.engine, 'test-project');
       await seedObservation(setup.engine, session.id, { type: 'bug', projectId: 'test-project' });
       await seedObservation(setup.engine, session.id, { type: 'note', projectId: 'test-project' });
@@ -504,39 +506,38 @@ describe('Tool Handlers', () => {
         arguments: {},
       });
 
-      const result = parseResult(response);
-      expect(result.totalObservations).toBe(2);
-      expect(result.byType).toBeDefined();
-      expect(result.byProject).toBeDefined();
+      const text = parseActionText(response);
+      expect(text).toContain('2 observations');
+      expect(text).toContain('bug(1)');
+      expect(text).toContain('note(1)');
     });
   });
 
   describe('mem_health', () => {
-    it('should report healthy status', async () => {
+    it('should report healthy status as Markdown', async () => {
       const response = await setup.client.callTool({
         name: 'mem_health',
         arguments: {},
       });
 
-      const result = parseResult(response);
-      expect(result.status).toBe('healthy');
-      expect(result.version).toBe('1.0.0');
-      expect(result.databaseHealth).toBe('ok');
+      const text = parseActionText(response);
+      expect(text).toContain('Status: healthy');
+      expect(text).toContain('Version: 1.0.0');
+      expect(text).toContain('Database: ok');
     });
   });
 
   describe('mem_config', () => {
-    it('should return full configuration', async () => {
+    it('should return full configuration as Markdown', async () => {
       const response = await setup.client.callTool({
         name: 'mem_config',
         arguments: {},
       });
 
-      const result = parseResult(response);
-      expect(result.name).toBe('memento');
-      expect(result.version).toBe('1.0.0');
-      expect(result.storage).toBeDefined();
-      expect(result.tools).toHaveLength(23);
+      const text = parseActionText(response);
+      expect(text).toContain('memento v1.0.0');
+      expect(text).toContain('SQLite Persistent');
+      expect(text).toContain('Tools: 23 registered');
     });
   });
 
@@ -572,7 +573,7 @@ describe('Tool Handlers', () => {
   });
 
   describe('mem_context', () => {
-    it('should return recent observations', async () => {
+    it('should return recent observations as Markdown', async () => {
       const session = await seedSession(setup.engine, 'test-project');
       await seedObservation(setup.engine, session.id, { title: 'Context 1', projectId: 'test-project' });
       await seedObservation(setup.engine, session.id, { title: 'Context 2', projectId: 'test-project' });
@@ -582,9 +583,10 @@ describe('Tool Handlers', () => {
         arguments: { project_id: 'test-project' },
       });
 
-      const result = parseResult(response);
-      expect(result.total).toBe(2);
-      expect(result.observations).toHaveLength(2);
+      const text = parseActionText(response);
+      expect(text).toContain('Found 2 observations');
+      expect(text).toContain('Context 1');
+      expect(text).toContain('Context 2');
     });
 
     it('should respect limit parameter', async () => {
@@ -598,8 +600,12 @@ describe('Tool Handlers', () => {
         arguments: { project_id: 'test-project', limit: 2 },
       });
 
-      const result = parseResult(response);
-      expect(result.observations).toHaveLength(2);
+      const text = parseActionText(response);
+      // total should be 5 but only 2 shown
+      expect(text).toContain('Found 5 observations');
+      // Count separators (---) to verify only 2 are shown
+      const separatorCount = (text.match(/---/g) || []).length;
+      expect(separatorCount).toBe(1); // 2 items = 1 separator between them
     });
   });
 
@@ -655,9 +661,9 @@ describe('Tool Handlers', () => {
         name: 'mem_get_observation',
         arguments: { id: obsId },
       });
-      const obs = parseResult(getResponse);
-      expect(obs.type).toBe('summary');
-      expect(obs.metadata.isSessionSummary).toBe(true);
+      const obsText = parseActionText(getResponse);
+      expect(obsText).toContain('[summary]');
+      expect(obsText).toContain('Session Summary');
     });
   });
 
@@ -680,8 +686,8 @@ describe('Tool Handlers', () => {
         name: 'mem_search',
         arguments: { type: 'learning', project_id: 'test-project' },
       });
-      const searchResult = parseResult(searchResponse);
-      expect(searchResult.total).toBe(3);
+      const searchText = parseActionText(searchResponse);
+      expect(searchText).toContain('Found 3 observations');
     });
 
     it('should return message when no learning sections found', async () => {
@@ -749,7 +755,7 @@ describe('Tool Handlers', () => {
   // ─── Updated Tool Behavior ────────────────────────────────
 
   describe('mem_timeline (updated)', () => {
-    it('should return observations in ASC chronological order', async () => {
+    it('should return observations in ASC chronological order as Markdown', async () => {
       const session = await seedSession(setup.engine, 'test-project');
       const first = await seedObservation(setup.engine, session.id, { title: 'First', projectId: 'test-project' });
       const second = await seedObservation(setup.engine, session.id, { title: 'Second', projectId: 'test-project' });
@@ -759,15 +765,17 @@ describe('Tool Handlers', () => {
         arguments: { project_id: 'test-project' },
       });
 
-      const result = parseResult(response);
-      expect(result.total).toBe(2);
-      expect(result.observations[0].id).toBe(first.id);
-      expect(result.observations[1].id).toBe(second.id);
+      const text = parseActionText(response);
+      expect(text).toContain('Found 2 observations');
+      // First should appear before Second in the text (chronological order)
+      const firstIdx = text.indexOf(`#${first.id}`);
+      const secondIdx = text.indexOf(`#${second.id}`);
+      expect(firstIdx).toBeLessThan(secondIdx);
     });
   });
 
   describe('mem_stats (updated)', () => {
-    it('should use getDashboardStats for accurate counts', async () => {
+    it('should use getDashboardStats for accurate counts as Markdown', async () => {
       const session = await seedSession(setup.engine, 'test-project');
       await seedObservation(setup.engine, session.id, { type: 'bug', projectId: 'test-project' });
       await seedObservation(setup.engine, session.id, { type: 'note', projectId: 'test-project' });
@@ -778,11 +786,11 @@ describe('Tool Handlers', () => {
         arguments: {},
       });
 
-      const result = parseResult(response);
-      expect(result.totalObservations).toBe(3);
-      expect(result.byType.bug).toBe(1);
-      expect(result.byType.note).toBe(1);
-      expect(result.byType.decision).toBe(1);
+      const text = parseActionText(response);
+      expect(text).toContain('3 observations');
+      expect(text).toContain('bug(1)');
+      expect(text).toContain('note(1)');
+      expect(text).toContain('decision(1)');
     });
   });
 });

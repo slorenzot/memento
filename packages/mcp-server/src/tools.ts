@@ -15,6 +15,15 @@ import type { ExportFormat, MergeStrategy, Observation } from '@slorenzot/mement
 import { existsSync } from 'fs';
 import { join } from 'path';
 import * as fs from 'fs';
+import {
+  formatObservation,
+  formatObservationList,
+  formatSession,
+  formatSessionList,
+  formatStats,
+  formatHealth,
+  formatConfig,
+} from './formatters.js';
 
 // ─── Context ────────────────────────────────────────────────
 
@@ -113,7 +122,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_search',
-    'Search observations using full-text search (FTS5). Start with small limits and expand only if needed. Results are TRUNCATED — use mem_get_observation with the returned ID for full content. Returns: { total, observations: [{ id, title, type, topicKey, projectId, createdAt }] }.',
+    'Search observations using full-text search (FTS5). Start with small limits and expand only if needed. Results are TRUNCATED — use mem_get_observation with the returned ID for full content. Returns: human-readable Markdown with observation list.',
     {
       query: z.string().optional().describe('Search query (FTS5 syntax)'),
       type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning', 'pattern', 'architecture', 'config', 'preference']).optional().describe('Filter by observation type'),
@@ -139,7 +148,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         });
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text', text: formatObservationList(result) }],
         };
       } catch (error: unknown) {
         return handleToolError(error, ctx);
@@ -149,7 +158,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_get_observation',
-    'Get full untruncated content of a specific observation by ID. Use this AFTER mem_search, which returns truncated results — pass the observation ID from search results to get the complete content including the full content field. Returns: full observation object with all fields.',
+    'Get full untruncated content of a specific observation by ID. Use this AFTER mem_search, which returns truncated results — pass the observation ID from search results to get the complete content including the full content field. Returns: human-readable Markdown with full observation details.',
     {
       id: z.number().describe('Observation ID (from mem_search results)'),
       include_deleted: z.boolean().optional().describe('Include soft-deleted observations (default: false)'),
@@ -160,7 +169,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         const obs = await ctx.engine.getObservation(id, include_deleted);
         if (!obs) throw new Error(`Observation ${id} not found`);
         return {
-          content: [{ type: 'text', text: JSON.stringify(obs, null, 2) }],
+          content: [{ type: 'text', text: formatObservation(obs) }],
         };
       } catch (error: unknown) {
         return handleToolError(error, ctx);
@@ -287,7 +296,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_list_deleted',
-    'List soft-deleted observations that can be restored with mem_restore or permanently removed with mem_purge. Use this to review what has been deleted before deciding to restore or purge. Returns: { total, observations }.',
+    'List soft-deleted observations that can be restored with mem_restore or permanently removed with mem_purge. Use this to review what has been deleted before deciding to restore or purge. Returns: human-readable Markdown with deleted observation list.',
     {
       project_id: z.string().optional().describe('Filter by project identifier'),
       limit: z.number().optional().describe('Max results (default: 20)'),
@@ -297,7 +306,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
       try {
         const result = await ctx.engine.listDeleted({ projectId: project_id, limit });
         return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text', text: formatObservationList(result) }],
         };
       } catch (error: unknown) {
         return handleToolError(error, ctx);
@@ -365,7 +374,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_export',
-    'Export observations to JSON, XML, or TXT format. Use filters to reduce scope. Returns: { format, recordCount, exportedAt, content }. Useful for backups, migration, or sharing memory across projects.',
+    'Export observations to JSON, XML, or TXT format. Use filters to reduce scope. Returns: JSON object { format, recordCount, exportedAt, content }. Useful for backups, migration, or sharing memory across projects.',
     {
       format: z.enum(['json', 'xml', 'txt']).optional().describe('Export format (default: json)'),
       project_id: z.string().optional().describe('Filter by project identifier'),
@@ -472,7 +481,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_list_sessions',
-    'List all sessions, optionally filtered by project. Use this to find session IDs for mem_get_session, or to review session history. Returns: { sessions, total }.',
+    'List all sessions, optionally filtered by project. Use this to find session IDs for mem_get_session, or to review session history. Returns: human-readable Markdown with session list.',
     {
       project_id: z.string().optional().describe('Filter by project identifier'),
       limit: z.number().optional().describe('Max sessions to return (default: 20)'),
@@ -489,11 +498,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(
-                { sessions: result.sessions, total: result.total },
-                null,
-                2
-              ),
+              text: formatSessionList({ sessions: result.sessions, total: result.total }),
             },
           ],
         };
@@ -505,7 +510,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_get_session',
-    'Get full details of a specific session by ID, including metadata and timestamps. Use mem_list_sessions first to find session IDs. Returns: session object with id, uuid, projectId, startedAt, endedAt, metadata.',
+    'Get full details of a specific session by ID, including metadata and timestamps. Use mem_list_sessions first to find session IDs. Returns: human-readable Markdown with session details.',
     {
       id: z.number().describe('Session ID (from mem_list_sessions)'),
     },
@@ -515,7 +520,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         const s = await ctx.engine.getSession(id);
         if (!s) throw new Error(`Session ${id} not found`);
         return {
-          content: [{ type: 'text', text: JSON.stringify(s, null, 2) }],
+          content: [{ type: 'text', text: formatSession(s) }],
         };
       } catch (error: unknown) {
         return handleToolError(error, ctx);
@@ -572,7 +577,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_context',
-    'Get recent observations for context recovery — what was done before compaction or in previous sessions. Unlike mem_search, this does NOT use FTS5, returns observations ordered by created_at DESC with session metadata. Returns: { total, observations }.',
+    'Get recent observations for context recovery — what was done before compaction or in previous sessions. Unlike mem_search, this does NOT use FTS5, returns observations ordered by created_at DESC with session metadata. Returns: human-readable Markdown with recent observation list.',
     {
       project_id: z.string().optional().describe('Filter by project identifier'),
       limit: z.number().optional().describe('Max results (default: 20)'),
@@ -586,7 +591,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         });
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text', text: formatObservationList(result) }],
         };
       } catch (error: unknown) {
         return handleToolError(error, ctx);
@@ -821,7 +826,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_timeline',
-    'Get chronological timeline of observations across all projects or filtered by project. Unlike mem_search which uses FTS5 relevance ranking, this returns observations in strict chronological order. Returns: { total, observations }.',
+    'Get chronological timeline of observations across all projects or filtered by project. Unlike mem_search which uses FTS5 relevance ranking, this returns observations in strict chronological order. Returns: human-readable Markdown with chronological observation list.',
     {
       project_id: z.string().optional().describe('Filter by project identifier'),
       limit: z.number().optional().describe('Max results to return'),
@@ -836,7 +841,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           offset,
         });
         return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text', text: formatObservationList(result) }],
         };
       } catch (error: unknown) {
         return handleToolError(error, ctx);
@@ -846,7 +851,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_stats',
-    'Get memory statistics: total observations, count by type (decision/bug/discovery/note), count by project, and active session ID. Useful for understanding memory usage at a glance. Returns: { totalObservations, deletedObservations, byType, byProject, activeSessionId }.',
+    'Get memory statistics: total observations, count by type (decision/bug/discovery/note), count by project, and active session ID. Useful for understanding memory usage at a glance. Returns: human-readable Markdown with statistics summary.',
     {},
     { title: 'Memory statistics', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     async () => {
@@ -857,17 +862,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(
-                {
-                  totalObservations: stats.totalObservations,
-                  deletedObservations: stats.deletedObservations,
-                  byType: stats.byType,
-                  byProject: stats.byProject,
-                  activeSessionId: ctx.activeSessionId,
-                },
-                null,
-                2
-              ),
+              text: formatStats(stats, ctx.activeSessionId),
             },
           ],
         };
@@ -879,7 +874,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_health',
-    'Check system health: database status, version, storage type, database path, project ID, and observation count. Use this to diagnose connectivity or initialization issues. Returns: { status, version, storage, databasePath, projectId, databaseHealth, observations, activeSession }.',
+    'Check system health: database status, version, storage type, database path, project ID, and observation count. Use this to diagnose connectivity or initialization issues. Returns: human-readable Markdown with health status.',
     {},
     { title: 'Health check', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     async () => {
@@ -892,21 +887,17 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(
-                {
-                  status: isHealthy ? 'healthy' : 'unhealthy',
-                  version: '1.0.0',
-                  storage: 'sqlite-persistent',
-                  databasePath: ctx.dbPath,
-                  projectId: ctx.projectId,
-                  databaseHealth: isHealthy ? 'ok' : 'failed',
-                  ...(initError && { initError: initError.message }),
-                  observations: result.total,
-                  activeSession: ctx.activeSessionId,
-                },
-                null,
-                2
-              ),
+              text: formatHealth({
+                status: isHealthy ? 'healthy' : 'unhealthy',
+                version: '1.0.0',
+                storage: 'sqlite-persistent',
+                databasePath: ctx.dbPath,
+                projectId: ctx.projectId,
+                databaseHealth: isHealthy ? 'ok' : 'failed',
+                ...(initError && { initError: initError.message }),
+                observations: result.total,
+                activeSession: ctx.activeSessionId,
+              }),
             },
           ],
         };
@@ -918,7 +909,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_config',
-    'Get current Memento configuration and system status: storage path, project ID, SQLite details, disk usage (with WAL/SHM sizes), observation statistics by type, environment info (Node/Bun versions), and list of all available tools. Returns: full configuration object.',
+    'Get current Memento configuration and system status: storage path, project ID, SQLite details, disk usage (with WAL/SHM sizes), observation statistics by type, environment info (Node/Bun versions), and list of all available tools. Returns: human-readable Markdown with full configuration.',
     {},
     { title: 'System configuration', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     async () => {
@@ -937,63 +928,59 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(
-                {
-                  name: 'memento',
-                  version: '1.0.0',
-                  config: {
-                    storagePath: currentDbPath,
-                    projectId: ctx.projectId,
-                    projectRoot: process.cwd(),
-                    hasConfigFile: existsSync(join(process.cwd(), '.mementorc')),
-                  },
-                  storage: {
-                    type: 'SQLite Persistent',
-                    method: 'bun:sqlite',
-                    databasePath: currentDbPath,
-                    walEnabled: true,
-                  },
-                  diskUsage: dbStats,
-                  statistics: {
-                    totalObservations: searchResult.total,
-                    byType,
-                    activeSession: ctx.activeSessionId,
-                  },
-                  environment: {
-                    nodeVersion: process.version,
-                    platform: process.platform,
-                    arch: process.arch,
-                    bunVersion: (process as { versions?: { bun?: string } }).versions?.bun || 'unknown',
-                  },
-                  tools: [
-                    'mem_save',
-                    'mem_search',
-                    'mem_get_observation',
-                    'mem_update',
-                    'mem_delete',
-                    'mem_restore',
-                    'mem_purge',
-                    'mem_list_deleted',
-                    'mem_merge',
-                    'mem_export',
-                    'mem_session_start',
-                    'mem_session_end',
-                    'mem_list_sessions',
-                    'mem_get_session',
-                    'mem_save_prompt',
-                    'mem_context',
-                    'mem_suggest_topic_key',
-                    'mem_session_summary',
-                    'mem_capture_passive',
-                    'mem_timeline',
-                    'mem_stats',
-                    'mem_health',
-                    'mem_config',
-                  ],
+              text: formatConfig({
+                name: 'memento',
+                version: '1.0.0',
+                config: {
+                  storagePath: currentDbPath,
+                  projectId: ctx.projectId,
+                  projectRoot: process.cwd(),
+                  hasConfigFile: existsSync(join(process.cwd(), '.mementorc')),
                 },
-                null,
-                2
-              ),
+                storage: {
+                  type: 'SQLite Persistent',
+                  method: 'bun:sqlite',
+                  databasePath: currentDbPath,
+                  walEnabled: true,
+                },
+                diskUsage: dbStats,
+                statistics: {
+                  totalObservations: searchResult.total,
+                  byType,
+                  activeSession: ctx.activeSessionId,
+                },
+                environment: {
+                  nodeVersion: process.version,
+                  platform: process.platform,
+                  arch: process.arch,
+                  bunVersion: (process as { versions?: { bun?: string } }).versions?.bun || 'unknown',
+                },
+                tools: [
+                  'mem_save',
+                  'mem_search',
+                  'mem_get_observation',
+                  'mem_update',
+                  'mem_delete',
+                  'mem_restore',
+                  'mem_purge',
+                  'mem_list_deleted',
+                  'mem_merge',
+                  'mem_export',
+                  'mem_session_start',
+                  'mem_session_end',
+                  'mem_list_sessions',
+                  'mem_get_session',
+                  'mem_save_prompt',
+                  'mem_context',
+                  'mem_suggest_topic_key',
+                  'mem_session_summary',
+                  'mem_capture_passive',
+                  'mem_timeline',
+                  'mem_stats',
+                  'mem_health',
+                  'mem_config',
+                ],
+              }),
             },
           ],
         };
