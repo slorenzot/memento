@@ -705,7 +705,7 @@ describe('Tool Handlers', () => {
       expect(result.observations).toHaveLength(0);
     });
 
-    it('should deduplicate similar learnings', async () => {
+    it('should deduplicate similar learnings within batch', async () => {
       const response = await setup.client.callTool({
         name: 'mem_capture_passive',
         arguments: {
@@ -718,6 +718,39 @@ describe('Tool Handlers', () => {
       // The first two are very similar, should deduplicate to 1 + the different one
       expect(result.captured).toBeLessThanOrEqual(3);
       expect(result.captured).toBeGreaterThanOrEqual(2);
+    });
+
+    it('should deduplicate against existing learnings in DB (cross-call)', async () => {
+      const learningContent = '## Key Learnings:\n- Always use prepared statements for SQL\n- WAL mode improves write performance\n- Test dedup across multiple calls';
+
+      // First call — should create 3 learnings
+      const firstResponse = await setup.client.callTool({
+        name: 'mem_capture_passive',
+        arguments: {
+          content: learningContent,
+          project_id: 'test-project',
+          source: 'cross-call-dedup-test',
+        },
+      });
+
+      const firstResult = parseResult(firstResponse);
+      expect(firstResult.captured).toBe(3);
+      expect(firstResult.observations).toHaveLength(3);
+
+      // Second call with identical content — should detect all as duplicates
+      const secondResponse = await setup.client.callTool({
+        name: 'mem_capture_passive',
+        arguments: {
+          content: learningContent,
+          project_id: 'test-project',
+          source: 'cross-call-dedup-test',
+        },
+      });
+
+      const secondResult = parseResult(secondResponse);
+      expect(secondResult.captured).toBe(0);
+      expect(secondResult.duplicates).toBe(3);
+      expect(secondResult.observations).toHaveLength(0);
     });
   });
 
