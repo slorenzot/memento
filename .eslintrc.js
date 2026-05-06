@@ -28,5 +28,5 @@ module.exports = {
     '@typescript-eslint/no-unnecessary-type-assertion': 'off',
     'no-console': 'off',
   },
-  ignorePatterns: ['dist', 'node_modules', '*.js', '*.config.js', '**/*.test.ts', '**/*.test.tsx', 'packages/cli'],
+  ignorePatterns: ['dist', 'node_modules', '*.js', '*.config.js', '**/*.test.ts', '**/*.test.tsx', 'packages/cli', 'apps/tui', 'packages/web-ui'],
 };
