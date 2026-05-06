@@ -23,9 +23,9 @@ describe('Tool Metadata Quality', () => {
 
   // ─── Tool Count ───────────────────────────────────────────
 
-  it('should register exactly 18 tools', async () => {
+  it('should register exactly 23 tools', async () => {
     const result = await setup.client.listTools();
-    expect(result.tools).toHaveLength(18);
+    expect(result.tools).toHaveLength(23);
   });
 
   // ─── Tool Names ───────────────────────────────────────────
@@ -35,7 +35,9 @@ describe('Tool Metadata Quality', () => {
     const names = result.tools.map((t) => t.name).sort();
 
     const expected = [
+      'mem_capture_passive',
       'mem_config',
+      'mem_context',
       'mem_delete',
       'mem_export',
       'mem_get_observation',
@@ -47,10 +49,13 @@ describe('Tool Metadata Quality', () => {
       'mem_purge',
       'mem_restore',
       'mem_save',
+      'mem_save_prompt',
       'mem_search',
       'mem_session_end',
       'mem_session_start',
+      'mem_session_summary',
       'mem_stats',
+      'mem_suggest_topic_key',
       'mem_timeline',
       'mem_update',
     ].sort();
@@ -100,6 +105,8 @@ describe('Tool Metadata Quality', () => {
     'mem_list_deleted',
     'mem_list_sessions',
     'mem_get_session',
+    'mem_context',
+    'mem_suggest_topic_key',
     'mem_timeline',
     'mem_stats',
     'mem_health',

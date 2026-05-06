@@ -58,7 +58,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
       title: z.string().describe('Short, searchable title (e.g. "Fixed N+1 in UserList")'),
       content: z.string().describe('Structured content: What/Why/Where/Learned format'),
       type: z
-        .enum(['decision', 'bug', 'discovery', 'note'])
+        .enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning'])
         .optional()
         .describe('Type of observation (default: note)'),
       topic_key: z
@@ -113,7 +113,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     'Search observations using full-text search (FTS5). Start with small limits and expand only if needed. Results are TRUNCATED — use mem_get_observation with the returned ID for full content. Returns: { total, observations: [{ id, title, type, topicKey, projectId, createdAt }] }.',
     {
       query: z.string().optional().describe('Search query (FTS5 syntax)'),
-      type: z.enum(['decision', 'bug', 'discovery', 'note']).optional().describe('Filter by observation type'),
+      type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning']).optional().describe('Filter by observation type'),
       project_id: z.string().optional().describe('Filter by project identifier'),
       topic_key: z.string().optional().describe('Filter by topic key (exact match)'),
       limit: z.number().optional().describe('Max results (default: 10)'),
@@ -169,7 +169,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
       id: z.number().describe('Observation ID to update'),
       title: z.string().optional().describe('New title (short, searchable)'),
       content: z.string().optional().describe('New content (What/Why/Where/Learned format)'),
-      type: z.enum(['decision', 'bug', 'discovery', 'note']).optional().describe('New observation type'),
+      type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning']).optional().describe('New observation type'),
       topic_key: z.string().optional().describe('New or updated topic key for grouping'),
     },
     { title: 'Update observation', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
@@ -368,7 +368,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     {
       format: z.enum(['json', 'xml', 'txt']).optional().describe('Export format (default: json)'),
       project_id: z.string().optional().describe('Filter by project identifier'),
-      type: z.enum(['decision', 'bug', 'discovery', 'note']).optional().describe('Filter by observation type'),
+      type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning']).optional().describe('Filter by observation type'),
       topic_key: z.string().optional().describe('Filter by topic key'),
       date_from: z.string().optional().describe('ISO date string — export from this date'),
       date_to: z.string().optional().describe('ISO date string — export until this date'),
@@ -483,18 +483,17 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     { title: 'List sessions', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     async ({ project_id, limit }) => {
       try {
-        const result = await ctx.engine.search({ projectId: project_id, limit: limit || 20 });
-        const uniqueSessions = new Set(result.observations.map((o: any) => o.sessionId));
-        const sessions = await Promise.all(
-          Array.from(uniqueSessions).map((id) => ctx.engine.getSession(id))
-        );
+        const result = await ctx.engine.listSessions({
+          projectId: project_id,
+          limit: limit || 20,
+        });
 
         return {
           content: [
             {
               type: 'text',
               text: JSON.stringify(
-                { sessions: sessions.filter(Boolean), total: sessions.length },
+                { sessions: result.sessions, total: result.total },
                 null,
                 2
               ),
@@ -527,6 +526,278 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     }
   );
 
+  // ─── Agent Convenience Tools ────────────────────────────────
+
+  server.tool(
+    'mem_save_prompt',
+    'Save a user prompt to persistent memory for conversation tracking. Auto-creates a session if none is active. Returns: { id, uuid, success }.',
+    {
+      content: z.string().describe('The prompt text to save'),
+      project_id: z.string().optional().describe('Project identifier'),
+      session_id: z.number().optional().describe('Session ID (uses active session if not provided)'),
+    },
+    { title: 'Save prompt', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    async ({ content, project_id, session_id }) => {
+      try {
+        const currentProjectId = project_id || ctx.projectId;
+        let sessionId = session_id || ctx.activeSessionId;
+
+        if (!sessionId) {
+          const session = await ctx.engine.createSession({
+            projectId: currentProjectId,
+            endedAt: null,
+            metadata: {},
+          });
+          sessionId = session.id;
+          ctx.activeSessionId = sessionId;
+        }
+
+        const prompt = await ctx.engine.savePrompt({
+          sessionId,
+          content,
+          projectId: currentProjectId,
+          metadata: {},
+        });
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ id: prompt.id, uuid: prompt.uuid, success: true }, null, 2),
+            },
+          ],
+        };
+      } catch (error: any) {
+        return handleToolError(error, ctx);
+      }
+    }
+  );
+
+  server.tool(
+    'mem_context',
+    'Get recent observations for context recovery — what was done before compaction or in previous sessions. Unlike mem_search, this does NOT use FTS5, returns observations ordered by created_at DESC with session metadata. Returns: { total, observations }.',
+    {
+      project_id: z.string().optional().describe('Filter by project identifier'),
+      limit: z.number().optional().describe('Max results (default: 20)'),
+    },
+    { title: 'Get recent context', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    async ({ project_id, limit }) => {
+      try {
+        const result = await ctx.engine.getRecentContext({
+          projectId: project_id,
+          limit: limit || 20,
+        });
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error: any) {
+        return handleToolError(error, ctx);
+      }
+    }
+  );
+
+  server.tool(
+    'mem_suggest_topic_key',
+    'Suggest a stable topic_key from a title, content, or type. Pure computation — does NOT touch the database. Normalizes text to lowercase-kebab-case with a type prefix. Returns: { suggested_key }.',
+    {
+      title: z.string().optional().describe('Observation title to derive key from'),
+      content: z.string().optional().describe('Observation content to derive key from'),
+      type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning']).optional().describe('Observation type for prefix'),
+    },
+    { title: 'Suggest topic key', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    async ({ title, content, type }) => {
+      try {
+        const source = title || content || '';
+        if (!source) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({ suggested_key: '', error: 'Provide at least a title or content' }, null, 2),
+              },
+            ],
+          };
+        }
+
+        // Normalize: lowercase, replace non-alphanumeric with hyphens, collapse multiple hyphens
+        const base = source
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '')
+          .slice(0, 60);
+
+        const prefix = type ? `${type}/` : '';
+        const suggested_key = `${prefix}${base}`;
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ suggested_key }, null, 2),
+            },
+          ],
+        };
+      } catch (error: any) {
+        return handleToolError(error, ctx);
+      }
+    }
+  );
+
+  server.tool(
+    'mem_session_summary',
+    'Create a session summary observation at the END of a conversation. Saves an observation with type "summary" and a structured format (Goal/Discoveries/Accomplished/Files). Call this BEFORE closing a conversation. Returns: { id, uuid, success }.',
+    {
+      content: z.string().describe('Structured summary content (Goal/Discoveries/Accomplished/Files format)'),
+      project_id: z.string().describe('Project identifier'),
+      session_id: z.number().optional().describe('Session ID (uses active session if not provided)'),
+    },
+    { title: 'Save session summary', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    async ({ content, project_id, session_id }) => {
+      try {
+        const currentProjectId = project_id || ctx.projectId;
+        let sessionId = session_id || ctx.activeSessionId;
+
+        if (!sessionId) {
+          const session = await ctx.engine.createSession({
+            projectId: currentProjectId,
+            endedAt: null,
+            metadata: {},
+          });
+          sessionId = session.id;
+          ctx.activeSessionId = sessionId;
+        }
+
+        const obs = await ctx.engine.createObservation({
+          sessionId,
+          title: `Session Summary — ${new Date().toISOString().split('T')[0]}`,
+          content,
+          type: 'summary',
+          topicKey: null,
+          projectId: currentProjectId,
+          metadata: {
+            isSessionSummary: true,
+            sessionId,
+            endedAt: new Date().toISOString(),
+          },
+        });
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ id: obs.id, uuid: obs.uuid, success: true }, null, 2),
+            },
+          ],
+        };
+      } catch (error: any) {
+        return handleToolError(error, ctx);
+      }
+    }
+  );
+
+  server.tool(
+    'mem_capture_passive',
+    'Parse text to extract learnings from sections like "## Key Learnings:" or "## Aprendizajes Clave:". Creates individual observations with type "learning". Deduplicates by content similarity. Returns: { captured: number, observations: [{ id, title }] }.',
+    {
+      content: z.string().describe('Text content to parse for learnings'),
+      project_id: z.string().optional().describe('Project identifier'),
+      session_id: z.number().optional().describe('Session ID (uses active session if not provided)'),
+      source: z.string().optional().describe('Source description (e.g. "code review", "session notes")'),
+    },
+    { title: 'Capture passive learnings', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    async ({ content, project_id, session_id, source }) => {
+      try {
+        const currentProjectId = project_id || ctx.projectId;
+        let sessionId = session_id || ctx.activeSessionId;
+
+        if (!sessionId) {
+          const session = await ctx.engine.createSession({
+            projectId: currentProjectId,
+            endedAt: null,
+            metadata: {},
+          });
+          sessionId = session.id;
+          ctx.activeSessionId = sessionId;
+        }
+
+        // Extract learning sections
+        const sectionPattern = /(?:^|\n)##\s+(?:Key Learnings|Aprendizajes Clave|Learnings|Lecciones Aprendidas)[:\s]*\n([\s\S]*?)(?=\n##\s|$)/g;
+        const matches = [...content.matchAll(sectionPattern)];
+
+        if (matches.length === 0) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({ captured: 0, observations: [], message: 'No learning sections found' }, null, 2),
+              },
+            ],
+          };
+        }
+
+        // Extract individual items (bullet points or numbered lists)
+        const items: string[] = [];
+        for (const match of matches) {
+          const section = match[1].trim();
+          const lines = section.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
+          for (const line of lines) {
+            // Remove leading bullet/number markers
+            const cleaned = line.replace(/^[-*•]\s+|^\d+[.)]\s+/, '').trim();
+            if (cleaned.length > 5) {
+              items.push(cleaned);
+            }
+          }
+        }
+
+        // Deduplicate by content similarity (simple Jaccard)
+        const uniqueItems: string[] = [];
+        for (const item of items) {
+          const isDuplicate = uniqueItems.some((existing) => {
+            const setA = new Set(existing.toLowerCase().split(/\s+/));
+            const setB = new Set(item.toLowerCase().split(/\s+/));
+            const intersection = [...setA].filter((x) => setB.has(x)).length;
+            const union = new Set([...setA, ...setB]).size;
+            return union > 0 && intersection / union > 0.85;
+          });
+          if (!isDuplicate) {
+            uniqueItems.push(item);
+          }
+        }
+
+        // Create observations
+        const observations: { id: number; title: string }[] = [];
+        for (const item of uniqueItems) {
+          const title = item.length > 80 ? item.slice(0, 77) + '...' : item;
+          const obs = await ctx.engine.createObservation({
+            sessionId,
+            title,
+            content: item,
+            type: 'learning',
+            topicKey: source ? `learnings/${source.toLowerCase().replace(/\s+/g, '-')}` : null,
+            projectId: currentProjectId,
+            metadata: {
+              source: source || 'passive-capture',
+              capturedAt: new Date().toISOString(),
+            },
+          });
+          observations.push({ id: obs.id, title: obs.title });
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ captured: observations.length, observations }, null, 2),
+            },
+          ],
+        };
+      } catch (error: any) {
+        return handleToolError(error, ctx);
+      }
+    }
+  );
+
   // ─── Utility Tools ──────────────────────────────────────────
 
   server.tool(
@@ -540,7 +811,11 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     { title: 'Observation timeline', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     async ({ project_id, limit, offset }) => {
       try {
-        const result = await ctx.engine.search({ projectId: project_id, limit, offset });
+        const result = await ctx.engine.getTimeline({
+          projectId: project_id,
+          limit,
+          offset,
+        });
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
@@ -557,15 +832,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     { title: 'Memory statistics', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     async () => {
       try {
-        const result = await ctx.engine.search({});
-        const deleted = await ctx.engine.listDeleted({});
-        const byType: Record<string, number> = {};
-        const byProject: Record<string, number> = {};
-
-        for (const o of result.observations) {
-          byType[o.type] = (byType[o.type] || 0) + 1;
-          byProject[o.projectId] = (byProject[o.projectId] || 0) + 1;
-        }
+        const stats = await ctx.engine.getDashboardStats();
 
         return {
           content: [
@@ -573,10 +840,10 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
               type: 'text',
               text: JSON.stringify(
                 {
-                  totalObservations: result.total,
-                  deletedObservations: deleted.total,
-                  byType,
-                  byProject,
+                  totalObservations: stats.totalObservations,
+                  deletedObservations: stats.deletedObservations,
+                  byType: stats.byType,
+                  byProject: stats.byProject,
                   activeSessionId: ctx.activeSessionId,
                 },
                 null,
@@ -694,6 +961,11 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
                     'mem_session_end',
                     'mem_list_sessions',
                     'mem_get_session',
+                    'mem_save_prompt',
+                    'mem_context',
+                    'mem_suggest_topic_key',
+                    'mem_session_summary',
+                    'mem_capture_passive',
                     'mem_timeline',
                     'mem_stats',
                     'mem_health',

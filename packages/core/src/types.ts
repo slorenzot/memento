@@ -4,7 +4,7 @@ export interface Observation {
   sessionId: number;
   title: string;
   content: string;
-  type: 'decision' | 'bug' | 'discovery' | 'note';
+  type: 'decision' | 'bug' | 'discovery' | 'note' | 'summary' | 'learning';
   topicKey: string | null;
   projectId: string;
   createdAt: Date;

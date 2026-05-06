@@ -970,6 +970,68 @@ export class MemoryEngine {
     };
   }
 
+  // ─── Timeline & Context ──────────────────────────────────────
+
+  async getTimeline(params: {
+    projectId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ observations: Observation[]; total: number }> {
+    this.checkHealth();
+    const { projectId, limit = 50, offset = 0 } = params;
+
+    let countSql = 'SELECT COUNT(*) as count FROM observations WHERE deleted_at IS NULL';
+    let sql = 'SELECT * FROM observations WHERE deleted_at IS NULL';
+    const values: (string | number)[] = [];
+
+    if (projectId) {
+      countSql += ' AND project_id = ?';
+      sql += ' AND project_id = ?';
+      values.push(projectId);
+    }
+
+    const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;
+    const total = countResult?.count ?? 0;
+
+    sql += ' ORDER BY created_at ASC, id ASC LIMIT ? OFFSET ?';
+    const rows = this.db.prepare(sql).all(...values, limit, offset);
+    const observations = (rows as Record<string, unknown>[]).map((row) => this.mapObservation(row));
+
+    return { observations, total };
+  }
+
+  async getRecentContext(params: {
+    projectId?: string;
+    limit?: number;
+  }): Promise<{ observations: Observation[]; total: number }> {
+    this.checkHealth();
+    const { projectId, limit = 20 } = params;
+
+    let sql = 'SELECT * FROM observations WHERE deleted_at IS NULL';
+    const values: (string | number)[] = [];
+
+    if (projectId) {
+      sql += ' AND project_id = ?';
+      values.push(projectId);
+    }
+
+    sql += ' ORDER BY created_at DESC, id DESC LIMIT ?';
+    const rows = this.db.prepare(sql).all(...values, limit);
+    const observations = (rows as Record<string, unknown>[]).map((row) => this.mapObservation(row));
+
+    // Get total for context
+    let countSql = 'SELECT COUNT(*) as count FROM observations WHERE deleted_at IS NULL';
+    const countValues: string[] = [];
+    if (projectId) {
+      countSql += ' AND project_id = ?';
+      countValues.push(projectId);
+    }
+    const countResult = this.db.prepare(countSql).get(...countValues) as { count: number } | undefined;
+    const total = countResult?.count ?? 0;
+
+    return { observations, total };
+  }
+
   // ─── TUI Explorer API ──────────────────────────────────────
 
   async listSessions(params: {
@@ -1056,6 +1118,8 @@ export class MemoryEngine {
         bug: 0,
         discovery: 0,
         note: 0,
+        summary: 0,
+        learning: 0,
       };
       for (const tr of typeRows) {
         byType[tr.type as string] = tr.count as number;
@@ -1109,7 +1173,7 @@ export class MemoryEngine {
       )
       .all() as Record<string, unknown>[];
 
-    const byType: Record<string, number> = { decision: 0, bug: 0, discovery: 0, note: 0 };
+    const byType: Record<string, number> = { decision: 0, bug: 0, discovery: 0, note: 0, summary: 0, learning: 0 };
     for (const tr of typeRows) {
       byType[tr.type as string] = tr.count as number;
     }
