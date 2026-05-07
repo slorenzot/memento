@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import type { DashboardStats } from '@slorenzot/memento-core';
+import type { DashboardStats, Observation } from '@slorenzot/memento-core';
 import { Badge } from '../components/Badge';
 import { colors, truncate, relativeTime, TYPE_ICONS } from '../theme';
 
@@ -47,7 +47,7 @@ export function Dashboard({ stats }: DashboardProps) {
             .filter(([, count]) => count > 0)
             .map(([type, count]) => (
               <Box key={type}>
-                <Badge type={type as 'decision' | 'bug' | 'discovery' | 'note' | 'summary' | 'learning'} />
+                <Badge type={type as Observation['type']} />
                 <Text>: {count}</Text>
                 <Text dimColor>
                   {' '}
