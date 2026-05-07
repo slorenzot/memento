@@ -39,10 +39,10 @@ describe('MCP Integration', () => {
       expect(result.tools.length).toBeGreaterThan(0);
     });
 
-    it('listTools should return 23 tools with valid schemas', async () => {
+    it('listTools should return 26 tools with valid schemas', async () => {
       const result = await setup.client.listTools();
 
-      expect(result.tools).toHaveLength(23);
+      expect(result.tools).toHaveLength(26);
 
       for (const tool of result.tools) {
         // Each tool must have name, description, and inputSchema

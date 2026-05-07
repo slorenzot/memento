@@ -11,6 +11,7 @@
  */
 
 import type { Observation, Session, DashboardStats } from '@slorenzot/memento-core';
+import type { JournalEntry } from '@slorenzot/memento-core';
 
 // ─── Helpers ────────────────────────────────────────────────
 
@@ -283,6 +284,103 @@ export function formatConfig(data: {
 
   // Tools
   lines.push(`Tools: ${data.tools.length} registered`);
+
+  return lines.join('\n');
+}
+
+// ─── Journal Formatters ──────────────────────────────────────
+
+/**
+ * Format a single journal entry with full detail.
+ * Used by: mem_journal_read
+ */
+export function formatJournalEntry(entry: JournalEntry): string {
+  const lines: string[] = [];
+
+  // Header: #N Journal: Title
+  lines.push(`#${entry.id} Journal: ${entry.title}`);
+
+  // Metadata line
+  const meta: string[] = [];
+  meta.push(`Project: ${entry.projectId}`);
+  if (entry.model) meta.push(`Model: ${entry.model}`);
+  if (entry.provider) meta.push(`Provider: ${entry.provider}`);
+  if (entry.agent) meta.push(`Agent: ${entry.agent}`);
+  meta.push(`Created: ${compactDate(entry.createdAt)}`);
+  lines.push(meta.join(' | '));
+
+  // Tags
+  if (entry.tags.length > 0) {
+    lines.push(`Tags: ${entry.tags.join(', ')}`);
+  }
+
+  // Status
+  if (entry.invalidatedAt) {
+    lines.push(`⚠ Invalidated: ${compactDate(entry.invalidatedAt)} | Superseded by: #${entry.supersededBy}`);
+  }
+
+  lines.push('');
+
+  // Body
+  lines.push(entry.body);
+
+  // Metadata (if non-empty)
+  const metaKeys = Object.keys(entry.metadata || {});
+  if (metaKeys.length > 0) {
+    lines.push('');
+    lines.push(`Metadata: ${JSON.stringify(entry.metadata)}`);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format a truncated journal entry for list views.
+ * Used by: mem_journal_search
+ */
+export function formatJournalEntryShort(entry: JournalEntry): string {
+  const lines: string[] = [];
+
+  // Header
+  const status = entry.invalidatedAt ? '⚠ ' : '';
+  lines.push(`${status}#${entry.id} Journal: ${entry.title}`);
+
+  // Compact metadata
+  const meta: string[] = [];
+  meta.push(`Project: ${entry.projectId}`);
+  if (entry.tags.length > 0) meta.push(`Tags: ${entry.tags.join(',')}`);
+  if (entry.agent) meta.push(`Agent: ${entry.agent}`);
+  meta.push(compactDate(entry.createdAt));
+  lines.push(meta.join(' | '));
+
+  // First line of body (truncated preview)
+  const firstLine = entry.body.split('\n')[0];
+  if (firstLine) {
+    const preview = firstLine.length > 120 ? firstLine.slice(0, 117) + '...' : firstLine;
+    lines.push(preview);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format a list of journal entries.
+ * Used by: mem_journal_search
+ */
+export function formatJournalList(result: { total: number; entries: JournalEntry[] }): string {
+  const lines: string[] = [];
+
+  lines.push(`Found ${result.total} journal entr${result.total !== 1 ? 'ies' : 'y'}`);
+
+  if (result.entries.length > 0) {
+    lines.push('');
+    for (const entry of result.entries) {
+      lines.push(formatJournalEntryShort(entry));
+      lines.push('---');
+    }
+    // Remove trailing ---
+    lines.pop();
+  }
 
   return lines.join('\n');
 }

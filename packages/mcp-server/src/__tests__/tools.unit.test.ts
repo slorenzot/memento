@@ -537,7 +537,7 @@ describe('Tool Handlers', () => {
       const text = parseActionText(response);
       expect(text).toContain('memento v1.0.0');
       expect(text).toContain('SQLite Persistent');
-      expect(text).toContain('Tools: 23 registered');
+      expect(text).toContain('Tools: 26 registered');
     });
   });
 

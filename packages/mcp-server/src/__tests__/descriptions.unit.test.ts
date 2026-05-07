@@ -23,9 +23,9 @@ describe('Tool Metadata Quality', () => {
 
   // ─── Tool Count ───────────────────────────────────────────
 
-  it('should register exactly 23 tools', async () => {
+  it('should register exactly 26 tools', async () => {
     const result = await setup.client.listTools();
-    expect(result.tools).toHaveLength(23);
+    expect(result.tools).toHaveLength(26);
   });
 
   // ─── Tool Names ───────────────────────────────────────────
@@ -43,6 +43,9 @@ describe('Tool Metadata Quality', () => {
       'mem_get_observation',
       'mem_get_session',
       'mem_health',
+      'mem_journal_read',
+      'mem_journal_search',
+      'mem_journal_write',
       'mem_list_deleted',
       'mem_list_sessions',
       'mem_merge',
@@ -112,6 +115,8 @@ describe('Tool Metadata Quality', () => {
     'mem_health',
     'mem_config',
     'mem_export',
+    'mem_journal_read',
+    'mem_journal_search',
   ];
 
   it('read-only tools should have readOnlyHint: true', async () => {
