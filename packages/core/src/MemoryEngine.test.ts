@@ -311,6 +311,51 @@ describe('MemoryEngine — CRUD + Timing', () => {
       expect(updated.topicKey).toBe('new-topic');
     });
 
+    it('#69 — should clear topicKey when updated with null', async () => {
+      const created = await engine.createObservation({
+        sessionId: session.id,
+        title: 'Clear Topic',
+        content: 'Content',
+        type: 'note',
+        topicKey: 'to-be-cleared',
+        projectId: 'test-project',
+        metadata: {},
+      });
+
+      const updated = await engine.updateObservation(created.id, { topicKey: null });
+      expect(updated.topicKey).toBeNull();
+    });
+
+    it('#69 — create and update topicKey should be consistent with null', async () => {
+      // Create without topic → null
+      const a = await engine.createObservation({
+        sessionId: session.id,
+        title: 'No Topic',
+        content: 'C',
+        type: 'note',
+        topicKey: null,
+        projectId: 'test-project',
+        metadata: {},
+      });
+
+      // Create with topic, then clear → should also be null
+      const b = await engine.createObservation({
+        sessionId: session.id,
+        title: 'Temp Topic',
+        content: 'C',
+        type: 'note',
+        topicKey: 'temp',
+        projectId: 'test-project',
+        metadata: {},
+      });
+      const bUpdated = await engine.updateObservation(b.id, { topicKey: null });
+
+      // Both should have the same value (null, not '')
+      expect(a.topicKey).toBeNull();
+      expect(bUpdated.topicKey).toBeNull();
+      expect(a.topicKey).toBe(bUpdated.topicKey);
+    });
+
     it('#28 — update with no fields returns unchanged', async () => {
       const created = await engine.createObservation({
         sessionId: session.id,
@@ -347,22 +392,13 @@ describe('MemoryEngine — CRUD + Timing', () => {
       const before = await engine.search({ query: 'Before Edit FTS' });
       expect(before.total).toBeGreaterThanOrEqual(1);
 
-      try {
-        await engine.updateObservation(obs.id, {
-          title: 'After Edit FTS UniqueMarker',
-          content: 'Updated searchable content with UniqueMarker',
-        });
+      await engine.updateObservation(obs.id, {
+        title: 'After Edit FTS UniqueMarker',
+        content: 'Updated searchable content with UniqueMarker',
+      });
 
-        const afterNew = await engine.search({ query: 'UniqueMarker' });
-        expect(afterNew.total).toBeGreaterThanOrEqual(1);
-      } catch (error: any) {
-        // FTS5 trigger can fail with SQLITE_CORRUPT_VTAB in parallel test scenarios
-        // This is a known SQLite FTS5 concurrency issue, not a product bug
-        if (!error.message?.includes('malformed') && !error.message?.includes('CORRUPT')) {
-          throw error;
-        }
-        console.warn('⚠️  #32 skipped: FTS5 VTAB corruption in parallel test run');
-      }
+      const afterNew = await engine.search({ query: 'UniqueMarker' });
+      expect(afterNew.total).toBeGreaterThanOrEqual(1);
     });
 
     it('should delete an observation', async () => {

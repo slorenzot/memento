@@ -40,3 +40,24 @@ export const projects = sqliteTable('projects', {
   createdAt: integer('created_at').notNull(),
   metadata: text('metadata'),
 });
+
+export const journal = sqliteTable('journal', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  uuid: text('uuid').unique().notNull(),
+  projectId: text('project_id').notNull(),
+  sessionId: integer('session_id'),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  model: text('model'),
+  provider: text('provider'),
+  agent: text('agent'),
+  supersededBy: integer('superseded_by'),
+  invalidatedAt: integer('invalidated_at'),
+  metadata: text('metadata'),
+  createdAt: integer('created_at').notNull(),
+});
+
+export const journalTags = sqliteTable('journal_tags', {
+  journalId: integer('journal_id').notNull(),
+  tag: text('tag').notNull(),
+});

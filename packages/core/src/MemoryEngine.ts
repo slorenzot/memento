@@ -17,6 +17,10 @@ import type {
   ImportData,
   ImportOptions,
   ImportResult,
+  JournalEntry,
+  WriteJournalParams,
+  JournalSearchParams,
+  JournalSearchResult,
 } from './types.js';
 
 import { Database } from 'bun:sqlite';
@@ -156,53 +160,79 @@ export class MemoryEngine {
       }
     }
 
-    // FTS5
+    // Migrate: clean up empty string topic_key → NULL (Issue #69)
+    try {
+      const result = this.db.prepare("UPDATE observations SET topic_key = NULL WHERE topic_key = ''").run();
+      if (result.changes > 0) {
+        console.error(`✓ Migration: cleaned up ${result.changes} empty topic_key value(s)`);
+      }
+    } catch {
+      // Table may not have topic_key column yet
+    }
+
+    // FTS5 — standalone mode (no content= parameter).
+    // FTS5 owns its own data copy, supports full CRUD (INSERT, DELETE, UPDATE),
+    // and avoids SQLITE_CORRUPT_VTAB that occurred with content='observations' mode
+    // under bun:sqlite + WAL + concurrent access. See: GitHub Issue #68.
     this.db.exec(`
       CREATE VIRTUAL TABLE IF NOT EXISTS observations_fts USING fts5(
         title, content, topic_key, project_id,
-        content='observations',
         tokenize='porter unicode61'
       );
     `);
 
-    // FTS triggers — drop and recreate to ensure latest version
-    this.db.exec('DROP TRIGGER IF EXISTS observations_ai');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_ad');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_au');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_soft_delete');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_undelete');
+    // FTS5 sync is managed at application-level in each CRUD method.
+    // Previous trigger-based approach caused SQLITE_CORRUPT_VTAB under
+    // concurrent access (DELETE+INSERT on FTS5 virtual table within a trigger).
+    // See: GitHub Issue #68
 
+    // ─── Journal tables (append-only evidence) ────────────────
     this.db.exec(`
-      CREATE TRIGGER observations_ai AFTER INSERT ON observations BEGIN
-        INSERT INTO observations_fts(rowid, title, content, topic_key, project_id)
-        VALUES (new.id, new.title, new.content, new.topic_key, new.project_id);
-      END;
+      CREATE TABLE IF NOT EXISTS journal (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        uuid TEXT UNIQUE NOT NULL,
+        project_id TEXT NOT NULL,
+        session_id INTEGER REFERENCES sessions(id),
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        model TEXT,
+        provider TEXT,
+        agent TEXT,
+        superseded_by INTEGER REFERENCES journal(id),
+        invalidated_at INTEGER,
+        metadata TEXT,
+        created_at INTEGER NOT NULL
+      );
 
-      CREATE TRIGGER observations_ad AFTER DELETE ON observations BEGIN
-        DELETE FROM observations_fts WHERE rowid = old.id;
-      END;
+      CREATE TABLE IF NOT EXISTS journal_tags (
+        journal_id INTEGER NOT NULL REFERENCES journal(id) ON DELETE CASCADE,
+        tag TEXT NOT NULL,
+        PRIMARY KEY (journal_id, tag)
+      );
+    `);
 
-      CREATE TRIGGER observations_au AFTER UPDATE ON observations
-        WHEN NEW.deleted_at IS NULL AND OLD.deleted_at IS NULL
-      BEGIN
-        DELETE FROM observations_fts WHERE rowid = old.id;
-        INSERT INTO observations_fts(rowid, title, content, topic_key, project_id)
-        VALUES (new.id, new.title, new.content, new.topic_key, new.project_id);
-      END;
+    // Journal indexes
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_journal_project ON journal(project_id)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_journal_session ON journal(session_id)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_journal_created ON journal(created_at)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_journal_superseded ON journal(superseded_by)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_journal_tags_tag ON journal_tags(tag)');
 
-      CREATE TRIGGER observations_soft_delete
-        AFTER UPDATE OF deleted_at ON observations
-        WHEN NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL
-      BEGIN
-        DELETE FROM observations_fts WHERE rowid = OLD.id;
-      END;
+    // Journal FTS5
+    this.db.exec(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS journal_fts USING fts5(
+        title, body, project_id,
+        content='journal',
+        tokenize='porter unicode61'
+      );
+    `);
 
-      CREATE TRIGGER observations_undelete
-        AFTER UPDATE OF deleted_at ON observations
-        WHEN NEW.deleted_at IS NULL AND OLD.deleted_at IS NOT NULL
-      BEGIN
-        INSERT INTO observations_fts(rowid, title, content, topic_key, project_id)
-        VALUES (NEW.id, NEW.title, NEW.content, NEW.topic_key, NEW.project_id);
+    // Journal FTS trigger — insert only (append-only: no update/delete triggers)
+    this.db.exec('DROP TRIGGER IF EXISTS journal_ai');
+    this.db.exec(`
+      CREATE TRIGGER journal_ai AFTER INSERT ON journal BEGIN
+        INSERT INTO journal_fts(rowid, title, body, project_id)
+        VALUES (new.id, new.title, new.body, new.project_id);
       END;
     `);
   }
@@ -290,9 +320,17 @@ export class MemoryEngine {
           metadata,
           scope
         );
-      return typeof result.lastInsertRowid === 'bigint'
-        ? Number(result.lastInsertRowid)
-        : result.lastInsertRowid;
+      const insertId =
+        typeof result.lastInsertRowid === 'bigint'
+          ? Number(result.lastInsertRowid)
+          : result.lastInsertRowid;
+
+      // Application-level FTS5 sync (was trigger observations_ai)
+      this.db.prepare(
+        'INSERT INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)'
+      ).run(insertId, data.title, data.content, data.topicKey ?? '', data.projectId);
+
+      return insertId;
     });
 
     const observation = await this.getObservationById(id, true);
@@ -331,7 +369,7 @@ export class MemoryEngine {
     }
     if (updates.topicKey !== undefined) {
       fields.push('topic_key = ?');
-      values.push(updates.topicKey || '');
+      values.push(updates.topicKey ?? null);
     }
     if (updates.metadata !== undefined) {
       fields.push('metadata = ?');
@@ -342,9 +380,37 @@ export class MemoryEngine {
 
     fields.push('revision_count = revision_count + 1');
     values.push(id);
-    await this.withRetry(() =>
-      this.db.prepare(`UPDATE observations SET ${fields.join(', ')} WHERE id = ?`).run(...values)
-    );
+
+    // Check if any FTS5-indexed fields changed
+    const hasFtsUpdate =
+      updates.title !== undefined ||
+      updates.content !== undefined ||
+      updates.topicKey !== undefined;
+
+    if (hasFtsUpdate) {
+      // Atomic transaction: UPDATE + FTS5 rebuild
+      // Replaces trigger observations_au that caused SQLITE_CORRUPT_VTAB (#68)
+      await this.withRetry(() => {
+        this.db.transaction(() => {
+          this.db.prepare(`UPDATE observations SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+          // Re-read updated row for FTS5 sync
+          const row = this.db
+            .prepare('SELECT title, content, topic_key, project_id FROM observations WHERE id = ?')
+            .get(id) as { title: string; content: string; topic_key: string; project_id: string } | undefined;
+          if (row) {
+            this.db.prepare('DELETE FROM observations_fts WHERE rowid = ?').run(id);
+            this.db.prepare(
+              'INSERT INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)'
+            ).run(id, row.title, row.content, row.topic_key, row.project_id);
+          }
+        })();
+      });
+    } else {
+      // No FTS5 fields changed — just UPDATE
+      await this.withRetry(() =>
+        this.db.prepare(`UPDATE observations SET ${fields.join(', ')} WHERE id = ?`).run(...values)
+      );
+    }
 
     const updated = await this.getObservationById(id, true);
     if (!updated) throw new Error('Failed to update observation');
@@ -364,15 +430,19 @@ export class MemoryEngine {
     // If there's a reason, store it in metadata
     if (reason) {
       const meta = { ...obs.metadata, deleteReason: reason };
-      await this.withRetry(() =>
+      await this.withRetry(() => {
         this.db
           .prepare('UPDATE observations SET deleted_at = ?, metadata = ? WHERE id = ?')
-          .run(now, this.serialize(meta), id)
-      );
+          .run(now, this.serialize(meta), id);
+        // Application-level FTS5 sync (was trigger observations_soft_delete)
+        this.db.prepare('DELETE FROM observations_fts WHERE rowid = ?').run(id);
+      });
     } else {
-      await this.withRetry(() =>
-        this.db.prepare('UPDATE observations SET deleted_at = ? WHERE id = ?').run(now, id)
-      );
+      await this.withRetry(() => {
+        this.db.prepare('UPDATE observations SET deleted_at = ? WHERE id = ?').run(now, id);
+        // Application-level FTS5 sync (was trigger observations_soft_delete)
+        this.db.prepare('DELETE FROM observations_fts WHERE rowid = ?').run(id);
+      });
     }
   }
 
@@ -382,9 +452,18 @@ export class MemoryEngine {
     if (!obs) throw new Error('Observation not found');
     if (!obs.deletedAt) throw new Error('Observation is not deleted');
 
-    await this.withRetry(() =>
-      this.db.prepare('UPDATE observations SET deleted_at = NULL WHERE id = ?').run(id)
-    );
+    await this.withRetry(() => {
+      this.db.prepare('UPDATE observations SET deleted_at = NULL WHERE id = ?').run(id);
+      // Application-level FTS5 sync (was trigger observations_undelete)
+      const row = this.db
+        .prepare('SELECT title, content, topic_key, project_id FROM observations WHERE id = ?')
+        .get(id) as { title: string; content: string; topic_key: string; project_id: string } | undefined;
+      if (row) {
+        this.db.prepare(
+          'INSERT INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)'
+        ).run(id, row.title, row.content, row.topic_key, row.project_id);
+      }
+    });
 
     const restored = await this.getObservationById(id, true);
     if (!restored) throw new Error('Failed to restore observation');
@@ -416,6 +495,8 @@ export class MemoryEngine {
     if (ids.length === 0) return { purgedCount: 0, purgedIds: [] };
 
     const placeholders = ids.map(() => '?').join(',');
+    // Application-level FTS5 sync (was trigger observations_ad)
+    this.db.prepare(`DELETE FROM observations_fts WHERE rowid IN (${placeholders})`).run(...ids);
     this.db.prepare(`DELETE FROM observations WHERE id IN (${placeholders})`).run(...ids);
 
     return { purgedCount: ids.length, purgedIds: ids };
@@ -629,8 +710,14 @@ export class MemoryEngine {
             ? Number(insertResult.lastInsertRowid)
             : insertResult.lastInsertRowid;
 
-        // Delete originals
+        // Application-level FTS5 sync: insert merged, delete originals
+        this.db.prepare(
+          'INSERT INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)'
+        ).run(newId, synthTitle, synthContent, synthTopicKey ?? '', projectId);
+
+        // Delete originals (from both observations and observations_fts)
         const placeholders = sourceIds.map(() => '?').join(',');
+        this.db.prepare(`DELETE FROM observations_fts WHERE rowid IN (${placeholders})`).run(...sourceIds);
         this.db.prepare(`DELETE FROM observations WHERE id IN (${placeholders})`).run(...sourceIds);
 
         // Fetch the newly created merged observation
@@ -813,7 +900,20 @@ export class MemoryEngine {
 
   // ─── Search ────────────────────────────────────────────────
 
+  /**
+   * Sanitize a user query for safe use in FTS5 MATCH.
+   * Strips FTS5 operators and special characters that would cause syntax errors.
+   * Returns empty string if nothing survives sanitization.
+   */
+  private sanitizeFTS5Query(input: string): string {
+    return input
+      .replace(/[^a-zA-Z0-9\s]/g, ' ')  // Keep only alphanumeric and whitespace
+      .replace(/\s+/g, ' ')              // Collapse whitespace
+      .trim();
+  }
+
   async getObservation(id: number, includeDeleted: boolean = false): Promise<Observation | null> {
+    this.checkHealth();
     return await this.getObservationById(id, includeDeleted);
   }
 
@@ -832,10 +932,12 @@ export class MemoryEngine {
     let sql: string;
     const values: (string | number | null)[] = [];
 
-    if (query) {
+    const sanitizedQuery = query ? this.sanitizeFTS5Query(query) : '';
+
+    if (sanitizedQuery) {
       sql =
         'SELECT observations.* FROM observations JOIN observations_fts ON observations.id = observations_fts.rowid WHERE observations_fts MATCH ?';
-      values.push(query);
+      values.push(sanitizedQuery);
 
       if (!includeDeleted) {
         sql += ' AND observations.deleted_at IS NULL';
@@ -1411,18 +1513,18 @@ export class MemoryEngine {
       metadata: { type: 'import', source: 'mem_import', timestamp: new Date().toISOString() },
     });
 
-    // Use transaction for atomic import
-    this.db.exec('BEGIN');
-
-    try {
+    // Use db.transaction() for safe atomic import (#70)
+    // Replaces manual BEGIN/COMMIT which was fragile — if createObservation's
+    // withRetry() hit SQLITE_BUSY inside a manual transaction, the retry would
+    // fail because the transaction was already in error state.
+    const doImport = this.db.transaction(() => {
       for (const obs of data.observations) {
         // Validate required fields
         if (!obs.title || !obs.content || !obs.type) {
           result.errors.push(`Invalid observation: missing required fields (title, content, type)`);
           if (conflictStrategy === 'fail') {
-            this.db.exec('ROLLBACK');
             result.failed++;
-            return result;
+            throw new Error('IMPORT_ABORT');
           }
           result.failed++;
           continue;
@@ -1432,9 +1534,8 @@ export class MemoryEngine {
         if (!validTypes.includes(obs.type as Observation['type'])) {
           result.errors.push(`Invalid type: "${obs.type}". Valid types: ${validTypes.join(', ')}`);
           if (conflictStrategy === 'fail') {
-            this.db.exec('ROLLBACK');
             result.failed++;
-            return result;
+            throw new Error('IMPORT_ABORT');
           }
           result.failed++;
           continue;
@@ -1450,44 +1551,90 @@ export class MemoryEngine {
             }
             if (conflictStrategy === 'overwrite') {
               if (!dryRun) {
-                await this.updateObservation(existing.id, {
-                  title: obs.title,
-                  content: obs.content,
-                  type: obs.type as Observation['type'],
-                  topicKey: obs.topicKey ?? null,
-                  metadata: obs.metadata || {},
-                });
+                // Direct UPDATE + FTS5 sync (avoids withRetry inside transaction)
+                const fields: string[] = [];
+                const values: (string | number | null)[] = [];
+
+                if (obs.title !== undefined) { fields.push('title = ?'); values.push(obs.title); }
+                if (obs.content !== undefined) { fields.push('content = ?'); values.push(obs.content); }
+                if (obs.type !== undefined) { fields.push('type = ?'); values.push(obs.type as string); }
+                if (obs.topicKey !== undefined) { fields.push('topic_key = ?'); values.push(obs.topicKey ?? null); }
+                if (obs.metadata !== undefined) { fields.push('metadata = ?'); values.push(this.serialize(obs.metadata || {})); }
+
+                fields.push('revision_count = revision_count + 1');
+                values.push(existing.id);
+
+                this.db.prepare(`UPDATE observations SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+
+                // FTS5 sync — delete + re-insert
+                this.db.prepare('DELETE FROM observations_fts WHERE rowid = ?').run(existing.id);
+                const row = this.db
+                  .prepare('SELECT title, content, topic_key, project_id FROM observations WHERE id = ?')
+                  .get(existing.id) as { title: string; content: string; topic_key: string; project_id: string } | undefined;
+                if (row) {
+                  this.db.prepare(
+                    'INSERT INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)'
+                  ).run(existing.id, row.title, row.content, row.topic_key, row.project_id);
+                }
               }
               result.overwritten++;
               continue;
             }
             if (conflictStrategy === 'fail') {
-              this.db.exec('ROLLBACK');
               result.errors.push(`Duplicate uuid: ${obs.uuid}`);
               result.failed++;
-              return result;
+              throw new Error('IMPORT_ABORT');
             }
           }
         }
 
         if (!dryRun) {
-          const imported = await this.createObservation({
-            sessionId: session.id,
-            title: obs.title,
-            content: obs.content,
-            type: obs.type as Observation['type'],
-            topicKey: obs.topicKey || null,
-            projectId: targetProject,
-            metadata: obs.metadata || {},
-          });
-          result.observations.push(imported);
+          // Direct INSERT + FTS5 sync (avoids withRetry inside transaction)
+          const uuid = obs.uuid || crypto.randomUUID();
+          const metadata = this.serialize(obs.metadata || {});
+          const createdAt = Date.now();
+
+          const insertResult = this.db.prepare(
+            `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, deleted_at, metadata, scope) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'project')`
+          ).run(
+            uuid,
+            session.id,
+            obs.title,
+            obs.content,
+            obs.type,
+            obs.topicKey ?? null,
+            targetProject,
+            createdAt,
+            metadata
+          );
+
+          const insertId =
+            typeof insertResult.lastInsertRowid === 'bigint'
+              ? Number(insertResult.lastInsertRowid)
+              : insertResult.lastInsertRowid;
+
+          // FTS5 sync
+          this.db.prepare(
+            'INSERT INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)'
+          ).run(insertId, obs.title, obs.content, obs.topicKey ?? '', targetProject);
+
+          // Fetch created observation for result
+          const importedRow = this.db.prepare('SELECT * FROM observations WHERE id = ?').get(insertId);
+          if (importedRow) {
+            result.observations.push(this.mapObservation(importedRow as Record<string, unknown>));
+          }
         }
         result.imported++;
       }
+    });
 
-      this.db.exec('COMMIT');
+    try {
+      doImport();
     } catch (error) {
-      this.db.exec('ROLLBACK');
+      if (error instanceof Error && error.message === 'IMPORT_ABORT') {
+        // Transaction auto-rolled back; return partial result with errors
+        return result;
+      }
       throw error;
     }
 
@@ -1507,11 +1654,12 @@ export class MemoryEngine {
     const countResult = this.db.prepare('SELECT COUNT(*) as count FROM observations').get() as { count: number } | undefined;
     const deleted = countResult?.count || 0;
 
-    // Drop everything
+    // Drop everything (no observation triggers — FTS5 sync is application-level)
     this.db.exec('DROP TABLE IF EXISTS observations_fts');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_ai');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_ad');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_au');
+    this.db.exec('DROP TRIGGER IF EXISTS journal_ai');
+    this.db.exec('DROP TABLE IF EXISTS journal_fts');
+    this.db.exec('DROP TABLE IF EXISTS journal_tags');
+    this.db.exec('DROP TABLE IF EXISTS journal');
     this.db.exec('DROP TABLE IF EXISTS observations');
     this.db.exec('DROP TABLE IF EXISTS prompts');
     this.db.exec('DROP TABLE IF EXISTS sessions');
@@ -1535,7 +1683,9 @@ export class MemoryEngine {
       .get(projectId) as { count: number };
     const deleted = obsCount.count + promptCount.count;
 
-    // Delete observations and prompts for this project
+    // Delete observations (FTS5 first, then main table) and prompts for this project
+    // Application-level FTS5 sync (was trigger observations_ad)
+    this.db.prepare('DELETE FROM observations_fts WHERE rowid IN (SELECT id FROM observations WHERE project_id = ?)').run(projectId);
     this.db.prepare('DELETE FROM observations WHERE project_id = ?').run(projectId);
     this.db.prepare('DELETE FROM prompts WHERE project_id = ?').run(projectId);
 
@@ -1571,6 +1721,226 @@ export class MemoryEngine {
       observations: obsCount.count,
       prompts: promptCount.count,
       sessions: sessionCount.count,
+    };
+  }
+
+  // ─── Journal (append-only evidence) ──────────────────────────
+
+  async writeJournal(data: WriteJournalParams): Promise<JournalEntry> {
+    this.checkHealth();
+
+    const uuid = crypto.randomUUID();
+    const createdAt = Date.now();
+    const metadata = this.serialize(data.metadata || {});
+
+    // If supersedes is set, validate and invalidate the old entry
+    if (data.supersedes) {
+      const existing = await this.readJournal(data.supersedes);
+      if (!existing) throw new Error(`Journal entry ${data.supersedes} not found`);
+      if (existing.invalidatedAt) throw new Error(`Journal entry ${data.supersedes} is already invalidated`);
+    }
+
+    const id = await this.withRetry(() => {
+      const result = this.db
+        .prepare(
+          `INSERT INTO journal (uuid, project_id, session_id, title, body, model, provider, agent, superseded_by, invalidated_at, metadata, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)`
+        )
+        .run(
+          uuid,
+          data.projectId,
+          data.sessionId ?? null,
+          data.title,
+          data.body,
+          data.model ?? null,
+          data.provider ?? null,
+          data.agent ?? null,
+          metadata,
+          createdAt
+        );
+      return typeof result.lastInsertRowid === 'bigint'
+        ? Number(result.lastInsertRowid)
+        : result.lastInsertRowid;
+    });
+
+    // Insert tags
+    if (data.tags && data.tags.length > 0) {
+      const insertTag = this.db.prepare(
+        'INSERT OR IGNORE INTO journal_tags (journal_id, tag) VALUES (?, ?)'
+      );
+      for (const tag of data.tags) {
+        insertTag.run(id, tag);
+      }
+    }
+
+    // If supersedes, mark the old entry
+    if (data.supersedes) {
+      await this.withRetry(() =>
+        this.db
+          .prepare('UPDATE journal SET superseded_by = ?, invalidated_at = ? WHERE id = ?')
+          .run(id, createdAt, data.supersedes)
+      );
+    }
+
+    const entry = await this.readJournal(id);
+    if (!entry) throw new Error('Failed to retrieve created journal entry');
+    return entry;
+  }
+
+  async readJournal(id: number): Promise<JournalEntry | null> {
+    this.checkHealth();
+
+    const row = this.db.prepare('SELECT * FROM journal WHERE id = ?').get(id);
+    if (!row) return null;
+
+    // Fetch tags
+    const tagRows = this.db
+      .prepare('SELECT tag FROM journal_tags WHERE journal_id = ?')
+      .all(id) as { tag: string }[];
+    const tags = tagRows.map((t) => t.tag);
+
+    return this.mapJournalEntry(row as Record<string, unknown>, tags);
+  }
+
+  async searchJournal(params: JournalSearchParams): Promise<JournalSearchResult> {
+    this.checkHealth();
+
+    const {
+      query,
+      tags,
+      projectId,
+      sessionId,
+      dateFrom,
+      dateTo,
+      activeOnly = false,
+      limit = 50,
+      offset = 0,
+    } = params;
+
+    let sql: string;
+    const values: (string | number | null)[] = [];
+
+    const sanitizedQuery = query ? this.sanitizeFTS5Query(query) : '';
+
+    if (sanitizedQuery) {
+      // FTS5 search — qualify column names to avoid ambiguity with journal_fts
+      sql =
+        'SELECT journal.* FROM journal JOIN journal_fts ON journal.id = journal_fts.rowid WHERE journal_fts MATCH ?';
+      values.push(sanitizedQuery);
+    } else {
+      sql = 'SELECT * FROM journal WHERE 1=1';
+    }
+
+    if (activeOnly) {
+      sql += ' AND journal.invalidated_at IS NULL';
+    }
+    if (projectId) {
+      sql += ' AND journal.project_id = ?';
+      values.push(projectId);
+    }
+    if (sessionId) {
+      sql += ' AND journal.session_id = ?';
+      values.push(sessionId);
+    }
+    if (dateFrom) {
+      sql += ' AND journal.created_at >= ?';
+      values.push(dateFrom.getTime());
+    }
+    if (dateTo) {
+      sql += ' AND journal.created_at <= ?';
+      values.push(dateTo.getTime());
+    }
+
+    // Tag filtering — if tags specified, intersect with journal_tags
+    if (tags && tags.length > 0) {
+      // Find journal entries that have ALL specified tags
+      const tagPlaceholders = tags.map(() => '?').join(',');
+      const tagSubquery = `
+        AND journal.id IN (
+          SELECT jt.journal_id FROM journal_tags jt
+          WHERE jt.tag IN (${tagPlaceholders})
+          GROUP BY jt.journal_id
+          HAVING COUNT(DISTINCT jt.tag) = ${tags.length}
+        )
+      `;
+      sql += tagSubquery;
+      values.push(...tags);
+    }
+
+    // Count
+    const countSql = sql.replace(/SELECT.*?FROM/, 'SELECT COUNT(*) as count FROM');
+    const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;
+    const total = countResult?.count ?? 0;
+
+    // Fetch
+    sql += ' ORDER BY journal.created_at DESC LIMIT ? OFFSET ?';
+    values.push(limit, offset);
+
+    const rows = this.db.prepare(sql).all(...values) as Record<string, unknown>[];
+
+    // Fetch tags for each entry
+    const entries: JournalEntry[] = [];
+    for (const row of rows) {
+      const entryId = row.id as number;
+      const tagRows = this.db
+        .prepare('SELECT tag FROM journal_tags WHERE journal_id = ?')
+        .all(entryId) as { tag: string }[];
+      entries.push(this.mapJournalEntry(row, tagRows.map((t) => t.tag)));
+    }
+
+    return { entries, total };
+  }
+
+  async invalidateJournal(id: number, supersededById: number): Promise<void> {
+    this.checkHealth();
+
+    const entry = await this.readJournal(id);
+    if (!entry) throw new Error(`Journal entry ${id} not found`);
+    if (entry.invalidatedAt) throw new Error(`Journal entry ${id} is already invalidated`);
+
+    // Validate the superseding entry exists
+    const superseding = await this.readJournal(supersededById);
+    if (!superseding) throw new Error(`Superseding journal entry ${supersededById} not found`);
+
+    const now = Date.now();
+    await this.withRetry(() =>
+      this.db
+        .prepare('UPDATE journal SET superseded_by = ?, invalidated_at = ? WHERE id = ?')
+        .run(supersededById, now, id)
+    );
+  }
+
+  private mapJournalEntry(row: Record<string, unknown>, tags: string[]): JournalEntry {
+    const r = row as {
+      id: number;
+      uuid: string;
+      project_id: string;
+      session_id: number | null;
+      title: string;
+      body: string;
+      model: string | null;
+      provider: string | null;
+      agent: string | null;
+      superseded_by: number | null;
+      invalidated_at: number | null;
+      metadata: string | null;
+      created_at: number;
+    };
+    return {
+      id: r.id,
+      uuid: r.uuid,
+      projectId: r.project_id,
+      sessionId: r.session_id,
+      title: r.title,
+      body: r.body,
+      tags,
+      model: r.model,
+      provider: r.provider,
+      agent: r.agent,
+      supersededBy: r.superseded_by,
+      invalidatedAt: r.invalidated_at ? new Date(r.invalidated_at) : null,
+      metadata: this.deserialize(r.metadata),
+      createdAt: new Date(r.created_at),
     };
   }
 

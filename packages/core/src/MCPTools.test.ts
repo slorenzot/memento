@@ -186,28 +186,16 @@ describe('MCP Tools E2E', () => {
       const session = await seedSession(engine, 'mcp-test');
       const obs = await seedObservation(engine, session.id, { projectId: 'mcp-test' });
 
-      try {
-        const updated = await engine.updateObservation(obs.id, {
-          title: 'Updated Title',
-          content: 'Updated content',
-          type: 'bug',
-          topicKey: 'fix/important',
-        });
+      const updated = await engine.updateObservation(obs.id, {
+        title: 'Updated Title',
+        content: 'Updated content',
+        type: 'bug',
+        topicKey: 'fix/important',
+      });
 
-        expect(updated.title).toBe('Updated Title');
-        expect(updated.type).toBe('bug');
-        expect(updated.topicKey).toBe('fix/important');
-      } catch (error: any) {
-        // Known FTS5 VTAB corruption in parallel tests — verify engine is healthy otherwise
-        if (error.code === 'SQLITE_CORRUPT_VTAB') {
-          console.warn(`⚠️ FTS5 VTAB corruption on update — known parallel test issue`);
-          // Verify read still works
-          const found = await engine.getObservation(obs.id);
-          expect(found).not.toBeNull();
-        } else {
-          throw error;
-        }
-      }
+      expect(updated.title).toBe('Updated Title');
+      expect(updated.type).toBe('bug');
+      expect(updated.topicKey).toBe('fix/important');
     });
   });
 
@@ -438,21 +426,16 @@ describe('MCP Tools E2E', () => {
       const search = await engine.search({ query: 'N+1', projectId: 'mcp-test' });
       expect(search.total).toBe(1);
 
-      // Update (fix applied) — catch FTS5 VTAB corruption
-      try {
-        const updated = await engine.updateObservation(obs.id, {
-          type: 'note',
-          content: 'Fixed N+1 query in UserList by adding eager loading',
-          topicKey: 'fix/userlist-n1',
-        });
-        expect(updated.type).toBe('note');
-        expect(updated.topicKey).toBe('fix/userlist-n1');
-      } catch (error: any) {
-        if (error.code !== 'SQLITE_CORRUPT_VTAB') throw error;
-        console.warn('⚠️ FTS5 VTAB corruption on update — known parallel test issue');
-      }
+      // Update (fix applied)
+      const updated = await engine.updateObservation(obs.id, {
+        type: 'note',
+        content: 'Fixed N+1 query in UserList by adding eager loading',
+        topicKey: 'fix/userlist-n1',
+      });
+      expect(updated.type).toBe('note');
+      expect(updated.topicKey).toBe('fix/userlist-n1');
 
-      // Verify via get (read works even after VTAB issues)
+      // Verify via get
       const found = await engine.getObservation(obs.id);
       expect(found).not.toBeNull();
       expect(found!.title).toBe('Initial Discovery');
