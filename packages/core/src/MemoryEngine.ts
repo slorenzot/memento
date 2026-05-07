@@ -913,6 +913,7 @@ export class MemoryEngine {
   }
 
   async getObservation(id: number, includeDeleted: boolean = false): Promise<Observation | null> {
+    this.checkHealth();
     return await this.getObservationById(id, includeDeleted);
   }
 
