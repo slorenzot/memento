@@ -6,10 +6,10 @@
 
 > Command line interface for Memento memory system with search, management, and administrative commands for AI coding agents.
 
-## 🚀 Instalación
+## 🚀 Installation
 
 ```bash
-# Using Bun (recomendado)
+# Using Bun (recommended)
 bun add -g @slorenzot/memento-cli
 
 # Using npm
@@ -19,310 +19,310 @@ npm install -g @slorenzot/memento-cli
 yarn global add @slorenzot/memento-cli
 ```
 
-## 💡 Uso Básico
+## 💡 Basic Usage
 
 ### Shell/Bun
 ```bash
-# Ver ayuda general
+# Show general help
 memento --help
 
-# Ver versión
+# Show version
 memento --version
 ```
 
-## 🔧 Comandos Disponibles
+## 🔧 Available Commands
 
-### Comandos Principales
+### Main Commands
 
 #### `search [query]`
-Busca observaciones en la memoria usando búsqueda full-text.
+Searches observations in memory using full-text search.
 
-**Parámetros:**
-- `query` (opcional): Texto de búsqueda
+**Parameters:**
+- `query` (optional): Search text
 
-**Opciones:**
-- `--type, -t`: Filtrar por tipo (`decision|bug|discovery|note`)
-- `--project, -p`: Filtrar por ID de proyecto
-- `--limit, -l`: Número máximo de resultados
-- `--offset, -o`: Paginación de resultados
+**Options:**
+- `--type, -t`: Filter by type (`decision|bug|discovery|note`)
+- `--project, -p`: Filter by project ID
+- `--limit, -l`: Maximum number of results
+- `--offset, -o`: Pagination offset
 
-**Ejemplos:**
+**Examples:**
 ```bash
-# Búsqueda simple
-memento search "arquitectura base de datos"
+# Simple search
+memento search "database architecture"
 
-# Búsqueda filtrada
-memento search "configuración" --type decision --limit 5
+# Filtered search
+memento search "configuration" --type decision --limit 5
 
-# Búsqueda en proyecto específico
+# Search in specific project
 memento search "bug" --project my-app --type bug
 ```
 
 ---
 
 #### `save [title] [content]`
-Guarda una nueva observación en la memoria.
+Saves a new observation to memory.
 
-**Parámetros:**
-- `title`: Título de la observación
-- `content`: Contenido de la observación
+**Parameters:**
+- `title`: Observation title
+- `content`: Observation content
 
-**Opciones:**
-- `--type, -t`: Tipo de observación (`decision|bug|discovery|note`)
-- `--topic, -k`: Tópico o categoría
-- `--project, -p`: ID del proyecto
-- `--metadata, -m`: Metadatos JSON
+**Options:**
+- `--type, -t`: Observation type (`decision|bug|discovery|note`)
+- `--topic, -k`: Topic or category
+- `--project, -p`: Project ID
+- `--metadata, -m`: JSON metadata
 
-**Ejemplos:**
+**Examples:**
 ```bash
-# Guardar observación simple
-memento save "Decisión importante" "Usar PostgreSQL en producción"
+# Save simple observation
+memento save "Important decision" "Use PostgreSQL in production"
 
-# Guardar con tipo y proyecto
-memento save "Bug encontrado" "Error de conexión" --type bug --project my-app
+# Save with type and project
+memento save "Bug found" "Connection error" --type bug --project my-app
 
-# Guardar con metadatos
-memento save "Configuración completada" "Servidor listo" --metadata '{"status":"ready","port":3000}'
+# Save with metadata
+memento save "Configuration complete" "Server ready" --metadata '{"status":"ready","port":3000}'
 ```
 
 ---
 
 #### `get [id]`
-Obtiene una observación específica por ID.
+Gets a specific observation by ID.
 
-**Parámetros:**
-- `id`: ID numérico de la observación
+**Parameters:**
+- `id`: Numeric ID of the observation
 
-**Ejemplos:**
+**Examples:**
 ```bash
-# Obtener observación por ID
+# Get observation by ID
 memento get 123
 
-# La salida mostrará todos los detalles de la observación
+# Output will show all observation details
 ```
 
 ---
 
 #### `update <id> [options]`
-Actualiza una observación existente.
+Updates an existing observation.
 
-**Parámetros:**
-- `id`: ID numérico de la observación
+**Parameters:**
+- `id`: Numeric ID of the observation
 
-**Opciones:**
-- `--title, -t`: Nuevo título
-- `--content, -c`: Nuevo contenido
-- `--type`: Nuevo tipo
-- `--topic, -k`: Nuevo tópico
+**Options:**
+- `--title, -t`: New title
+- `--content, -c`: New content
+- `--type`: New type
+- `--topic, -k`: New topic
 
-**Ejemplos:**
+**Examples:**
 ```bash
-# Actualizar título
-memento update 123 --title "Título corregido"
+# Update title
+memento update 123 --title "Corrected title"
 
-# Actualizar contenido
-memento update 123 --content "Contenido actualizado"
+# Update content
+memento update 123 --content "Updated content"
 
-# Actualizar múltiples campos
-memento update 123 --title "Nuevo" --type decision
+# Update multiple fields
+memento update 123 --title "New" --type decision
 ```
 
 ---
 
 #### `delete <id>`
-Elimina una observación por ID.
+Deletes an observation by ID.
 
-**Parámetros:**
-- `id`: ID numérico de la observación
+**Parameters:**
+- `id`: Numeric ID of the observation
 
-**Ejemplos:**
+**Examples:**
 ```bash
-# Eliminar observación
+# Delete observation
 memento delete 123
 ```
 
 ---
 
-### Comandos de Sesiones
+### Session Commands
 
 #### `session start [project]`
-Inicia una nueva sesión de seguimiento.
+Starts a new tracking session.
 
-**Parámetros:**
-- `project` (opcional): ID del proyecto
+**Parameters:**
+- `project` (optional): Project ID
 
-**Ejemplos:**
+**Examples:**
 ```bash
-# Iniciar sesión
+# Start session
 memento session start my-app
 ```
 
 ---
 
 #### `session end <id>`
-Finaliza una sesión activa.
+Ends an active session.
 
-**Parámetros:**
-- `id`: ID numérico de la sesión
+**Parameters:**
+- `id`: Numeric ID of the session
 
-**Ejemplos:**
+**Examples:**
 ```bash
-# Finalizar sesión
+# End session
 memento session end 456
 ```
 
 ---
 
 #### `session list [project]`
-Lista sesiones del proyecto.
+Lists project sessions.
 
-**Parámetros:**
-- `project` (opcional): ID del proyecto
+**Parameters:**
+- `project` (optional): Project ID
 
-**Opciones:**
-- `--limit, -l`: Número máximo de resultados
+**Options:**
+- `--limit, -l`: Maximum number of results
 
-**Ejemplos:**
+**Examples:**
 ```bash
-# Listar todas las sesiones
+# List all sessions
 memento session list
 
-# Listar sesiones de proyecto específico
+# List sessions for specific project
 memento session list my-app --limit 10
 ```
 
 ---
 
-### Comandos de Utilidad
+### Utility Commands
 
 #### `stats`
-Muestra estadísticas del sistema de memoria.
+Shows memory system statistics.
 
-**Ejemplos:**
+**Examples:**
 ```bash
-# Ver estadísticas
+# View statistics
 memento stats
 
-# Salida esperada:
-# Total observaciones: 150
-# Por tipo: decision: 45, bug: 30, discovery: 50, note: 25
-# Sesiones activas: 3
-# Última actualización: 2024-04-04 10:30:00
+# Expected output:
+# Total observations: 150
+# By type: decision: 45, bug: 30, discovery: 50, note: 25
+# Active sessions: 3
+# Last update: 2024-04-04 10:30:00
 ```
 
 ---
 
 #### `timeline [project]`
-Muestra una línea temporal de observaciones.
+Shows a chronological timeline of observations.
 
-**Parámetros:**
-- `project` (opcional): ID del proyecto
+**Parameters:**
+- `project` (optional): Project ID
 
-**Opciones:**
-- `--limit, -l`: Número máximo de resultados
-- `--session, -s`: Filtrar por sesión ID
+**Options:**
+- `--limit, -l`: Maximum number of results
+- `--session, -s`: Filter by session ID
 
-**Ejemplos:**
+**Examples:**
 ```bash
-# Ver timeline completo
+# View full timeline
 memento timeline
 
-# Ver timeline de proyecto específico
+# View timeline for specific project
 memento timeline my-app --limit 20
 ```
 
 ---
 
-## 📝 API Programática
+## 📝 Programmatic API
 
-### Uso en Node.js/TypeScript
+### Node.js/TypeScript Usage
 
 ```typescript
 import { CLI } from '@slorenzot/memento-cli';
 
-// Crear instancia CLI
+// Create CLI instance
 const cli = new CLI('./data/memento.db');
 
-// Ejecutar comando programáticamente
-// Nota: Este uso es para integración personalizada
-// Para uso normal, usar los comandos de shell
+// Execute command programmatically
+// Note: This usage is for custom integration
+// For normal usage, use shell commands
 
-// Los comandos principales se ejecutan a través del método run()
-cli.run(['search', 'arquitectura']);
+// Main commands are executed through the run() method
+cli.run(['search', 'architecture']);
 
-// Cerrar conexión
+// Close connection
 cli.close();
 ```
 
-## ⚡ Ejemplos Prácticos
+## ⚡ Practical Examples
 
-### Ejemplo 1: Flujo de Trabajo Completo
+### Example 1: Complete Workflow
 
 ```bash
-# Iniciar sesión para seguimiento
+# Start session for tracking
 SESSION_ID=$(memento session start my-app | grep "ID:" | cut -d' ' -f2)
-echo "Sesión iniciada: $SESSION_ID"
+echo "Session started: $SESSION_ID"
 
-# Guardar observaciones durante el trabajo
-memento save "Decisión de arquitectura" "Usar microservicios" --project my-app
-memento save "Bug encontrado" "Error en autenticación" --type bug --project my-app
+# Save observations during work
+memento save "Architecture decision" "Use microservices" --project my-app
+memento save "Bug found" "Authentication error" --type bug --project my-app
 
-# Buscar decisiones anteriores
-memento search "arquitectura" --type decision --project my-app
+# Search for previous decisions
+memento search "architecture" --type decision --project my-app
 
-# Finalizar sesión
+# End session
 memento session end $SESSION_ID
 ```
 
-### Ejemplo 2: Script de Búsqueda y Análisis
+### Example 2: Search and Analysis Script
 
 ```bash
 #!/bin/bash
 
-# Buscar bugs del proyecto
-echo "=== Buscando bugs en proyecto ==="
+# Search for project bugs
+echo "=== Searching for project bugs ==="
 memento search "bug" --type bug --project my-app --limit 10
 
-# Buscar decisiones recientes
+# Search for recent decisions
 echo ""
-echo "=== Decisiones recientes ==="
+echo "=== Recent decisions ==="
 memento search --type decision --project my-app --limit 5
 
-# Mostrar estadísticas
+# Show statistics
 echo ""
-echo "=== Estadísticas del sistema ==="
+echo "=== System statistics ==="
 memento stats
 ```
 
-### Ejemplo 3: Integración con Git Hooks
+### Example 3: Git Hooks Integration
 
 ```bash
 # pre-commit hook
 #!/bin/bash
 
-# Guardar commits como observaciones
+# Save commits as observations
 MESSAGE=$(git log -1 --pretty=%B)
 memento save "Commit: $(git rev-parse --short HEAD)" "$MESSAGE" --type note
 
-echo "Commit guardado en Memento"
+echo "Commit saved to Memento"
 ```
 
-### Ejemplo 4: Exportación y Backup
+### Example 4: Export and Backup
 
 ```bash
-# Exportar observaciones del proyecto
+# Export project observations
 memento timeline my-app --limit 1000 > backup-observations.txt
 
-# Crear backup con metadatos
-echo "Backup creado: $(date)" > backup-info.txt
+# Create backup with metadata
+echo "Backup created: $(date)" > backup-info.txt
 memento stats >> backup-info.txt
 ```
 
-## 🔧 Configuración
+## 🔧 Configuration
 
-### Archivo de Configuración
+### Configuration File
 
-La CLI busca configuración en `~/.memento/config.json`:
+The CLI looks for configuration in `~/.memento/config.json`:
 
 ```json
 {
@@ -336,53 +336,53 @@ La CLI busca configuración en `~/.memento/config.json`:
 }
 ```
 
-### Variables de Entorno
+### Environment Variables
 
-- `MEMENTO_DB_PATH`: Ruta personalizada de base de datos
-- `MEMENTO_DEFAULT_PROJECT`: Proyecto por defecto
+- `MEMENTO_DB_PATH`: Custom database path
+- `MEMENTO_DEFAULT_PROJECT`: Default project
 
-**Ejemplos:**
+**Examples:**
 ```bash
-# Usar base de datos personalizada
+# Use custom database
 export MEMENTO_DB_PATH="/custom/path/database.db"
 memento search "query"
 ```
 
-## ⚠️ Licencia Restrictiva
+## ⚠️ Restrictive License
 
-Este paquete está bajo **Licencia CC BY-NC-ND 4.0**:
-- ✅ **Uso personal y educacional permitido**
-- ✅ **Compartir con atribución al autor**
-- ❌ **Uso comercial NO permitido**
-- ❌ **Modificaciones o forks NO permitidos**
+This package is under **CC BY-NC-ND 4.0 License**:
+- ✅ **Personal and educational use permitted**
+- ✅ **Share with attribution to the author**
+- ❌ **Commercial use NOT permitted**
+- ❌ **Modifications or forks NOT permitted**
 
-**Autor**: Soulberto Lorenzo (slorenzot@gmail.com)
+**Author:** Soulberto Lorenzo (slorenzot@gmail.com)
 
-## 🔄 Dependencias
+## 🔄 Dependencies
 
-### Dependencias Principales
-- `@slorenzot/memento-core` - Motor de memoria
-- `commander` - Framework de CLI
-- `chalk` - Colores en terminal
-- `ora` - Indicadores de progreso
-- `ink` - Componentes de UI en terminal
-- `zod` - Validación de esquemas
+### Main Dependencies
+- `@slorenzot/memento-core` - Memory engine
+- `commander` - CLI framework
+- `chalk` - Terminal colors
+- `ora` - Progress indicators
+- `ink` - Terminal UI components
+- `zod` - Schema validation
 
 ### Peer Dependencies
-- `bun` v1.0+ (recomendado)
+- `bun` v1.0+ (recommended)
 - `node` v20+ (compatible)
 
-## 🛠️ Desarrollo
+## 🛠️ Development
 
 ```bash
-# Clonar el proyecto
+# Clone the project
 git clone https://github.com/slorenzot/memento.git
 cd memento/packages/cli
 
-# Instalar dependencias
+# Install dependencies
 bun install
 
-# Desarrollo
+# Development
 bun run dev
 
 # Build
@@ -395,28 +395,30 @@ bun test
 ## 📋 Changelog
 
 ### [0.1.1] - 2024-04-04
-- **Fixed**: Actualización de dependencias core
-- **Fixed**: Mejora en manejo de argumentos CLI
-- **Updated**: Optimización de salida de comandos
+- **Fixed**: Core dependency updates
+- **Fixed**: Improved CLI argument handling
+- **Updated**: Command output optimization
 
 ### [0.1.0] - 2024-04-04
-- **Added**: Versión inicial de la CLI
-- **Added**: Comandos de gestión de memoria
-- **Added**: Comandos de búsqueda y estadísticas
-- **Added**: Soporte completo de colores y progreso
+- **Added**: Initial CLI version
+- **Added**: Memory management commands
+- **Added**: Search and statistics commands
+- **Added**: Full color and progress support
 
-## 👤 Autor
+## 👤 Author
 
-**Soulberto Lorenzo**  
+**Soulberto Lorenzo**
 - GitHub: [@slorenzot](https://github.com/slorenzot)
 - Email: slorenzot@gmail.com
 
-## 📄 Licencia
+## 📄 License
 
-Este paquete está bajo Licencia **Creative Commons Attribution-NonCommercial-NoDerivs 4.0 International**.
+This package is licensed under **Creative Commons Attribution-NonCommercial-NoDerivs 4.0 International**.
 
-[Ver Licencia Completa](https://github.com/slorenzot/memento/blob/main/LICENSE)
+[View Full License](https://github.com/slorenzot/memento/blob/main/LICENSE)
 
 ---
 
-**⚠️ Importante**: Este paquete tiene licencia restrictiva. Respeta los términos de la licencia CC BY-NC-ND 4.0.
+**⚠️ Important:** This package has a restrictive license. Please respect the CC BY-NC-ND 4.0 license terms.
+
+**[📖 Spanish version (Versión en español)](./README.es.md)**

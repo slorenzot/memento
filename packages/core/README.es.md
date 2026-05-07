@@ -6,68 +6,68 @@
 
 > Core memory engine with SQLite FTS5 search, session management, and observation persistence for AI coding agents.
 
-## 🚀 Installation
+## 🚀 Instalación
 
 ```bash
-# Using Bun (recommended)
+# Using Bun (recomendado)
 bun add @slorenzot/memento-core
 
 # Using npm
 npm install @slorenzot/memento-core
 ```
 
-## 💡 Basic Usage
+## 💡 Uso Básico
 
 ### TypeScript
 ```typescript
 import { MemoryEngine } from '@slorenzot/memento-core';
 
-// Initialize memory engine
+// Inicializar motor de memoria
 const memory = new MemoryEngine('./data/memento.db');
 
-// Create an observation
+// Crear una observación
 const observation = await memory.createObservation({
-  title: 'Architecture decision',
-  content: 'Use SQLite as the database engine',
+  title: 'Decisión de arquitectura',
+  content: 'Usar SQLite como motor de base de datos',
   type: 'decision',
   topicKey: 'architecture',
   projectId: 'my-project'
 });
 
-console.log('Observation saved:', observation);
+console.log('Observación guardada:', observation);
 ```
 
 ### Shell/Bun
 ```bash
-# Run TypeScript script with memory engine
+# Ejecutar script TypeScript con motor de memoria
 bun run memory-script.ts
 ```
 
-## 🔧 Core API
+## 🔧 API Esencial
 
-### Main Class
+### Clase Principal
 
 #### `MemoryEngine(dbPath?: string)`
 
-Memory engine constructor.
+Constructor del motor de memoria.
 
-**Parameters:**
-- `dbPath` (optional): Path to the SQLite database file. Default: `'./data/memento.db'`
+**Parámetros:**
+- `dbPath` (opcional): Ruta al archivo de base de datos SQLite. Default: `'./data/memento.db'`
 
-**Example:**
+**Ejemplo:**
 ```typescript
 const memory = new MemoryEngine('./custom/path.db');
 ```
 
 ---
 
-#### Observation Methods
+#### Métodos de Observaciones
 
 ##### `createObservation(data)`
 
-Creates a new observation in memory.
+Crea una nueva observación en la memoria.
 
-**Parameters:**
+**Parámetros:**
 ```typescript
 {
   title: string;
@@ -80,13 +80,13 @@ Creates a new observation in memory.
 }
 ```
 
-**Returns:** `Promise<Observation>`
+**Retorna:** `Promise<Observation>`
 
-**Example:**
+**Ejemplo:**
 ```typescript
 const observation = await memory.createObservation({
-  title: 'Bug found',
-  content: 'Server connection error',
+  title: 'Bug encontrado',
+  content: 'Error de conexión al servidor',
   type: 'bug',
   projectId: 'project-123',
   metadata: { severity: 'high', priority: 1 }
@@ -97,9 +97,9 @@ const observation = await memory.createObservation({
 
 ##### `search(params)`
 
-Searches observations using FTS5 full-text search.
+Busca observaciones usando búsqueda full-text FTS5.
 
-**Parameters:**
+**Parámetros:**
 ```typescript
 {
   query?: string;
@@ -111,18 +111,18 @@ Searches observations using FTS5 full-text search.
 }
 ```
 
-**Returns:** `Promise<SearchResult>`
+**Retorna:** `Promise<SearchResult>`
 
-**Example:**
+**Ejemplo:**
 ```typescript
 const results = await memory.search({
-  query: 'database architecture',
+  query: 'arquitectura base de datos',
   type: 'decision',
   projectId: 'project-123',
   limit: 10
 });
 
-console.log(`Found ${results.total} observations:`);
+console.log(`Encontrados ${results.total} observaciones:`);
 results.observations.forEach(obs => console.log(obs.title));
 ```
 
@@ -130,18 +130,18 @@ results.observations.forEach(obs => console.log(obs.title));
 
 ##### `getObservation(id)`
 
-Gets an observation by its ID.
+Obtiene una observación por su ID.
 
-**Parameters:**
-- `id`: Numeric ID of the observation
+**Parámetros:**
+- `id`: ID numérico de la observación
 
-**Returns:** `Promise<Observation | null>`
+**Retorna:** `Promise<Observation | null>`
 
-**Example:**
+**Ejemplo:**
 ```typescript
 const observation = await memory.getObservation(123);
 if (observation) {
-  console.log('Observation found:', observation.title);
+  console.log('Observación encontrada:', observation.title);
 }
 ```
 
@@ -149,19 +149,19 @@ if (observation) {
 
 ##### `updateObservation(id, updates)`
 
-Updates an existing observation.
+Actualiza una observación existente.
 
-**Parameters:**
-- `id`: Numeric ID of the observation
-- `updates`: Object with fields to update
+**Parámetros:**
+- `id`: ID numérico de la observación
+- `updates`: Objeto con campos a actualizar
 
-**Returns:** `Promise<Observation>`
+**Retorna:** `Promise<Observation>`
 
-**Example:**
+**Ejemplo:**
 ```typescript
 const updated = await memory.updateObservation(123, {
-  title: 'Updated title',
-  content: 'Modified content'
+  title: 'Título actualizado',
+  content: 'Contenido modificado'
 });
 ```
 
@@ -169,28 +169,28 @@ const updated = await memory.updateObservation(123, {
 
 ##### `deleteObservation(id)`
 
-Deletes an observation by its ID.
+Elimina una observación por su ID.
 
-**Parameters:**
-- `id`: Numeric ID of the observation
+**Parámetros:**
+- `id`: ID numérico de la observación
 
-**Returns:** `Promise<void>`
+**Retorna:** `Promise<void>`
 
-**Example:**
+**Ejemplo:**
 ```typescript
 await memory.deleteObservation(123);
-console.log('Observation deleted');
+console.log('Observación eliminada');
 ```
 
 ---
 
-#### Session Methods
+#### Métodos de Sesiones
 
 ##### `createSession(data)`
 
-Creates a new session for conversation tracking.
+Crea una nueva sesión para seguimiento de conversaciones.
 
-**Parameters:**
+**Parámetros:**
 ```typescript
 {
   projectId: string;
@@ -198,34 +198,34 @@ Creates a new session for conversation tracking.
 }
 ```
 
-**Returns:** `Promise<Session>`
+**Retorna:** `Promise<Session>`
 
-**Example:**
+**Ejemplo:**
 ```typescript
 const session = await memory.createSession({
   projectId: 'my-project',
   metadata: { agent: 'claude', userId: 'user-123' }
 });
 
-console.log('Session started:', session.uuid);
+console.log('Sesión iniciada:', session.uuid);
 ```
 
 ---
 
 ##### `getSession(id)`
 
-Gets a session by its ID.
+Obtiene una sesión por su ID.
 
-**Parameters:**
-- `id`: Numeric ID of the session
+**Parámetros:**
+- `id`: ID numérico de la sesión
 
-**Returns:** `Promise<Session | null>`
+**Retorna:** `Promise<Session | null>`
 
-**Example:**
+**Ejemplo:**
 ```typescript
 const session = await memory.getSession(456);
 if (session) {
-  console.log('Session found:', session.uuid);
+  console.log('Sesión encontrada:', session.uuid);
 }
 ```
 
@@ -233,38 +233,38 @@ if (session) {
 
 ##### `endSession(id)`
 
-Ends an active session.
+Finaliza una sesión activa.
 
-**Parameters:**
-- `id`: Numeric ID of the session
+**Parámetros:**
+- `id`: ID numérico de la sesión
 
-**Returns:** `Promise<Session>`
+**Retorna:** `Promise<Session>`
 
-**Example:**
+**Ejemplo:**
 ```typescript
 const endedSession = await memory.endSession(456);
-console.log('Session ended:', endedSession.endedAt);
+console.log('Sesión finalizada:', endedSession.endedAt);
 ```
 
 ---
 
-#### Close Method
+#### Método de Cierre
 
 ##### `close()`
 
-Closes the database connection.
+Cierra la conexión con la base de datos.
 
-**Returns:** `void`
+**Retorna:** `void`
 
-**Example:**
+**Ejemplo:**
 ```typescript
-// On application cleanup
+// En cleanup de aplicación
 memory.close();
 ```
 
 ---
 
-## 📝 Core Types
+## 📝 Tipos Principales
 
 ```typescript
 interface Observation {
@@ -304,26 +304,26 @@ interface SearchResult {
 }
 ```
 
-## ⚡ Practical Examples
+## ⚡ Ejemplos Prácticos
 
-### Example 1: Complete Memory Workflow
+### Ejemplo 1: Flujo Completo de Memoria
 
 ```typescript
 import { MemoryEngine } from '@slorenzot/memento-core';
 
 const memory = new MemoryEngine('./memory.db');
 
-// Create session for tracking
+// Crear sesión para seguimiento
 const session = await memory.createSession({
   projectId: 'my-app',
   metadata: { agent: 'claude' }
 });
 
-// Save observations during work
+// Guardar observaciones durante el trabajo
 await memory.createObservation({
   sessionId: session.id,
-  title: 'Server configuration',
-  content: 'Use Express.js with security middleware',
+  title: 'Configuración de servidor',
+  content: 'Usar Express.js con middleware de seguridad',
   type: 'decision',
   projectId: 'my-app',
   topicKey: 'backend'
@@ -331,85 +331,85 @@ await memory.createObservation({
 
 await memory.createObservation({
   sessionId: session.id,
-  title: 'Authentication bug',
-  content: 'JWT not expiring correctly',
+  title: 'Bug en autenticación',
+  content: 'El JWT no expira correctamente',
   type: 'bug',
   projectId: 'my-app',
   topicKey: 'security'
 });
 
-// Search for related decisions
+// Buscar decisiones relacionadas
 const decisions = await memory.search({
   type: 'decision',
   projectId: 'my-app'
 });
 
-console.log('Decisions made:', decisions.observations);
+console.log('Decisiones tomadas:', decisions.observations);
 
-// End session
+// Finalizar sesión
 await memory.endSession(session.id);
 
-// Close connection
+// Cerrar conexión
 memory.close();
 ```
 
-### Example 2: Advanced Search
+### Ejemplo 2: Búsqueda Avanzada
 
 ```typescript
 import { MemoryEngine } from '@slorenzot/memento-core';
 
 const memory = new MemoryEngine('./memory.db');
 
-// Complex search with multiple filters
+// Búsqueda compleja con múltiples filtros
 const results = await memory.search({
-  query: 'database architecture',
+  query: 'base de datos arquitectura',
   type: 'decision',
   projectId: 'my-app',
   limit: 5,
   offset: 10
 });
 
-console.log(`Total results: ${results.total}`);
+console.log(`Total de resultados: ${results.total}`);
 results.observations.forEach((obs, index) => {
   console.log(`${index + 1}. ${obs.title}`);
   console.log(`   ${obs.content.substring(0, 100)}...`);
-  console.log(`   Type: ${obs.type} | Topic: ${obs.topicKey}`);
+  console.log(`   Tipo: ${obs.type} | Tópico: ${obs.topicKey}`);
 });
 
 memory.close();
 ```
 
-## ⚠️ Restrictive License
+## ⚠️ Licencia Restrictiva
 
-This package is under **CC BY-NC-ND 4.0 License**:
-- ✅ **Personal and educational use permitted**
-- ✅ **Share with attribution to the author**
-- ❌ **Commercial use NOT permitted**
-- ❌ **Modifications or forks NOT permitted**
+Este paquete está bajo **Licencia CC BY-NC-ND 4.0**:
+- ✅ **Uso personal y educacional permitido**
+- ✅ **Compartir con atribución al autor**
+- ❌ **Uso comercial NO permitido**
+- ❌ **Modificaciones o forks NO permitidos**
 
-**Author:** Soulberto Lorenzo (slorenzot@gmail.com)
+**Autor**: Soulberto Lorenzo (slorenzot@gmail.com)
 
-## 🔄 Dependencies
+## 🔄 Dependencias
 
-### Main Dependencies
-- `zod` - Schema validation
-- `nanoid` - Unique ID generation
+### Dependencias Principales
+- `zod` - Validación de esquemas
+- `nanoid` - Generación de IDs únicos
 
 ### Peer Dependencies
-- `bun` v1.0+ (recommended)
+- `bun` v1.0+ (recomendado)
 - `node` v20+ (compatible)
 
-## 🛠️ Development
+## 🛠️ Desarrollo
 
 ```bash
-# Clone the project
+# Clonar el proyecto
 git clone https://github.com/slorenzot/memento.git
 cd memento/packages/core
 
-# Install dependencies
+# Instalar dependencias
 bun install
 
-# Development
+# Desarrollo
 bun run dev
 
 # Build
@@ -422,25 +422,25 @@ bun test
 ## 📋 Changelog
 
 ### [0.1.0] - 2024-04-04
-- **Added**: Initial version of the memory engine
-- **Added**: SQLite with FTS5 for full-text search
-- **Added**: Session and observation management
-- **Added**: Full TypeScript support
+- **Added**: Versión inicial del motor de memoria
+- **Added**: SQLite con FTS5 para búsqueda full-text
+- **Added**: Gestión de sesiones y observaciones
+- **Added**: Soporte completo de TypeScript
 
-## 👤 Author
+## 👤 Autor
 
-**Soulberto Lorenzo**
+**Soulberto Lorenzo**  
 - GitHub: [@slorenzot](https://github.com/slorenzot)
 - Email: slorenzot@gmail.com
 
-## 📄 License
+## 📄 Licencia
 
-This package is licensed under **Creative Commons Attribution-NonCommercial-NoDerivs 4.0 International**.
+Este paquete está bajo Licencia **Creative Commons Attribution-NonCommercial-NoDerivs 4.0 International**.
 
-[View Full License](https://github.com/slorenzot/memento/blob/main/LICENSE)
+[Ver Licencia Completa](https://github.com/slorenzot/memento/blob/main/LICENSE)
 
 ---
 
-**⚠️ Important:** This package has a restrictive license. Please respect the CC BY-NC-ND 4.0 license terms.
+**⚠️ Importante**: Este paquete tiene licencia restrictiva. Respeta los términos de la licencia CC BY-NC-ND 4.0.
 
-**[📖 Spanish version (Versión en español)](./README.es.md)**
+**[📖 English version](./README.md)**

@@ -7,98 +7,98 @@
 
 > Model Context Protocol (MCP) server providing 15 memory tools for AI agent integration with Claude Desktop, VS Code, and other MCP clients.
 
-## 🚀 Instalación
+## 🚀 Installation
 
 ```bash
-# Using Bun (recomendado)
+# Using Bun (recommended)
 bun add @slorenzot/memento-mcp-server
 
 # Using npm
 npm install @slorenzot/memento-mcp-server
 ```
 
-## 💡 Uso Básico
+## 💡 Basic Usage
 
 ### TypeScript
 ```typescript
 import { MCPServer } from '@slorenzot/memento-mcp-server';
 
-// Inicializar servidor MCP
+// Initialize MCP server
 const server = new MCPServer('./data/memento.db');
 
-// Iniciar servidor (usa stdio para comunicación MCP)
-// Nota: Este servidor está diseñado para ser ejecutado por clientes MCP
-// No es necesario llamar start() manualmente en producción
+// Start server (uses stdio for MCP communication)
+// Note: This server is designed to be executed by MCP clients
+// No need to call start() manually in production
 ```
 
 ### Shell/Bun
 ```bash
-# Ejecutar servidor MCP (recomendado)
+# Run MCP server (recommended)
 npx -p @slorenzot/memento-mcp-server
 
-# O usando bunx (si está instalado globalmente)
+# Or using bunx (if installed globally)
 bunx @slorenzot/memento-mcp-server
 
-# Usar con variable de entorno para base de datos personalizada
+# Use with custom database path environment variable
 MEMENTO_DB_PATH=/custom/path/database.db npx -p @slorenzot/memento-mcp-server
 ```
 
-## 🔧 API Esencial
+## 🔧 Core API
 
-### Clase Principal
+### Main Class
 
 #### `MCPServer(dbPath?: string)`
 
-Constructor del servidor MCP con integración automática al motor de memoria.
+MCP server constructor with automatic memory engine integration.
 
-**Parámetros:**
-- `dbPath` (opcional): Ruta al archivo de base de datos. Default: `'./data/memento.db'`
+**Parameters:**
+- `dbPath` (optional): Path to the database file. Default: `'./data/memento.db'`
 
-**Ejemplo:**
+**Example:**
 ```typescript
 const server = new MCPServer('./custom/path.db');
 ```
 
 ---
 
-#### Métodos de Control
+#### Control Methods
 
 ##### `start()`
 
-Inicia el servidor MCP y comienza a escuchar solicitudes MCP via stdio.
+Starts the MCP server and begins listening for MCP requests via stdio.
 
-**Retorna:** `Promise<void>`
+**Returns:** `Promise<void>`
 
-**Nota:** Este método es llamado automáticamente cuando el servidor se inicia como proceso independiente.
+**Note:** This method is called automatically when the server starts as a standalone process.
 
 ---
 
 ##### `close()`
 
-Detiene el servidor MCP y cierra la conexión con la base de datos.
+Stops the MCP server and closes the database connection.
 
-**Retorna:** `void`
+**Returns:** `void`
 
-**Ejemplo:**
+**Example:**
 ```typescript
 const server = new MCPServer();
 
-// En cleanup o shutdown
+// On cleanup or shutdown
 server.close();
 ```
 
 ---
 
-## 🛠️ Herramientas MCP Disponibles
+## 🛠️ Available MCP Tools
 
-El servidor proporciona 15 herramientas MCP para gestión de memoria:
+The server provides 15 MCP tools for memory management:
 
-### Gestión de Observaciones
+### Observation Management
 
 #### `mem_save`
-Guarda una nueva observación en la memoria.
+Saves a new observation to memory.
 
-**Parámetros:**
+**Parameters:**
 ```typescript
 {
   title: string;
@@ -110,11 +110,11 @@ Guarda una nueva observación en la memoria.
 }
 ```
 
-**Ejemplo de uso:**
+**Usage example:**
 ```typescript
 await mem_save({
-  title: 'Decisión de arquitectura',
-  content: 'Usar PostgreSQL en lugar de MySQL',
+  title: 'Architecture decision',
+  content: 'Use PostgreSQL instead of MySQL',
   type: 'decision',
   project_id: 'my-project'
 });
@@ -123,9 +123,9 @@ await mem_save({
 ---
 
 #### `mem_search`
-Busca observaciones usando búsqueda full-text.
+Searches observations using full-text search.
 
-**Parámetros:**
+**Parameters:**
 ```typescript
 {
   query?: string;
@@ -140,9 +140,9 @@ Busca observaciones usando búsqueda full-text.
 ---
 
 #### `mem_get_observation`
-Obtiene una observación específica por ID.
+Gets a specific observation by ID.
 
-**Parámetros:**
+**Parameters:**
 ```typescript
 {
   id: number;
@@ -152,9 +152,9 @@ Obtiene una observación específica por ID.
 ---
 
 #### `mem_update`
-Actualiza una observación existente.
+Updates an existing observation.
 
-**Parámetros:**
+**Parameters:**
 ```typescript
 {
   id: number;
@@ -169,9 +169,9 @@ Actualiza una observación existente.
 ---
 
 #### `mem_delete`
-Elimina una observación por ID.
+Deletes an observation by ID.
 
-**Parámetros:**
+**Parameters:**
 ```typescript
 {
   id: number;
@@ -180,12 +180,12 @@ Elimina una observación por ID.
 
 ---
 
-### Gestión de Sesiones
+### Session Management
 
 #### `mem_session_start`
-Inicia una nueva sesión para seguimiento de conversaciones.
+Starts a new session for conversation tracking.
 
-**Parámetros:**
+**Parameters:**
 ```typescript
 {
   project_id: string;
@@ -196,9 +196,9 @@ Inicia una nueva sesión para seguimiento de conversaciones.
 ---
 
 #### `mem_session_end`
-Finaliza una sesión activa.
+Ends an active session.
 
-**Parámetros:**
+**Parameters:**
 ```typescript
 {
   id: number;
@@ -208,9 +208,9 @@ Finaliza una sesión activa.
 ---
 
 #### `mem_list_sessions`
-Lista todas las sesiones del proyecto.
+Lists all sessions for a project.
 
-**Parámetros:**
+**Parameters:**
 ```typescript
 {
   project_id?: string;
@@ -222,9 +222,9 @@ Lista todas las sesiones del proyecto.
 ---
 
 #### `mem_get_session`
-Obtiene una sesión específica.
+Gets a specific session.
 
-**Parámetros:**
+**Parameters:**
 ```typescript
 {
   id: number;
@@ -233,12 +233,12 @@ Obtiene una sesión específica.
 
 ---
 
-### Herramientas de Utilidad
+### Utility Tools
 
 #### `mem_timeline`
-Obtiene una línea temporal de observaciones.
+Gets a chronological timeline of observations.
 
-**Parámetros:**
+**Parameters:**
 ```typescript
 {
   project_id?: string;
@@ -251,16 +251,16 @@ Obtiene una línea temporal de observaciones.
 ---
 
 #### `mem_stats`
-Obtiene estadísticas del sistema de memoria.
+Gets memory system statistics.
 
-**Retorna:** Métricas de uso, totales por tipo, etc.
+**Returns:** Usage metrics, totals by type, etc.
 
 ---
 
 #### `mem_import`
-Importa observaciones desde JSON.
+Imports observations from JSON.
 
-**Parámetros:**
+**Parameters:**
 ```typescript
 {
   data: Array<{
@@ -275,9 +275,9 @@ Importa observaciones desde JSON.
 ---
 
 #### `mem_export`
-Exporta observaciones a JSON.
+Exports observations to JSON.
 
-**Parámetros:**
+**Parameters:**
 ```typescript
 {
   project_id?: string;
@@ -288,25 +288,25 @@ Exporta observaciones a JSON.
 
 ---
 
-### Herramientas de Sistema
+### System Tools
 
 #### `mem_health`
-Verifica el estado del sistema de memoria.
+Checks the memory system health status.
 
-**Retorna:** Estado de conexión, salud de base de datos, etc.
+**Returns:** Connection status, database health, etc.
 
 ---
 
 #### `mem_config`
-Obtiene la configuración actual del servidor.
+Gets the current server configuration.
 
-**Retorna:** Configuración de rutas, versión, etc.
+**Returns:** Path configuration, version, etc.
 
 ---
 
-## ⚡ Ejemplos Prácticos
+## ⚡ Practical Examples
 
-### Ejemplo 1: Integración con Claude Desktop
+### Example 1: Claude Desktop Integration
 
 ```json
 {
@@ -322,70 +322,70 @@ Obtiene la configuración actual del servidor.
 }
 ```
 
-### Ejemplo 2: Uso Programático del Servidor
+### Example 2: Programmatic Server Usage
 
 ```typescript
 import { MCPServer } from '@slorenzot/memento-mcp-server';
 
-// Crear servidor personalizado
+// Create custom server
 const server = new MCPServer('./memory.db');
 
-// El servidor manejará automáticamente solicitudes MCP
-// cuando sea ejecutado por un cliente MCP
+// The server will automatically handle MCP requests
+// when executed by an MCP client
 
-// Para control manual (testing)
+// For manual control (testing)
 const toolResult = await server.handleToolCall('mem_save', {
-  title: 'Test observación',
-  content: 'Contenido de prueba',
+  title: 'Test observation',
+  content: 'Test content',
   type: 'note',
   project_id: 'test-project'
 });
 
-console.log('Resultado:', toolResult);
+console.log('Result:', toolResult);
 
-// Cerrar cuando termine
+// Close when done
 server.close();
 ```
 
-### Ejemplo 3: Flujo Completo de Sesión
+### Example 3: Complete Session Workflow
 
 ```typescript
-// Usando herramientas MCP a través del servidor
+// Using MCP tools through the server
 
-// 1. Iniciar sesión
+// 1. Start session
 const sessionStart = await mem_session_start({
   project_id: 'my-app',
   metadata: { agent: 'claude' }
 });
 
-console.log('Sesión iniciada:', sessionStart.id);
+console.log('Session started:', sessionStart.id);
 
-// 2. Guardar observaciones durante trabajo
+// 2. Save observations during work
 await mem_save({
-  title: 'Configuración completada',
-  content: 'Servidor configurado en puerto 3000',
+  title: 'Configuration complete',
+  content: 'Server configured on port 3000',
   type: 'decision',
   project_id: 'my-app'
 });
 
-// 3. Buscar decisiones anteriores
+// 3. Search for previous decisions
 const searchResults = await mem_search({
-  query: 'configuración servidor',
+  query: 'server configuration',
   type: 'decision'
 });
 
-console.log('Decisiones encontradas:', searchResults.observations);
+console.log('Decisions found:', searchResults.observations);
 
-// 4. Finalizar sesión
+// 4. End session
 await mem_session_end({ id: sessionStart.id });
 
-// 5. Obtener estadísticas
+// 5. Get statistics
 const stats = await mem_stats();
-console.log('Total observaciones:', stats.total);
-console.log('Por tipo:', stats.by_type);
+console.log('Total observations:', stats.total);
+console.log('By type:', stats.by_type);
 ```
 
-## 🔗 Integración con Clientes MCP
+## 🔗 MCP Client Integration
 
 ### Claude Desktop
 ```json
@@ -405,7 +405,7 @@ console.log('Por tipo:', stats.by_type);
 }
 ```
 
-### VS Code (con extensión MCP)
+### VS Code (with MCP extension)
 ```json
 {
   "mcp.servers": {
@@ -420,38 +420,38 @@ console.log('Por tipo:', stats.by_type);
 }
 ```
 
-## ⚠️ Licencia Restrictiva
+## ⚠️ Restrictive License
 
-Este paquete está bajo **Licencia CC BY-NC-ND 4.0**:
-- ✅ **Uso personal y educacional permitido**
-- ✅ **Compartir con atribución al autor**
-- ❌ **Uso comercial NO permitido**
-- ❌ **Modificaciones o forks NO permitidos**
+This package is under **CC BY-NC-ND 4.0 License**:
+- ✅ **Personal and educational use permitted**
+- ✅ **Share with attribution to the author**
+- ❌ **Commercial use NOT permitted**
+- ❌ **Modifications or forks NOT permitted**
 
-**Autor**: Soulberto Lorenzo (slorenzot@gmail.com)
+**Author:** Soulberto Lorenzo (slorenzot@gmail.com)
 
-## 🔄 Dependencias
+## 🔄 Dependencies
 
-### Dependencias Principales
-- `@slorenzot/memento-core` - Motor de memoria
-- `@modelcontextprotocol/sdk` - SDK de Model Context Protocol
-- `zod` - Validación de esquemas
+### Main Dependencies
+- `@slorenzot/memento-core` - Memory engine
+- `@modelcontextprotocol/sdk` - Model Context Protocol SDK
+- `zod` - Schema validation
 
 ### Peer Dependencies
-- `bun` v1.0+ (recomendado)
+- `bun` v1.0+ (recommended)
 - `node` v20+ (compatible)
 
-## 🛠️ Desarrollo
+## 🛠️ Development
 
 ```bash
-# Clonar el proyecto
+# Clone the project
 git clone https://github.com/slorenzot/memento.git
 cd memento/packages/mcp-server
 
-# Instalar dependencias
+# Install dependencies
 bun install
 
-# Desarrollo
+# Development
 bun run dev
 
 # Build
@@ -464,28 +464,30 @@ bun test
 ## 📋 Changelog
 
 ### [0.1.1] - 2024-04-04
-- **Fixed**: Actualización de dependencias core
-- **Fixed**: Corrección de método deleteObservation
-- **Updated**: Mejora en validación de parámetros
+- **Fixed**: Core dependency updates
+- **Fixed**: deleteObservation method correction
+- **Updated**: Improved parameter validation
 
 ### [0.1.0] - 2024-04-04
-- **Added**: Versión inicial del servidor MCP
-- **Added**: 15 herramientas de gestión de memoria
-- **Added**: Integración completa con Model Context Protocol
-- **Added**: Soporte para Claude Desktop y VS Code
+- **Added**: Initial MCP server version
+- **Added**: 15 memory management tools
+- **Added**: Full Model Context Protocol integration
+- **Added**: Claude Desktop and VS Code support
 
-## 👤 Autor
+## 👤 Author
 
-**Soulberto Lorenzo**  
+**Soulberto Lorenzo**
 - GitHub: [@slorenzot](https://github.com/slorenzot)
 - Email: slorenzot@gmail.com
 
-## 📄 Licencia
+## 📄 License
 
-Este paquete está bajo Licencia **Creative Commons Attribution-NonCommercial-NoDerivs 4.0 International**.
+This package is licensed under **Creative Commons Attribution-NonCommercial-NoDerivs 4.0 International**.
 
-[Ver Licencia Completa](https://github.com/slorenzot/memento/blob/main/LICENSE)
+[View Full License](https://github.com/slorenzot/memento/blob/main/LICENSE)
 
 ---
 
-**⚠️ Importante**: Este paquete tiene licencia restrictiva. Respeta los términos de la licencia CC BY-NC-ND 4.0.
+**⚠️ Important:** This package has a restrictive license. Please respect the CC BY-NC-ND 4.0 license terms.
+
+**[📖 Spanish version (Versión en español)](./README.es.md)**
