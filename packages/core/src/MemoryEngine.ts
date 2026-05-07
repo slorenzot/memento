@@ -867,6 +867,18 @@ export class MemoryEngine {
 
   // ─── Search ────────────────────────────────────────────────
 
+  /**
+   * Sanitize a user query for safe use in FTS5 MATCH.
+   * Strips FTS5 operators and special characters that would cause syntax errors.
+   * Returns empty string if nothing survives sanitization.
+   */
+  private sanitizeFTS5Query(input: string): string {
+    return input
+      .replace(/[^a-zA-Z0-9\s]/g, ' ')  // Keep only alphanumeric and whitespace
+      .replace(/\s+/g, ' ')              // Collapse whitespace
+      .trim();
+  }
+
   async getObservation(id: number, includeDeleted: boolean = false): Promise<Observation | null> {
     return await this.getObservationById(id, includeDeleted);
   }
@@ -886,10 +898,12 @@ export class MemoryEngine {
     let sql: string;
     const values: (string | number | null)[] = [];
 
-    if (query) {
+    const sanitizedQuery = query ? this.sanitizeFTS5Query(query) : '';
+
+    if (sanitizedQuery) {
       sql =
         'SELECT observations.* FROM observations JOIN observations_fts ON observations.id = observations_fts.rowid WHERE observations_fts MATCH ?';
-      values.push(query);
+      values.push(sanitizedQuery);
 
       if (!includeDeleted) {
         sql += ' AND observations.deleted_at IS NULL';
@@ -1730,11 +1744,13 @@ export class MemoryEngine {
     let sql: string;
     const values: (string | number | null)[] = [];
 
-    if (query) {
+    const sanitizedQuery = query ? this.sanitizeFTS5Query(query) : '';
+
+    if (sanitizedQuery) {
       // FTS5 search — qualify column names to avoid ambiguity with journal_fts
       sql =
         'SELECT journal.* FROM journal JOIN journal_fts ON journal.id = journal_fts.rowid WHERE journal_fts MATCH ?';
-      values.push(query);
+      values.push(sanitizedQuery);
     } else {
       sql = 'SELECT * FROM journal WHERE 1=1';
     }
