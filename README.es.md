@@ -6,147 +6,147 @@
 [![MCP](https://img.shields.io/badge/MCP-Protocol-green.svg)](https://modelcontextprotocol.io)
 [![NPM Version](https://img.shields.io/npm/v/@slorenzot/memento-core.svg)](https://www.npmjs.org/package/@slorenzot/memento-core)
 
-**Memento** is a persistent memory system designed specifically for AI coding agents. It solves the forgetting problem by providing a persistent brain that allows agents to maintain context, learn, and improve over time.
+**Memento** es un sistema de memoria persistente diseñado específicamente para agentes de codificación de IA. Resuelve el problema del olvido proporcionando un cerebro persistente que permite a los agentes mantener contexto, aprender y mejorar a través del tiempo.
 
-> Memento doesn't just remember — it COORDINATES. It's the shared brain that enables an orchestrator to delegate work to sub-agents, track progress, resume interrupted tasks, and measure costs. All with 3 tables and zero friction.
+> Memento no solo recuerda — COORDINA. Es el cerebro compartido que permite a un orquestador delegar trabajo a sub-agentes, rastrear progreso, retomar tareas interrumpidas, y medir costos. Todo con 3 tablas y cero fricción.
 
-## ⚠️ Important: Restrictive License
+## ⚠️ Importante: Licencia Restrictiva
 
-This project is under **CC BY-NC-ND 4.0 License**:
-- ✅ **Personal and educational use permitted**
-- ✅ **Share with attribution to the author**
-- ❌ **Commercial use NOT permitted**
-- ❌ **Modifications or forks NOT permitted**
-- ❌ **Distribution of modified versions NOT permitted**
+Este proyecto está bajo **Licencia CC BY-NC-ND 4.0**:
+- ✅ **Uso personal y educacional permitido**
+- ✅ **Compartir con atribución al autor**
+- ❌ **Uso comercial NO permitido**
+- ❌ **Modificaciones o forks NO permitidos**
+- ❌ **Distribución de versiones modificadas NO permitida**
 
-**Author:** Soulberto Lorenzo (slorenzot@gmail.com)
+**Autor:** Soulberto Lorenzo (slorenzot@gmail.com)
 
-## 🎯 Key Features
+## 🎯 Características Principales
 
-- 🔍 **Advanced Full-Text Search**: SQLite FTS5 with BM25 ranking for ultra-fast semantic search
-- 🧠 **Persistent Memory**: Durable storage with SQLite in WAL mode for high performance
-- 🔌 **MCP Integration**: 15 fully implemented MCP tools for AI agents
-- 🌐 **Multi-Interface**: CLI with 12+ commands, RESTful HTTP API, and modern React 18 Web UI
-- 📊 **Smart Sessions**: Complete session management system with context tracking
-- ⚡ **High Performance**: Optimized with Bun runtime, <100ms responses for basic operations
-- 🛡️ **Type Safety**: Strict TypeScript with Zod validation and complete type safety
-- 🧪 **Well Tested**: Comprehensive test coverage with Bun test framework
-- 🔧 **Flexible Configuration**: `.mementorc` system with environment variable support
-- 📈 **Dashboard & Statistics**: Detailed system metrics and real-time usage analytics
+- 🔍 **Búsqueda Full-text Avanzada**: SQLite FTS5 con ranking BM25 para búsqueda semántica ultra-rápida
+- 🧠 **Memoria Persistente**: Almacenamiento duradero con SQLite en modo WAL para alto rendimiento
+- 🔌 **MCP Integration**: 15 herramientas MCP completamente implementadas para agentes IA
+- 🌐 **Multi-interfaz**: CLI con 12+ comandos, API HTTP RESTful, y Web UI moderna con React 18
+- 📊 **Sesiones Inteligentes**: Sistema completo de gestión de sesiones con seguimiento de contexto
+- ⚡ **Alto Rendimiento**: Optimizado con Bun runtime, respuestas <100ms para operaciones básicas
+- 🛡️ **Type Safety**: TypeScript estricto con validación Zod y seguridad de tipos completa
+- 🧪 **Bien Testado**: Cobertura de pruebas completa con Bun test framework
+- 🔧 **Configuración Flexible**: Sistema `.mementorc` con soporte para variables de entorno
+- 📈 **Dashboard y Estadísticas**: Métricas detalladas del sistema y análisis de uso en tiempo real
 
-## 🚀 Installation
+## 🚀 Instalación
 
-### Prerequisites
-- [Bun](https://bun.sh/) v1.0+ (runtime and package manager)
-- Node.js v20+ (for compatibility)
+### Requisitos Previos
+- [Bun](https://bun.sh/) v1.0+ (runtime y package manager)
+- Node.js v20+ (para compatibilidad)
 
-### Install from GitHub
+### Instalación desde GitHub
 
 ```bash
-# Clone the repository
+# Clonar el repositorio
 git clone https://github.com/slorenzot/memento.git
 cd memento
 
-# Install dependencies
+# Instalar dependencias
 bun install
 
-# Build the project
+# Construir el proyecto
 bun run build
 
-# Verify installation
+# Verificar instalación
 bun test
 
-# Start development server
+# Iniciar servidor de desarrollo
 bun run dev
 ```
 
-## 📦 NPM Packages
+## 📦 Paquetes NPM
 
-- [`@slorenzot/memento-core`](https://www.npmjs.org/package/@slorenzot/memento-core) v1.0.0 - Core memory engine
-- [`@slorenzot/memento-mcp-server`](https://www.npmjs.org/package/@slorenzot/memento-mcp-server) v1.0.0 - MCP server
+- [`@slorenzot/memento-core`](https://www.npmjs.org/package/@slorenzot/memento-core) v1.0.0 - Motor de memoria central
+- [`@slorenzot/memento-mcp-server`](https://www.npmjs.org/package/@slorenzot/memento-mcp-server) v1.0.0 - Servidor MCP
 - [`@slorenzot/memento-cli`](https://www.npmjs.org/package/@slorenzot/memento-cli) v1.0.0 - CLI interface
-- [`@slorenzot/memento-api`](https://www.npmjs.org/package/@slorenzot/memento-api) v0.3.0 - HTTP API
-- [`@slorenzot/memento-web-ui`](https://www.npmjs.org/package/@slorenzot/memento-web-ui) v0.1.1 - React web interface
+- [`@slorenzot/memento-api`](https://www.npmjs.org/package/@slorenzot/memento-api) v0.3.0 - API HTTP
+- [`@slorenzot/memento-web-ui`](https://www.npmjs.org/package/@slorenzot/memento-web-ui) v0.1.1 - Interfaz web React
 
-## 📦 Usage
+## 📦 Uso
 
-### MCP Server (Recommended for AI Agents)
+### MCP Server (Recomendado para Agentes IA)
 
 ```bash
-# Install globally
+# Instalar globalmente
 bun add -g @slorenzot/memento-mcp-server
 
-# Start MCP server
+# Iniciar servidor MCP
 memento-server
 
-# The server displays an ASCII banner on startup
-# Configure in MCP client (Claude Desktop, VS Code, etc.)
+# El servidor muestra un banner ASCII al iniciar
+# Configurar en MCP client (Claude Desktop, VS Code, etc.)
 # Command: memento-server
 ```
 
-**15 Available MCP Tools:**
+**15 Herramientas MCP Disponibles:**
 
-**Observation Management:**
-- `mem_save` - Save observations with automatic UUID
-- `mem_get_observation` - Get a specific observation by ID
-- `mem_update` - Update an existing observation
-- `mem_delete` - Delete an observation (soft delete)
-- `mem_search` - Full-text search with FTS5 and BM25 ranking
+**Gestión de Observaciones:**
+- `mem_save` - Guardar observaciones con UUID automático
+- `mem_get_observation` - Obtener observación específica por ID
+- `mem_update` - Actualizar observación existente
+- `mem_delete` - Eliminar observación (soft delete)
+- `mem_search` - Búsqueda full-text con FTS5 y BM25 ranking
 
-**Session Management:**
-- `mem_session_start` - Start a new session with metadata
-- `mem_session_end` - End the active session
-- `mem_list_sessions` - List all sessions
-- `mem_get_session` - Get specific session details
+**Gestión de Sesiones:**
+- `mem_session_start` - Iniciar nueva sesión con metadatos
+- `mem_session_end` - Finalizar sesión activa
+- `mem_list_sessions` - Listar todas las sesiones
+- `mem_get_session` - Obtener detalles de sesión específica
 
-**Utilities:**
-- `mem_timeline` - Chronological timeline of observations
-- `mem_stats` - System statistics
-- `mem_health` - System health check
-- `mem_config` - View and modify configuration
+**Utilidades:**
+- `mem_timeline` - Línea temporal de observaciones
+- `mem_stats` - Estadísticas del sistema
+- `mem_health` - Verificación de salud del sistema
+- `mem_config` - Ver y modificar configuración
 
-**MCP Server Features:**
-- Informative ASCII banner on startup
-- Advanced error handling with descriptive messages
-- Robust health check system
-- Support for Agent and Admin profiles
+**Características del Servidor MCP:**
+- Banner ASCII informativo al iniciar
+- Manejo avanzado de errores con mensajes descriptivos
+- Sistema de health checks robusto
+- Soporte para perfiles Agent y Admin
 
 ### CLI Interface
 
 ```bash
-# Install globally
+# Instalar globalmente
 bun add -g @slorenzot/memento-cli
 
-# Observation management commands
-memento save "Title" "Content" --type decision --tags tag1,tag2
-memento search "search query" --limit 10
+# Comandos de gestión de observaciones
+memento save "Título" "Contenido" --type decision --tags tag1,tag2
+memento search "consulta de búsqueda" --limit 10
 memento get <id>
-memento update <id> --title "New title" --content "New content"
+memento update <id> --title "Nuevo título" --content "Nuevo contenido"
 memento delete <id>
 
-# Session commands
+# Comandos de sesión
 memento timeline --limit 20
 memento stats
 
-# Status and configuration commands
-memento status                    # Quick health check and executive summary
-memento recents                   # Show recent observations with relative time
-memento config                    # View current configuration
+# Comandos de estado y configuración
+memento status                    # Quick health check y resumen ejecutivo
+memento recents                   # Mostrar observaciones recientes con tiempo relativo
+memento config                    # Ver configuración actual
 
-# Server commands
-memento serve                     # Start HTTP API
-memento mcp                       # Start MCP server
+# Comandos de servidor
+memento serve                     # Iniciar API HTTP
+memento mcp                       # Iniciar servidor MCP
 
-# AI agent configuration commands
-memento setup                     # Configure for AI agents
-memento install-skill opencode    # Install skill for OpenCode
-memento install-skill claude     # Install skill for Claude
-memento install-skill /custom/path # Install skill from custom path
+# Comandos de configuración de agentes IA
+memento setup                     # Configurar para agentes IA
+memento install-skill opencode    # Instalar skill para OpenCode
+memento install-skill claude     # Instalar skill para Claude
+memento install-skill /custom/path # Instalar skill desde ruta personalizada
 ```
 
-**Detailed CLI Commands:**
+**Nuevos Comandos CLI Detallados:**
 
-**`status`** - Quick health check and executive summary:
+**`status`** - Quick health check y resumen ejecutivo:
 ```bash
 $ memento status
 
@@ -166,7 +166,7 @@ $ memento status
 ╰───────────────────────────────────────────────────────╯
 ```
 
-**`recents`** - Show recent observations with relative time:
+**`recents`** - Mostrar observaciones recientes con tiempo relativo:
 ```bash
 $ memento recents --limit 10
 
@@ -178,96 +178,96 @@ Recent Observations:
   • Refactor database queries (2 days ago)
 ```
 
-**`install-skill`** - Install Memento AI skill and slash commands:
+**`install-skill`** - Instalar Memento AI skill y slash commands:
 ```bash
-# For OpenCode
+# Para OpenCode
 memento install-skill opencode
 
-# For Claude Desktop
+# Para Claude Desktop
 memento install-skill claude
 
-# For custom paths
+# Para rutas personalizadas
 memento install-skill /custom/path/to/agent
 ```
 
 ### HTTP API
 
 ```bash
-# Install
+# Instalar
 bun add @slorenzot/memento-api
 
-# Start API server
+# Iniciar servidor API
 memento-api
 
-# Usage examples
+# Ejemplos de uso
 curl http://localhost:3000/api/health
 curl http://localhost:3000/api/observations
 curl -X POST http://localhost:3000/api/observations \
   -H "Content-Type: application/json" \
   -d '{"title":"Test","content":"Test content","type":"decision"}'
 
-# Search
+# Búsqueda
 curl http://localhost:3000/api/observations/search?q=test&limit=10
 
-# Sessions
+# Sesiones
 curl -X POST http://localhost:3000/api/sessions \
   -H "Content-Type: application/json" \
   -d '{"projectId":"proj_123","metadata":{"agent":"claude"}}'
 ```
 
-**Available API Endpoints:**
+**API Endpoints Disponibles:**
 - `GET /api/health` - Health check
-- `GET /api/stats` - System statistics
-- `GET /api/config` - Current configuration
-- `GET /api/observations` - List observations
-- `POST /api/observations` - Create observation
-- `GET /api/observations/:id` - Get observation
-- `PATCH /api/observations/:id` - Update observation
-- `DELETE /api/observations/:id` - Delete observation
-- `GET /api/observations/search` - FTS5 search
-- `GET /api/observations/timeline` - Timeline
-- `GET /api/sessions` - List sessions
-- `POST /api/sessions` - Create session
-- `GET /api/sessions/:id` - Get session
-- `PATCH /api/sessions/:id` - Update session
-- `DELETE /api/sessions/:id` - Delete session
+- `GET /api/stats` - Estadísticas del sistema
+- `GET /api/config` - Configuración actual
+- `GET /api/observations` - Listar observaciones
+- `POST /api/observations` - Crear observación
+- `GET /api/observations/:id` - Obtener observación
+- `PATCH /api/observations/:id` - Actualizar observación
+- `DELETE /api/observations/:id` - Eliminar observación
+- `GET /api/observations/search` - Búsqueda con FTS5
+- `GET /api/observations/timeline` - Línea temporal
+- `GET /api/sessions` - Listar sesiones
+- `POST /api/sessions` - Crear sesión
+- `GET /api/sessions/:id` - Obtener sesión
+- `PATCH /api/sessions/:id` - Actualizar sesión
+- `DELETE /api/sessions/:id` - Eliminar sesión
 
 ### Web UI
 
 ```bash
-# Install
+# Instalar
 bun add @slorenzot/memento-web-ui
 
-# Start web interface
+# Iniciar interfaz web
 memento-web-ui
 
-# Open http://localhost:5173
+# Abrir http://localhost:5173
 ```
 
-**Modern Tech Stack:**
-- **React 18** - UI framework with modern hooks
-- **Vite** - Ultra-fast build tool
-- **TanStack Query** - Data fetching with automatic caching
-- **Zustand** - Lightweight and fast state management
+**Stack Tecnológico Moderno:**
+- **React 18** - Framework UI con hooks modernos
+- **Vite** - Build tool ultra-rápido
+- **TanStack Query** - Data fetching con caching automático
+- **Zustand** - State management ligero y rápido
 - **TailwindCSS** - Utility-first CSS framework
-- **Lucide React** - Modern and consistent icons
-- **Zod** - Data validation with TypeScript
+- **Lucide React** - Iconos modernos y consistentes
+- **Zod** - Validación de datos con TypeScript
 
-**Web UI Features:**
-- Interactive dashboard with real-time statistics
-- Instant full-text search
-- Timeline visualization
-- Session management
-- Rich observation editor
-- Native dark mode
-- Responsive design for mobile and desktop
-- Data export in multiple formats
+**Características de la Web UI:**
+- Dashboard interactivo con estadísticas en tiempo real
+- Búsqueda full-text instantánea
+- Visualización de timeline
+- Gestión de sesiones
+- Editor de observaciones enriquecido
+- Dark mode nativo
+- Responsive design para móvil y desktop
+- Exportación de datos en múltiples formatos
 
-## ⚙️ Configuration
+## ⚙️ Configuración
 
-### .mementorc File
+### Archivo .mementorc
 
-Create a `.mementorc` file in your project root or home directory:
+Crea un archivo `.mementorc` en la raíz de tu proyecto o en tu directorio home:
 
 ```json
 {
@@ -296,35 +296,35 @@ Create a `.mementorc` file in your project root or home directory:
 }
 ```
 
-### Environment Variables
+### Variables de Entorno
 
 ```bash
-# Configuration overrides
+# Override de configuración
 export MEMENTO_PROJECT_ID="my-project-id"
 export MEMENTO_DB_PATH="/custom/path/to/db.db"
 export MEMENTO_API_PORT=8080
 export MEMENTO_STORAGE_METHOD="database"
 ```
 
-### Configuration Options
+### Opciones de Configuración
 
-- **projectId** - Unique project identifier (UUID or string)
-- **storage.method** - Storage method ("database" or "storage")
-- **storage.path** - Storage path (supports relative and absolute paths with ~)
-- **database.path** - Path to SQLite database
-- **database.walMode** - Enable WAL mode for better performance
-- **database.ftsEnabled** - Enable full-text search with FTS5
-- **api.port** - API server port
-- **mcp.port** - MCP server port
-- **ui.port** - Web interface port
+- **projectId** - Identificador único del proyecto (UUID o string)
+- **storage.method** - Método de almacenamiento ("database" o "storage")
+- **storage.path** - Ruta de almacenamiento (soporta rutas relativas y absolutas con ~)
+- **database.path** - Ruta a la base de datos SQLite
+- **database.walMode** - Habilitar modo WAL para mejor rendimiento
+- **database.ftsEnabled** - Habilitar búsqueda full-text con FTS5
+- **api.port** - Puerto del servidor API
+- **mcp.port** - Puerto del servidor MCP
+- **ui.port** - Puerto de la interfaz web
 
-## 🏗️ Architecture
+## 🏗️ Arquitectura
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                          USER INTERFACES                                │
+│                        INTERFACES DE USUARIO                           │
 ├───────────────┬───────────────────┬───────────────┬─────────────────────┤
-│   AI Agents   │     Web UI        │     CLI       │      HTTP API      │
+│   Agentes IA  │     Web UI        │     CLI       │      HTTP API      │
 │ (Claude/Cursor)│   (React 18)     │   (Bun CLI)   │   (RESTful API)    │
 │   MCP Client  │  (TanStack Query) │ (12+ Commands)│   (Express/Hono)   │
 └───────┬───────┴─────────┬─────────┴───────┬───────┴─────────┬─────────┘
@@ -333,7 +333,7 @@ export MEMENTO_STORAGE_METHOD="database"
                           │                 │
                 ┌─────────▼─────────┐ ┌────▼─────────┐
                 │   MCP Server      │ │  HTTP Server  │
-                │   (15 Tools)      │ │  (REST API)   │
+                │   (13 Tools)      │ │  (REST API)   │
                 │   (ASCII Banner)  │ │               │
                 └─────────┬─────────┘ └────┬─────────┘
                           │                 │
@@ -364,13 +364,13 @@ export MEMENTO_STORAGE_METHOD="database"
                           └──────────────────┘
 ```
 
-## 🧬 Advanced Technical Features
+## 🧬 Características Técnicas Avanzadas
 
-### SQLite Database with FTS5
+### Base de Datos SQLite con FTS5
 
 **Full-Text Search (FTS5):**
 ```sql
--- FTS5 virtual table for ultra-fast search
+-- Tabla virtual FTS5 para búsqueda ultra-rápida
 CREATE VIRTUAL TABLE observations_fts USING fts5(
   title,
   content,
@@ -378,7 +378,7 @@ CREATE VIRTUAL TABLE observations_fts USING fts5(
   content_rowid=rowid
 );
 
--- BM25 ranking for relevance
+-- Ranking BM25 para relevancia
 SELECT bm25(observations_fts) as rank, *
 FROM observations_fts
 WHERE observations_fts MATCH 'search query'
@@ -386,12 +386,12 @@ ORDER BY rank;
 ```
 
 **WAL Mode (Write-Ahead Logging):**
-- Better performance for read operations
-- Improved concurrency (simultaneous reads)
-- Greater data durability
-- File sizes: Main DB + WAL + SHM
+- Mejor rendimiento para operaciones de lectura
+- Concurrency mejorada (lecturas simultáneas)
+- Mayor durabilidad de datos
+- Tamaños de archivo: Main DB + WAL + SHM
 
-**Database Statistics:**
+**Estadísticas de Base de Datos:**
 ```bash
 $ memento stats
 
@@ -419,10 +419,10 @@ Performance Metrics:
   Cache Hit Rate: 94%
 ```
 
-### Flexible Metadata System
+### Sistema de Metadatos Flexible
 
 ```typescript
-// Observations with flexible metadata
+// Observaciones con metadatos flexibles
 interface Observation {
   id: number;
   uuid: string;
@@ -436,7 +436,7 @@ interface Observation {
   metadata: Record<string, unknown>;
 }
 
-// Sessions with complete context
+// Sesiones con contexto completo
 interface Session {
   id: number;
   uuid: string;
@@ -446,7 +446,7 @@ interface Session {
   metadata: Record<string, unknown>;
 }
 
-// Prompts for tracking
+// Prompts para seguimiento
 interface Prompt {
   id: number;
   uuid: string;
@@ -458,11 +458,11 @@ interface Prompt {
 }
 ```
 
-### Soft Delete System
+### Sistema de Soft Delete
 
 ```typescript
-// Deleted observations are not permanently removed
-// Soft delete implementation with tracking
+// Observaciones eliminadas no se borran permanentemente
+// Implementación de soft delete con tracking
 interface DeletedObservation {
   originalId: number;
   deletedAt: Date;
@@ -470,14 +470,14 @@ interface DeletedObservation {
   originalData: Observation;
 }
 
-// The system tracks deleted observations
-// for possible future recovery
+// El sistema rastrea observaciones eliminadas
+// para posible recuperación futura
 ```
 
-### Relative Time Formatting
+### Formateo de Tiempo Relativo
 
 ```typescript
-// Smart relative time formatting
+// Formateo inteligente de tiempo relativo
 function formatRelativeTime(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
   
@@ -489,13 +489,13 @@ function formatRelativeTime(date: Date): string {
   return date.toLocaleDateString();
 }
 
-// Examples: "just now", "5m ago", "2h ago", "yesterday", "3 days ago"
+// Ejemplos: "just now", "5m ago", "2h ago", "yesterday", "3 days ago"
 ```
 
 ### Health Check System
 
 ```typescript
-// Complete health check system
+// Sistema de health checks completo
 interface HealthCheck {
   status: 'healthy' | 'degraded' | 'unhealthy';
   database: DatabaseHealth;
@@ -512,61 +512,61 @@ interface CheckResult {
 }
 ```
 
-## ⚡ Performance
+## ⚡ Rendimiento
 
-### Performance Metrics
+### Métricas de Rendimiento
 
-**Basic Operations:**
-- Create observation: <50ms
-- Get observation: <20ms
-- Update observation: <40ms
-- Delete observation: <30ms
+**Operaciones Básicas:**
+- Crear observación: <50ms
+- Obtener observación: <20ms
+- Actualizar observación: <40ms
+- Eliminar observación: <30ms
 
-**Search and Queries:**
-- Full-text search: <100ms (FTS5 + BM25)
-- List observations: <30ms
-- Timeline with filters: <80ms
-- System statistics: <40ms
+**Búsqueda y Consultas:**
+- Búsqueda full-text: <100ms (FTS5 + BM25)
+- Listar observaciones: <30ms
+- Timeline con filtros: <80ms
+- Estadísticas del sistema: <40ms
 
-**Database:**
-- Database size: ~100MB for 10,000 observations
-- WAL compression ratio: ~3:1
+**Base de Datos:**
+- Tamaño de base de datos: ~100MB para 10,000 observaciones
+- Factor de compresión WAL: ~3:1
 - Cache hit rate: >90%
-- Concurrent connections: Supports multiple readers
+- Conexiones concurrentes: Soporta múltiples lecturas
 
-**Memory:**
-- Base memory: <50MB
-- Peak memory: <100MB for intensive use
-- Cache storage: Configurable
+**Memoria:**
+- Memoria base: <50MB
+- Pico de memoria: <100MB para uso intensivo
+- Almacenamiento en caché: Configurable
 
-### Implemented Optimizations
+### Optimizaciones Implementadas
 
-1. **WAL Mode** - Writes don't block reads
-2. **Prepared Statements** - Precompiled queries
-3. **Indexing** - Indexes on frequently queried columns
-4. **Caching** - LRU cache for recent observations
-5. **Connection Pooling** - Connection reuse
-6. **Lazy Loading** - Lazy loading of large data
-7. **Batch Operations** - Batch operations for better performance
+1. **WAL Mode** - Escrituras no bloquean lecturas
+2. **Prepared Statements** - Queries precompiladas
+3. **Indexing** - Índices en columnas frecuentemente consultadas
+4. **Caching** - Cache LRU para observaciones recientes
+5. **Connection Pooling** - Reutilización de conexiones
+6. **Lazy Loading** - Carga perezosa de datos grandes
+7. **Batch Operations** - Operaciones en lote para mejor rendimiento
 
-## 🔧 Development
+## 🔧 Desarrollo
 
-### Available Scripts
+### Scripts Disponibles
 
 ```bash
-# Install dependencies
+# Instalar dependencias
 bun install
 
-# Build all packages
+# Construir todos los paquetes
 bun run build
 
-# Run development server
+# Ejecutar servidor de desarrollo
 bun run dev
 
-# Run MCP server
+# Ejecutar servidor MCP
 bun run mcp
 
-# Run CLI
+# Ejecutar CLI
 bun run memento <command>
 
 # Linting
@@ -589,22 +589,21 @@ bun test <path-to-test-file>
 bun test -t "test name pattern"
 ```
 
-### Project Structure
+### Estructura del Proyecto
 
 ```
 memento/
 ├── packages/
-│   ├── core/              # v1.0.0 - Core memory engine
+│   ├── core/              # v1.0.0 - Motor de memoria central
 │   │   ├── src/
 │   │   │   ├── MemoryEngine.ts
-│   │   │   ├── SessionManager.ts
 │   │   │   ├── ConfigManager.ts
 │   │   │   ├── types.ts
 │   │   │   └── db/
 │   │   │       └── schema.sql
 │   │   └── package.json
 │   │
-│   ├── mcp-server/        # v1.0.0 - MCP server
+│   ├── mcp-server/        # v1.0.0 - Servidor MCP
 │   │   ├── src/
 │   │   │   └── index.ts
 │   │   ├── skills/
@@ -618,21 +617,21 @@ memento/
 │   │   │   └── CLI.ts
 │   │   └── package.json
 │   │
-│   ├── api/               # v0.3.0 - HTTP API
+│   ├── api/               # v0.3.0 - API HTTP
 │   │   ├── src/
 │   │   │   └── index.ts
 │   │   └── package.json
 │   │
-│   └── web-ui/            # v0.1.1 - React web interface
+│   └── web-ui/            # v0.1.1 - Interfaz web React
 │       ├── src/
 │       │   └── (React components)
 │       ├── package.json
 │       └── vite.config.ts
 │
 ├── apps/
-│   └── memento/           # Main application
+│   └── memento/           # Aplicación principal
 │
-├── tools/                 # Build tools and utilities
+├── tools/                 # Build tools y utilidades
 │
 ├── package.json           # Root package.json
 ├── tsconfig.json          # TypeScript config
@@ -643,26 +642,26 @@ memento/
 ## 🧪 Testing
 
 ```bash
-# Run all tests
+# Ejecutar todas las pruebas
 bun test
 
-# Run specific tests
+# Ejecutar pruebas específicas
 bun test packages/core/src/MemoryEngine.test.ts
 
-# Run in watch mode
+# Ejecutar en modo watch
 bun test --watch
 
-# Run tests with coverage
+# Ejecutar pruebas con coverage
 bun test --coverage
 
-# Run specific tests with filter
+# Ejecutar pruebas específicas con filtro
 bun test -t "memory engine"
 ```
 
-**Test Structure:**
+**Estructura de Tests:**
 
 ```typescript
-// Unit tests for MemoryEngine
+// Unit tests para MemoryEngine
 describe('MemoryEngine', () => {
   describe('createObservation', () => {
     it('should create observation successfully');
@@ -683,7 +682,7 @@ describe('MemoryEngine', () => {
   });
 });
 
-// Integration tests for MCP server
+// Integration tests para MCP server
 describe('MCP Server Integration', () => {
   it('should handle mem_save tool');
   it('should handle mem_search tool');
@@ -692,9 +691,9 @@ describe('MCP Server Integration', () => {
 });
 ```
 
-## 📊 Usage Examples
+## 📊 Ejemplos de Uso
 
-### Example 1: Create and Search Observations
+### Ejemplo 1: Crear y Buscar Observaciones
 
 ```typescript
 import { MemoryEngine } from '@slorenzot/memento-core';
@@ -703,11 +702,11 @@ const engine = new MemoryEngine({
   dbPath: '~/.memento/data/memento.db'
 });
 
-// Create observation
+// Crear observación
 const obs = await engine.createObservation({
   sessionId: 1,
-  title: 'Implement JWT authentication',
-  content: 'Implement authentication system with JWT tokens',
+  title: 'Implementar autenticación JWT',
+  content: 'Implementar sistema de autenticación con JWT tokens',
   type: 'decision',
   topicKey: 'auth',
   projectId: 'my-project',
@@ -717,9 +716,9 @@ const obs = await engine.createObservation({
   }
 });
 
-// Search observations
+// Buscar observaciones
 const results = await engine.search({
-  query: 'JWT authentication',
+  query: 'autenticación JWT',
   limit: 10,
   type: 'decision'
 });
@@ -728,10 +727,10 @@ console.log(results);
 // { observations: [...], total: 5 }
 ```
 
-### Example 2: Session Management
+### Ejemplo 2: Gestión de Sesiones
 
 ```typescript
-// Start session for AI agent
+// Iniciar sesión para agente IA
 const session = await engine.createSession({
   projectId: 'my-project',
   endedAt: null,
@@ -742,35 +741,35 @@ const session = await engine.createSession({
   }
 });
 
-// Create observations in session
+// Crear observaciones en sesión
 await engine.createObservation({
   sessionId: session.id,
-  title: 'Architecture decision',
-  content: 'Use microservices',
+  title: 'Decision de arquitectura',
+  content: 'Usar microservicios',
   type: 'decision',
   topicKey: 'architecture',
   projectId: 'my-project',
   metadata: {}
 });
 
-// End session
+// Finalizar sesión
 await engine.endSession(session.id);
 ```
 
-### Example 3: Statistics and Health Check
+### Ejemplo 3: Estadísticas y Health Check
 
 ```typescript
-// Get statistics
+// Obtener estadísticas
 const result = await engine.search({});
 
-console.log(`Total observations: ${result.total}`);
+console.log(`Total observaciones: ${result.total}`);
 
 const byType = result.observations.reduce((acc, obs) => {
   acc[obs.type] = (acc[obs.type] || 0) + 1;
   return acc;
 }, {} as Record<string, number>);
 
-console.log('By type:', byType);
+console.log('Por tipo:', byType);
 
 // Health check
 const isHealthy = engine.isHealthy();
@@ -782,7 +781,7 @@ if (!isHealthy) {
 }
 ```
 
-### Example 4: CLI Usage
+### Ejemplo 4: Uso desde CLI
 
 ```bash
 # Quick status check
@@ -794,7 +793,7 @@ $ memento status
 │  Sessions: 28 (2 active)                             │
 ╰───────────────────────────────────────────────────────╯
 
-# Search recent observations
+# Buscar observaciones recientes
 $ memento recents --limit 5
 
 Recent Observations:
@@ -804,7 +803,7 @@ Recent Observations:
   • Implement caching layer (yesterday)
   • Refactor database queries (2 days ago)
 
-# Advanced search
+# Búsqueda avanzada
 $ memento search "authentication" --type bug --limit 10
 
 Found 5 observations matching "authentication":
@@ -814,12 +813,12 @@ Found 5 observations matching "authentication":
   4. Session management problem (2 days ago)
   5. Permission denied on API access (3 days ago)
 
-# Save new observation
+# Guardar nueva observación
 $ memento save "Fix database connection" "Database connection failing after timeout" --type bug
 
 ✓ Observation saved successfully
 
-# View timeline
+# Ver timeline
 $ memento timeline --limit 20
 
 Timeline:
@@ -831,24 +830,24 @@ Timeline:
     • Implement caching layer (yesterday) [discovery]
 ```
 
-### Example 5: AI Agent Skill Installation
+### Ejemplo 5: Instalación de Skills para Agentes IA
 
 ```bash
-# Install for Claude Desktop
+# Instalar para Claude Desktop
 $ memento install-skill claude
 
 ✓ Memento skill installed for Claude Desktop
 📁 Location: ~/Library/Application Support/Claude/claude_desktop_config.json
 🔧 Configuration updated
 
-# Install for OpenCode
+# Instalar para OpenCode
 $ memento install-skill opencode
 
 ✓ Memento skill installed for OpenCode
 📁 Location: ~/.opencode/skills/memento
 🔧 Configuration updated
 
-# View configuration
+# Ver configuración
 $ memento config
 
 Current Configuration:
@@ -861,65 +860,65 @@ Current Configuration:
   MCP Port: 3001
 ```
 
-## ⚠️ License Restrictions
+## ⚠️ Restricciones de Licencia
 
-**PROHIBITED:**
-- ❌ Commercial use without explicit authorization
-- ❌ Creating forks or modified versions
-- ❌ Distributing modified versions
-- ❌ Using for commercial or enterprise purposes
-- ❌ Forgetting attribution to the original author
+**PROHIBIDO:**
+- ❌ Uso comercial sin autorización explícita
+- ❌ Crear forks o versiones modificadas
+- ❌ Distribuir versiones modificadas
+- ❌ Usar para fines comerciales o empresariales
+- ❌ Olvidar la atribución al autor original
 
-**PERMITTED:**
-- ✅ Personal and educational use
-- ✅ Sharing the original code without modifications
-- ✅ Proper attribution to the author (Soulberto Lorenzo)
-- ✅ Using for personal non-commercial projects
+**PERMITIDO:**
+- ✅ Uso personal y educacional
+- ✅ Compartir el código original sin modificaciones
+- ✅ Atribuir correctamente al autor (Soulberto Lorenzo)
+- ✅ Usar para proyectos personales no comerciales
 
 ## 📈 Roadmap
 
-### v1.1.0 (Next)
-- [ ] Web UI improvements
-- [ ] Multi-format export (JSON, CSV, Markdown)
-- [ ] Notification system
-- [ ] Integration with more AI tools
+### v1.1.0 (Próximo)
+- [ ] Mejoras en la Web UI
+- [ ] Exportación en múltiples formatos (JSON, CSV, Markdown)
+- [ ] Sistema de notificaciones
+- [ ] Integración con más herramientas de IA
 
-### v2.0.0 (Future)
-- [ ] User system and authentication
+### v2.0.0 (Futuro)
+- [ ] Sistema de usuarios y autenticación
 - [ ] Multi-tenancy
-- [ ] Cloud sync
+- [ ] Sync en la nube
 - [ ] Plugin system
-- [ ] GraphQL API
+- [ ] API GraphQL
 
-## 👤 Author
+## 👤 Autor
 
-**Soulberto Lorenzo**
+**Soulberto Lorenzo**  
 - GitHub: [@slorenzot](https://github.com/slorenzot)
 - Email: slorenzot@gmail.com
 
-## 🙏 Acknowledgments
+## 🙏 Agradecimientos
 
-- [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) - For AI agent integration
-- [SQLite](https://www.sqlite.org/) - For the database engine
-- [Bun](https://bun.sh/) - For the runtime and package manager
-- [TypeScript](https://www.typescriptlang.org/) - For type safety
-- [Vite](https://vitejs.dev/) - For the Web UI build tool
-- [TanStack Query](https://tanstack.com/query) - For data fetching
-- [Zustand](https://github.com/pmndrs/zustand) - For state management
-- [TailwindCSS](https://tailwindcss.com/) - For styling
-- [Lucide](https://lucide.dev/) - For icons
-- [Zod](https://zod.dev/) - For data validation
+- [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) - Por la integración con agentes IA
+- [SQLite](https://www.sqlite.org/) - Por el motor de base de datos
+- [Bun](https://bun.sh/) - Por el runtime y package manager
+- [TypeScript](https://www.typescriptlang.org/) - Por la seguridad de tipos
+- [Vite](https://vitejs.dev/) - Por el build tool de la Web UI
+- [TanStack Query](https://tanstack.com/query) - Por el data fetching
+- [Zustand](https://github.com/pmndrs/zustand) - Por el state management
+- [TailwindCSS](https://tailwindcss.com/) - Por el styling
+- [Lucide](https://lucide.dev/) - Por los iconos
+- [Zod](https://zod.dev/) - Por la validación de datos
 
-## 📄 License
+## 📄 Licencia
 
-This project is licensed under **Creative Commons Attribution-NonCommercial-NoDerivs 4.0 International**.
+Este proyecto está bajo Licencia **Creative Commons Attribution-NonCommercial-NoDerivs 4.0 International**.
 
-[View Full License](LICENSE)
+[Ver Licencia Completa](LICENSE)
 
 ---
 
-**⚠️ Remember:** This project has a restrictive license. Please respect the CC BY-NC-ND 4.0 license terms.
+**⚠️ Recordar:** Este proyecto tiene licencia restrictiva. Respeta los términos de la licencia CC BY-NC-ND 4.0.
 
-**📊 Version:** Core v1.0.0 | MCP Server v1.0.0 | CLI v1.0.0 | API v0.3.0 | Web UI v0.1.1
+**📊 Versión:** Core v1.0.0 | MCP Server v1.0.0 | CLI v1.0.0 | API v0.3.0 | Web UI v0.1.1
 
-**[📖 Versión en español](./README.es.md)**
+**[📖 English version](./README.md)**

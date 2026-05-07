@@ -6,100 +6,100 @@
 
 > RESTful HTTP API providing programmatic access to Memento memory system with endpoints for observations, sessions, and system management.
 
-## 🚀 Installation
+## 🚀 Instalación
 
 ```bash
-# Using Bun (recommended)
+# Using Bun (recomendado)
 bun add @slorenzot/memento-api
 
 # Using npm
 npm install @slorenzot/memento-api
 ```
 
-## 💡 Basic Usage
+## 💡 Uso Básico
 
 ### TypeScript
 ```typescript
 import { APIServer } from '@slorenzot/memento-api';
 
-// Initialize API server
+// Inicializar servidor API
 const server = new APIServer(3000, './data/memento.db');
 
-// Start HTTP server
+// Iniciar servidor HTTP
 await server.start();
 
-// Server will be available at http://localhost:3000
+// El servidor estará disponible en http://localhost:3000
 ```
 
 ### Shell/Bun
 ```bash
-# Run API server
+# Ejecutar servidor API
 bunx @slorenzot/memento-api
 
-# Or with custom configuration
+# O con configuración personalizada
 API_PORT=8080 DATABASE_PATH=./custom.db bunx @slorenzot/memento-api
 ```
 
-## 🔧 Core API
+## 🔧 API Esencial
 
-### Main Class
+### Clase Principal
 
 #### `APIServer(port: number, dbPath: string)`
 
-HTTP API server constructor.
+Constructor del servidor API HTTP.
 
-**Parameters:**
-- `port`: Port where the server will listen (e.g., 3000)
-- `dbPath`: Path to the SQLite database file
+**Parámetros:**
+- `port`: Puerto donde escuchar el servidor (ej: 3000)
+- `dbPath`: Ruta al archivo de base de datos SQLite
 
-**Example:**
+**Ejemplo:**
 ```typescript
 const server = new APIServer(3000, './data/memento.db');
 ```
 
 ---
 
-#### Control Methods
+#### Métodos de Control
 
 ##### `start()`
 
-Starts the HTTP server and begins listening for requests.
+Inicia el servidor HTTP y comienza a escuchar solicitudes.
 
-**Returns:** `Promise<void>`
+**Retorna:** `Promise<void>`
 
-**Example:**
+**Ejemplo:**
 ```typescript
 const server = new APIServer(3000, './data/memento.db');
 await server.start();
-console.log('Server started at http://localhost:3000');
+console.log('Servidor iniciado en http://localhost:3000');
 ```
 
 ---
 
 ##### `close()`
 
-Stops the HTTP server and closes the database connection.
+Detiene el servidor HTTP y cierra la conexión con la base de datos.
 
-**Returns:** `void`
+**Retorna:** `void`
 
-**Example:**
+**Ejemplo:**
 ```typescript
 const server = new APIServer(3000, './data/memento.db');
 await server.start();
 
-// On cleanup or shutdown
+// En cleanup o shutdown
 server.close();
 ```
 
 ---
 
-## 🌐 API Endpoints
+## 🌐 Endpoints API
 
-### System Health
+### Salud del Sistema
 
 #### `GET /api/health`
 
-Checks the API system status.
+Verifica el estado del sistema API.
 
 **Response:**
 ```json
@@ -113,19 +113,19 @@ Checks the API system status.
 
 ---
 
-### Observation Management
+### Gestión de Observaciones
 
 #### `GET /api/observations`
 
-Lists observations with optional filters.
+Lista observaciones con filtros opcionales.
 
 **Query Params:**
-- `query` (string): Full-text search term
-- `type` (string): Filter by type (`decision|bug|discovery|note`)
-- `project_id` (string): Filter by project ID
-- `topic_key` (string): Filter by topic
-- `limit` (number): Maximum number of results
-- `offset` (number): Pagination offset
+- `query` (string): Término de búsqueda full-text
+- `type` (string): Filtrar por tipo (`decision|bug|discovery|note`)
+- `project_id` (string): Filtrar por ID de proyecto
+- `topic_key` (string): Filtrar por tópico
+- `limit` (number): Número máximo de resultados
+- `offset` (number): Paginación de resultados
 
 **Response:**
 ```json
@@ -135,8 +135,8 @@ Lists observations with optional filters.
       "id": 1,
       "uuid": "abc123",
       "sessionId": 456,
-      "title": "Important decision",
-      "content": "Use PostgreSQL in production",
+      "title": "Decisión importante",
+      "content": "Usar PostgreSQL en producción",
       "type": "decision",
       "topicKey": "architecture",
       "projectId": "my-app",
@@ -150,7 +150,7 @@ Lists observations with optional filters.
 }
 ```
 
-**cURL example:**
+**Ejemplo cURL:**
 ```bash
 curl "http://localhost:3000/api/observations?limit=10&offset=0"
 ```
@@ -159,17 +159,17 @@ curl "http://localhost:3000/api/observations?limit=10&offset=0"
 
 #### `POST /api/observations`
 
-Creates a new observation.
+Crea una nueva observación.
 
 **Request Body:**
 ```json
 {
-  "title": "string (required)",
-  "content": "string (required)",
-  "type": "decision|bug|discovery|note (optional, default: note)",
-  "topicKey": "string|null (optional)",
-  "projectId": "string (optional)",
-  "metadata": "object (optional)"
+  "title": "string (requerido)",
+  "content": "string (requerido)",
+  "type": "decision|bug|discovery|note (opcional, default: note)",
+  "topicKey": "string|null (opcional)",
+  "projectId": "string (opcional)",
+  "metadata": "object (opcional)"
 }
 ```
 
@@ -179,8 +179,8 @@ Creates a new observation.
   "id": 151,
   "uuid": "def456",
   "sessionId": 456,
-  "title": "Important decision",
-  "content": "Use PostgreSQL in production",
+  "title": "Decisión importante",
+  "content": "Usar PostgreSQL en producción",
   "type": "decision",
   "topicKey": "architecture",
   "projectId": "my-app",
@@ -189,13 +189,13 @@ Creates a new observation.
 }
 ```
 
-**cURL example:**
+**Ejemplo cURL:**
 ```bash
 curl -X POST http://localhost:3000/api/observations \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "Important decision",
-    "content": "Use PostgreSQL in production",
+    "title": "Decisión importante",
+    "content": "Usar PostgreSQL en producción",
     "type": "decision",
     "projectId": "my-app"
   }'
@@ -205,10 +205,10 @@ curl -X POST http://localhost:3000/api/observations \
 
 #### `GET /api/observations/:id`
 
-Gets a specific observation by ID.
+Obtiene una observación específica por ID.
 
 **URL Params:**
-- `id`: Numeric ID of the observation
+- `id`: ID numérico de la observación
 
 **Response:**
 ```json
@@ -216,8 +216,8 @@ Gets a specific observation by ID.
   "id": 123,
   "uuid": "abc123",
   "sessionId": 456,
-  "title": "Important decision",
-  "content": "Use PostgreSQL in production",
+  "title": "Decisión importante",
+  "content": "Usar PostgreSQL en producción",
   "type": "decision",
   "topicKey": "architecture",
   "projectId": "my-app",
@@ -230,19 +230,19 @@ Gets a specific observation by ID.
 
 #### `PUT /api/observations/:id`
 
-Updates an existing observation.
+Actualiza una observación existente.
 
 **URL Params:**
-- `id`: Numeric ID of the observation
+- `id`: ID numérico de la observación
 
 **Request Body:**
 ```json
 {
-  "title": "string (optional)",
-  "content": "string (optional)",
-  "type": "decision|bug|discovery|note (optional)",
-  "topicKey": "string|null (optional)",
-  "metadata": "object (optional)"
+  "title": "string (opcional)",
+  "content": "string (opcional)",
+  "type": "decision|bug|discovery|note (opcional)",
+  "topicKey": "string|null (opcional)",
+  "metadata": "object (opcional)"
 }
 ```
 
@@ -251,8 +251,8 @@ Updates an existing observation.
 {
   "id": 123,
   "uuid": "abc123",
-  "title": "Updated title",
-  "content": "Updated content",
+  "title": "Título actualizado",
+  "content": "Contenido actualizado",
   "type": "decision",
   "topicKey": "architecture",
   "projectId": "my-app",
@@ -265,32 +265,32 @@ Updates an existing observation.
 
 #### `DELETE /api/observations/:id`
 
-Deletes an observation.
+Elimina una observación.
 
 **URL Params:**
-- `id`: Numeric ID of the observation
+- `id`: ID numérico de la observación
 
 **Response:**
 ```json
 {
   "success": true,
-  "message": "Observation deleted successfully"
+  "message": "Observación eliminada exitosamente"
 }
 ```
 
 ---
 
-### Session Management
+### Gestión de Sesiones
 
 #### `POST /api/sessions`
 
-Creates a new session.
+Crea una nueva sesión.
 
 **Request Body:**
 ```json
 {
-  "projectId": "string (optional)",
-  "metadata": "object (optional)"
+  "projectId": "string (opcional)",
+  "metadata": "object (opcional)"
 }
 ```
 
@@ -310,10 +310,10 @@ Creates a new session.
 
 #### `PUT /api/sessions/:id/end`
 
-Ends a session.
+Finaliza una sesión.
 
 **URL Params:**
-- `id`: Numeric ID of the session
+- `id`: ID numérico de la sesión
 
 **Response:**
 ```json
@@ -331,20 +331,20 @@ Ends a session.
 
 #### `GET /api/sessions`
 
-Lists sessions with filters.
+Lista sesiones con filtros.
 
 **Query Params:**
-- `project_id` (string): Filter by project ID
-- `limit` (number): Maximum number of results
-- `offset` (number): Pagination
+- `project_id` (string): Filtrar por ID de proyecto
+- `limit` (number): Número máximo de resultados
+- `offset` (number): Paginación
 
 ---
 
-### Utilities
+### Utilidades
 
 #### `GET /api/stats`
 
-Gets system statistics.
+Obtiene estadísticas del sistema.
 
 **Response:**
 ```json
@@ -368,81 +368,81 @@ Gets system statistics.
 
 #### `GET /api/timeline`
 
-Gets a chronological timeline of observations.
+Obtiene línea temporal de observaciones.
 
 **Query Params:**
-- `project_id` (string): Filter by project
-- `session_id` (number): Filter by session
-- `limit` (number): Number of results
+- `project_id` (string): Filtrar por proyecto
+- `session_id` (number): Filtrar por sesión
+- `limit` (number): Número de resultados
 
 ---
 
-## ⚡ Practical Examples
+## ⚡ Ejemplos Prácticos
 
-### Example 1: Complete Server Initialization
+### Ejemplo 1: Inicialización Completa del Servidor
 
 ```typescript
 import { APIServer } from '@slorenzot/memento-api';
 
-// Configuration
+// Configuración
 const port = parseInt(process.env.API_PORT || '3000', 10);
 const dbPath = process.env.DATABASE_PATH || './data/memento.db';
 
-// Create and start server
+// Crear e iniciar servidor
 const server = new APIServer(port, dbPath);
 
-// Shutdown handling
+// Manejo de shutdown
 process.on('SIGINT', () => {
-  console.log('Closing server...');
+  console.log('Cerrando servidor...');
   server.close();
   process.exit(0);
 });
 
-// Start server
+// Iniciar servidor
 await server.start();
-console.log(`API server started on port ${port}`);
+console.log(`Servidor API iniciado en puerto ${port}`);
 ```
 
-### Example 2: Custom Express.js Integration
+### Ejemplo 2: Uso con Express.js Personalizado
 
 ```typescript
 import { APIServer } from '@slorenzot/memento-api';
 import express from 'express';
 
-// Create Memento API server
+// Crear servidor API Memento
 const mementoAPI = new APIServer(3001, './data/memento.db');
 
-// Create custom Express server
+// Crear servidor Express personalizado
 const app = express();
 
-// Add CORS middleware
+// Agregar middleware de CORS
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   next();
 });
 
-// Custom endpoint using Memento
+// Endpoint personalizado que usa Memento
 app.get('/api/my-observations', async (req, res) => {
-  // You could use the memory engine internally
-  // for custom logic
-  res.json({ message: 'Custom endpoint' });
+  // Aquí podrías usar el motor de memoria internamente
+  // para lógica personalizada
+  res.json({ message: 'Endpoint personalizado' });
 });
 
-// Start servers
+// Iniciar servidores
 await mementoAPI.start();
 app.listen(3000, () => {
-  console.log('Express server on port 3000');
-  console.log('Memento server on port 3001');
+  console.log('Servidor Express en puerto 3000');
+  console.log('Servidor Memento en puerto 3001');
 });
 ```
 
-### Example 3: Frontend Integration
+### Ejemplo 3: Integración con Frontend
 
 ```typescript
-// In React/Vue/Next.js application
+// En aplicación React/Vue/Next.js
 const API_BASE = 'http://localhost:3000/api';
 
-// Function to search observations
+// Función para buscar observaciones
 async function searchObservations(query: string) {
   const response = await fetch(
     `${API_BASE}/observations?query=${encodeURIComponent(query)}`
@@ -450,7 +450,7 @@ async function searchObservations(query: string) {
   return await response.json();
 }
 
-// Function to create observation
+// Función para crear observación
 async function createObservation(data: {
   title: string;
   content: string;
@@ -466,95 +466,95 @@ async function createObservation(data: {
   return await response.json();
 }
 
-// Usage in component
-const results = await searchObservations('architecture');
-console.log('Results:', results);
+// Uso en componente
+const results = await searchObservations('arquitectura');
+console.log('Resultados:', results);
 ```
 
-### Example 4: cURL Automation Script
+### Ejemplo 4: Script de Automatización con cURL
 
 ```bash
 #!/bin/bash
 
 API_URL="http://localhost:3000/api"
 
-# Create session
+# Crear sesión
 SESSION=$(curl -s -X POST "$API_URL/sessions" \
   -H "Content-Type: application/json" \
   -d '{"projectId":"automated-script","metadata":{"type":"automation"}}')
 
 SESSION_ID=$(echo $SESSION | grep -o '"id":[0-9]*' | grep -o '[0-9]*')
-echo "Session created: $SESSION_ID"
+echo "Sesión creada: $SESSION_ID"
 
-# Save observation
+# Guardar observación
 curl -s -X POST "$API_URL/observations" \
   -H "Content-Type: application/json" \
   -d "{
-    \"title\": \"Automation complete\",
-    \"content\": \"Script executed successfully\",
+    \"title\": \"Automatización completada\",
+    \"content\": \"Script ejecutado exitosamente\",
     \"type\": \"note\",
     \"projectId\": \"automated-script\"
   }"
 
-# End session
+# Finalizar sesión
 curl -s -X PUT "$API_URL/sessions/$SESSION_ID/end"
-echo "Session ended"
+echo "Sesión finalizada"
 ```
 
-## 🔧 Configuration
+## 🔧 Configuración
 
-### Environment Variables
+### Variables de Entorno
 
-- `API_PORT`: Server port (default: 3000)
-- `DATABASE_PATH`: Database path (default: ./data/memento.db)
-- `JWT_SECRET`: Secret for JWT authentication (if implemented)
-- `CORS_ORIGIN`: Allowed origins for CORS (default: *)
+- `API_PORT`: Puerto del servidor (default: 3000)
+- `DATABASE_PATH`: Ruta a base de datos (default: ./data/memento.db)
+- `JWT_SECRET`: Secreto para autenticación JWT (si se implementa)
+- `CORS_ORIGIN`: Orígenes permitidos para CORS (default: *)
 
-**Example:**
+**Ejemplo:**
 ```bash
-# Configure port and database
+# Configurar puerto y base de datos
 export API_PORT=8080
 export DATABASE_PATH=/custom/path/database.db
 bunx @slorenzot/memento-api
 ```
 
-## ⚠️ Restrictive License
+## ⚠️ Licencia Restrictiva
 
-This package is under **CC BY-NC-ND 4.0 License**:
-- ✅ **Personal and educational use permitted**
-- ✅ **Share with attribution to the author**
-- ❌ **Commercial use NOT permitted**
-- ❌ **Modifications or forks NOT permitted**
+Este paquete está bajo **Licencia CC BY-NC-ND 4.0**:
+- ✅ **Uso personal y educacional permitido**
+- ✅ **Compartir con atribución al autor**
+- ❌ **Uso comercial NO permitido**
+- ❌ **Modificaciones o forks NO permitidos**
 
-**Author:** Soulberto Lorenzo (slorenzot@gmail.com)
+**Autor**: Soulberto Lorenzo (slorenzot@gmail.com)
 
-## 🔄 Dependencies
+## 🔄 Dependencias
 
-### Main Dependencies
-- `@slorenzot/memento-core` - Memory engine
-- `express` - HTTP server framework
-- `cors` - CORS middleware
-- `helmet` - HTTP security headers
-- `express-rate-limit` - Rate limiting
-- `jsonwebtoken` - JWT authentication
-- `zod` - Schema validation
-- `dotenv` - Environment variable management
+### Dependencias Principales
+- `@slorenzot/memento-core` - Motor de memoria
+- `express` - Framework de servidor HTTP
+- `cors` - Middleware de CORS
+- `helmet` - Seguridad de cabeceras HTTP
+- `express-rate-limit` - Limitación de tasa de peticiones
+- `jsonwebtoken` - Autenticación JWT
+- `zod` - Validación de esquemas
+- `dotenv` - Gestión de variables de entorno
 
 ### Peer Dependencies
-- `bun` v1.0+ (recommended)
+- `bun` v1.0+ (recomendado)
 - `node` v20+ (compatible)
 
-## 🛠️ Development
+## 🛠️ Desarrollo
 
 ```bash
-# Clone the project
+# Clonar el proyecto
 git clone https://github.com/slorenzot/memento.git
 cd memento/packages/api
 
-# Install dependencies
+# Instalar dependencias
 bun install
 
-# Development
+# Desarrollo
 bun run dev
 
 # Build
@@ -567,26 +567,26 @@ bun test
 ## 📋 Changelog
 
 ### [0.1.1] - 2024-04-04
-- **Added**: Basic API server with RESTful endpoints
-- **Added**: Observation management endpoints
-- **Added**: Session management endpoints
-- **Added**: Utility endpoints (stats, timeline)
-- **Fixed**: Core dependency updates
+- **Added**: API Server básico con endpoints RESTful
+- **Added**: Endpoints de gestión de observaciones
+- **Added**: Endpoints de gestión de sesiones
+- **Added**: Endpoints de utilidad (stats, timeline)
+- **Fixed**: Actualización de dependencias core
 
-## 👤 Author
+## 👤 Autor
 
-**Soulberto Lorenzo**
+**Soulberto Lorenzo**  
 - GitHub: [@slorenzot](https://github.com/slorenzot)
 - Email: slorenzot@gmail.com
 
-## 📄 License
+## 📄 Licencia
 
-This package is licensed under **Creative Commons Attribution-NonCommercial-NoDerivs 4.0 International**.
+Este paquete está bajo Licencia **Creative Commons Attribution-NonCommercial-NoDerivs 4.0 International**.
 
-[View Full License](https://github.com/slorenzot/memento/blob/main/LICENSE)
+[Ver Licencia Completa](https://github.com/slorenzot/memento/blob/main/LICENSE)
 
 ---
 
-**⚠️ Important:** This package has a restrictive license. Please respect the CC BY-NC-ND 4.0 license terms.
+**⚠️ Importante**: Este paquete tiene licencia restrictiva. Respeta los términos de la licencia CC BY-NC-ND 4.0.
 
-**[📖 Spanish version (Versión en español)](./README.es.md)**
+**[📖 English version](./README.md)**
