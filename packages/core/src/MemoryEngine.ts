@@ -17,6 +17,10 @@ import type {
   ImportData,
   ImportOptions,
   ImportResult,
+  JournalEntry,
+  WriteJournalParams,
+  JournalSearchParams,
+  JournalSearchResult,
 } from './types.js';
 
 import { Database } from 'bun:sqlite';
@@ -203,6 +207,56 @@ export class MemoryEngine {
       BEGIN
         INSERT INTO observations_fts(rowid, title, content, topic_key, project_id)
         VALUES (NEW.id, NEW.title, NEW.content, NEW.topic_key, NEW.project_id);
+      END;
+    `);
+
+    // ─── Journal tables (append-only evidence) ────────────────
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS journal (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        uuid TEXT UNIQUE NOT NULL,
+        project_id TEXT NOT NULL,
+        session_id INTEGER REFERENCES sessions(id),
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        model TEXT,
+        provider TEXT,
+        agent TEXT,
+        superseded_by INTEGER REFERENCES journal(id),
+        invalidated_at INTEGER,
+        metadata TEXT,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS journal_tags (
+        journal_id INTEGER NOT NULL REFERENCES journal(id) ON DELETE CASCADE,
+        tag TEXT NOT NULL,
+        PRIMARY KEY (journal_id, tag)
+      );
+    `);
+
+    // Journal indexes
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_journal_project ON journal(project_id)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_journal_session ON journal(session_id)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_journal_created ON journal(created_at)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_journal_superseded ON journal(superseded_by)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_journal_tags_tag ON journal_tags(tag)');
+
+    // Journal FTS5
+    this.db.exec(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS journal_fts USING fts5(
+        title, body, project_id,
+        content='journal',
+        tokenize='porter unicode61'
+      );
+    `);
+
+    // Journal FTS trigger — insert only (append-only: no update/delete triggers)
+    this.db.exec('DROP TRIGGER IF EXISTS journal_ai');
+    this.db.exec(`
+      CREATE TRIGGER journal_ai AFTER INSERT ON journal BEGIN
+        INSERT INTO journal_fts(rowid, title, body, project_id)
+        VALUES (new.id, new.title, new.body, new.project_id);
       END;
     `);
   }
@@ -1512,6 +1566,12 @@ export class MemoryEngine {
     this.db.exec('DROP TRIGGER IF EXISTS observations_ai');
     this.db.exec('DROP TRIGGER IF EXISTS observations_ad');
     this.db.exec('DROP TRIGGER IF EXISTS observations_au');
+    this.db.exec('DROP TRIGGER IF EXISTS observations_soft_delete');
+    this.db.exec('DROP TRIGGER IF EXISTS observations_undelete');
+    this.db.exec('DROP TRIGGER IF EXISTS journal_ai');
+    this.db.exec('DROP TABLE IF EXISTS journal_fts');
+    this.db.exec('DROP TABLE IF EXISTS journal_tags');
+    this.db.exec('DROP TABLE IF EXISTS journal');
     this.db.exec('DROP TABLE IF EXISTS observations');
     this.db.exec('DROP TABLE IF EXISTS prompts');
     this.db.exec('DROP TABLE IF EXISTS sessions');
@@ -1571,6 +1631,224 @@ export class MemoryEngine {
       observations: obsCount.count,
       prompts: promptCount.count,
       sessions: sessionCount.count,
+    };
+  }
+
+  // ─── Journal (append-only evidence) ──────────────────────────
+
+  async writeJournal(data: WriteJournalParams): Promise<JournalEntry> {
+    this.checkHealth();
+
+    const uuid = crypto.randomUUID();
+    const createdAt = Date.now();
+    const metadata = this.serialize(data.metadata || {});
+
+    // If supersedes is set, validate and invalidate the old entry
+    if (data.supersedes) {
+      const existing = await this.readJournal(data.supersedes);
+      if (!existing) throw new Error(`Journal entry ${data.supersedes} not found`);
+      if (existing.invalidatedAt) throw new Error(`Journal entry ${data.supersedes} is already invalidated`);
+    }
+
+    const id = await this.withRetry(() => {
+      const result = this.db
+        .prepare(
+          `INSERT INTO journal (uuid, project_id, session_id, title, body, model, provider, agent, superseded_by, invalidated_at, metadata, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)`
+        )
+        .run(
+          uuid,
+          data.projectId,
+          data.sessionId ?? null,
+          data.title,
+          data.body,
+          data.model ?? null,
+          data.provider ?? null,
+          data.agent ?? null,
+          metadata,
+          createdAt
+        );
+      return typeof result.lastInsertRowid === 'bigint'
+        ? Number(result.lastInsertRowid)
+        : result.lastInsertRowid;
+    });
+
+    // Insert tags
+    if (data.tags && data.tags.length > 0) {
+      const insertTag = this.db.prepare(
+        'INSERT OR IGNORE INTO journal_tags (journal_id, tag) VALUES (?, ?)'
+      );
+      for (const tag of data.tags) {
+        insertTag.run(id, tag);
+      }
+    }
+
+    // If supersedes, mark the old entry
+    if (data.supersedes) {
+      await this.withRetry(() =>
+        this.db
+          .prepare('UPDATE journal SET superseded_by = ?, invalidated_at = ? WHERE id = ?')
+          .run(id, createdAt, data.supersedes)
+      );
+    }
+
+    const entry = await this.readJournal(id);
+    if (!entry) throw new Error('Failed to retrieve created journal entry');
+    return entry;
+  }
+
+  async readJournal(id: number): Promise<JournalEntry | null> {
+    this.checkHealth();
+
+    const row = this.db.prepare('SELECT * FROM journal WHERE id = ?').get(id);
+    if (!row) return null;
+
+    // Fetch tags
+    const tagRows = this.db
+      .prepare('SELECT tag FROM journal_tags WHERE journal_id = ?')
+      .all(id) as { tag: string }[];
+    const tags = tagRows.map((t) => t.tag);
+
+    return this.mapJournalEntry(row as Record<string, unknown>, tags);
+  }
+
+  async searchJournal(params: JournalSearchParams): Promise<JournalSearchResult> {
+    this.checkHealth();
+
+    const {
+      query,
+      tags,
+      projectId,
+      sessionId,
+      dateFrom,
+      dateTo,
+      activeOnly = false,
+      limit = 50,
+      offset = 0,
+    } = params;
+
+    let sql: string;
+    const values: (string | number | null)[] = [];
+
+    if (query) {
+      // FTS5 search — qualify column names to avoid ambiguity with journal_fts
+      sql =
+        'SELECT journal.* FROM journal JOIN journal_fts ON journal.id = journal_fts.rowid WHERE journal_fts MATCH ?';
+      values.push(query);
+    } else {
+      sql = 'SELECT * FROM journal WHERE 1=1';
+    }
+
+    if (activeOnly) {
+      sql += ' AND journal.invalidated_at IS NULL';
+    }
+    if (projectId) {
+      sql += ' AND journal.project_id = ?';
+      values.push(projectId);
+    }
+    if (sessionId) {
+      sql += ' AND journal.session_id = ?';
+      values.push(sessionId);
+    }
+    if (dateFrom) {
+      sql += ' AND journal.created_at >= ?';
+      values.push(dateFrom.getTime());
+    }
+    if (dateTo) {
+      sql += ' AND journal.created_at <= ?';
+      values.push(dateTo.getTime());
+    }
+
+    // Tag filtering — if tags specified, intersect with journal_tags
+    if (tags && tags.length > 0) {
+      // Find journal entries that have ALL specified tags
+      const tagPlaceholders = tags.map(() => '?').join(',');
+      const tagSubquery = `
+        AND journal.id IN (
+          SELECT jt.journal_id FROM journal_tags jt
+          WHERE jt.tag IN (${tagPlaceholders})
+          GROUP BY jt.journal_id
+          HAVING COUNT(DISTINCT jt.tag) = ${tags.length}
+        )
+      `;
+      sql += tagSubquery;
+      values.push(...tags);
+    }
+
+    // Count
+    const countSql = sql.replace(/SELECT.*?FROM/, 'SELECT COUNT(*) as count FROM');
+    const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;
+    const total = countResult?.count ?? 0;
+
+    // Fetch
+    sql += ' ORDER BY journal.created_at DESC LIMIT ? OFFSET ?';
+    values.push(limit, offset);
+
+    const rows = this.db.prepare(sql).all(...values) as Record<string, unknown>[];
+
+    // Fetch tags for each entry
+    const entries: JournalEntry[] = [];
+    for (const row of rows) {
+      const entryId = row.id as number;
+      const tagRows = this.db
+        .prepare('SELECT tag FROM journal_tags WHERE journal_id = ?')
+        .all(entryId) as { tag: string }[];
+      entries.push(this.mapJournalEntry(row, tagRows.map((t) => t.tag)));
+    }
+
+    return { entries, total };
+  }
+
+  async invalidateJournal(id: number, supersededById: number): Promise<void> {
+    this.checkHealth();
+
+    const entry = await this.readJournal(id);
+    if (!entry) throw new Error(`Journal entry ${id} not found`);
+    if (entry.invalidatedAt) throw new Error(`Journal entry ${id} is already invalidated`);
+
+    // Validate the superseding entry exists
+    const superseding = await this.readJournal(supersededById);
+    if (!superseding) throw new Error(`Superseding journal entry ${supersededById} not found`);
+
+    const now = Date.now();
+    await this.withRetry(() =>
+      this.db
+        .prepare('UPDATE journal SET superseded_by = ?, invalidated_at = ? WHERE id = ?')
+        .run(supersededById, now, id)
+    );
+  }
+
+  private mapJournalEntry(row: Record<string, unknown>, tags: string[]): JournalEntry {
+    const r = row as {
+      id: number;
+      uuid: string;
+      project_id: string;
+      session_id: number | null;
+      title: string;
+      body: string;
+      model: string | null;
+      provider: string | null;
+      agent: string | null;
+      superseded_by: number | null;
+      invalidated_at: number | null;
+      metadata: string | null;
+      created_at: number;
+    };
+    return {
+      id: r.id,
+      uuid: r.uuid,
+      projectId: r.project_id,
+      sessionId: r.session_id,
+      title: r.title,
+      body: r.body,
+      tags,
+      model: r.model,
+      provider: r.provider,
+      agent: r.agent,
+      supersededBy: r.superseded_by,
+      invalidatedAt: r.invalidated_at ? new Date(r.invalidated_at) : null,
+      metadata: this.deserialize(r.metadata),
+      createdAt: new Date(r.created_at),
     };
   }
 

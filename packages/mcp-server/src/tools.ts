@@ -23,6 +23,8 @@ import {
   formatStats,
   formatHealth,
   formatConfig,
+  formatJournalEntry,
+  formatJournalList,
 } from './formatters.js';
 
 // ─── Context ────────────────────────────────────────────────
@@ -907,6 +909,123 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     }
   );
 
+  // ─── Journal Tools (append-only evidence) ────────────────────
+
+  server.tool(
+    'mem_journal_write',
+    'Create a new append-only journal entry with automatic metadata capture (model, provider, agent, session). Entries are immutable — they cannot be edited or deleted. Use `supersedes` to correct a previous entry without breaking the audit trail. Returns: human-readable confirmation with entry ID.',
+    {
+      title: z.string().describe('Short, descriptive title for the entry'),
+      body: z.string().describe('Full body content of the journal entry'),
+      tags: z.array(z.string()).optional().describe('Tags for classification (e.g. ["debugging", "perf"])'),
+      project_id: z.string().optional().describe('Project identifier'),
+      supersedes: z.number().optional().describe('ID of a previous entry this correction supersedes'),
+      metadata: z.record(z.unknown()).optional().describe('Additional metadata (source, origin, confidence, etc.)'),
+    },
+    { title: 'Write journal entry', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    async ({ title, body, tags, project_id, supersedes, metadata }) => {
+      try {
+        const currentProjectId = project_id || ctx.projectId;
+        let sessionId = ctx.activeSessionId;
+
+        if (!sessionId) {
+          const session = await ctx.engine.createSession({
+            projectId: currentProjectId,
+            endedAt: null,
+            metadata: { source: 'journal' },
+          });
+          sessionId = session.id;
+          ctx.activeSessionId = sessionId;
+        }
+
+        const entry = await ctx.engine.writeJournal({
+          projectId: currentProjectId,
+          sessionId,
+          title,
+          body,
+          tags,
+          supersedes: supersedes ?? null,
+          metadata: metadata || {},
+        });
+
+        const lines: string[] = [];
+        lines.push(`Journal entry #${entry.id} "${entry.title}" written`);
+        lines.push(`Project: ${entry.projectId} | Tags: ${entry.tags.length > 0 ? entry.tags.join(', ') : 'none'}`);
+        if (supersedes) {
+          lines.push(`Supersedes entry #${supersedes} (previous entry marked as invalidated)`);
+        }
+
+        return {
+          content: [{ type: 'text', text: lines.join('\n') }],
+        };
+      } catch (error: unknown) {
+        return handleToolError(error, ctx);
+      }
+    }
+  );
+
+  server.tool(
+    'mem_journal_read',
+    'Read a journal entry by ID. Returns: human-readable Markdown with full entry details including metadata, tags, body, and invalidation info if superseded.',
+    {
+      id: z.number().describe('Journal entry ID'),
+    },
+    { title: 'Read journal entry', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    async ({ id }) => {
+      try {
+        const entry = await ctx.engine.readJournal(id);
+
+        if (!entry) {
+          return {
+            content: [{ type: 'text', text: `Journal entry #${id} not found.` }],
+          };
+        }
+
+        return {
+          content: [{ type: 'text', text: formatJournalEntry(entry) }],
+        };
+      } catch (error: unknown) {
+        return handleToolError(error, ctx);
+      }
+    }
+  );
+
+  server.tool(
+    'mem_journal_search',
+    'Search journal entries using full-text search (FTS5), tags, project, and date range filters. Use `active_only` to exclude superseded/invalidated entries. Returns: human-readable Markdown with entry list.',
+    {
+      query: z.string().optional().describe('Full-text search query (FTS5 syntax)'),
+      tags: z.array(z.string()).optional().describe('Filter by tags (AND logic — all tags must match)'),
+      project_id: z.string().optional().describe('Filter by project identifier'),
+      active_only: z.boolean().optional().describe('Exclude invalidated/superseded entries (default: false)'),
+      date_from: z.string().optional().describe('ISO date string — entries from this date'),
+      date_to: z.string().optional().describe('ISO date string — entries until this date'),
+      limit: z.number().optional().describe('Max results (default: 20)'),
+      offset: z.number().optional().describe('Offset for pagination'),
+    },
+    { title: 'Search journal entries', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    async ({ query, tags, project_id, active_only, date_from, date_to, limit, offset }) => {
+      try {
+        const result = await ctx.engine.searchJournal({
+          query,
+          tags,
+          projectId: project_id,
+          activeOnly: active_only,
+          dateFrom: date_from ? new Date(date_from) : undefined,
+          dateTo: date_to ? new Date(date_to) : undefined,
+          limit: limit || 20,
+          offset,
+        });
+
+        return {
+          content: [{ type: 'text', text: formatJournalList(result) }],
+        };
+      } catch (error: unknown) {
+        return handleToolError(error, ctx);
+      }
+    }
+  );
+
   server.tool(
     'mem_config',
     'Get current Memento configuration and system status: storage path, project ID, SQLite details, disk usage (with WAL/SHM sizes), observation statistics by type, environment info (Node/Bun versions), and list of all available tools. Returns: human-readable Markdown with full configuration.',
@@ -979,6 +1098,9 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
                   'mem_stats',
                   'mem_health',
                   'mem_config',
+                  'mem_journal_write',
+                  'mem_journal_read',
+                  'mem_journal_search',
                 ],
               }),
             },

@@ -202,3 +202,52 @@ export interface ImportResult {
   errors: string[];
   observations: Observation[];
 }
+
+// --- Journal types (append-only, evidence-first) ---
+
+export interface JournalEntry {
+  id: number;
+  uuid: string;
+  projectId: string;
+  sessionId: number | null;
+  title: string;
+  body: string;
+  tags: string[];
+  model: string | null;
+  provider: string | null;
+  agent: string | null;
+  supersededBy: number | null;
+  invalidatedAt: Date | null;
+  metadata: Record<string, unknown>;
+  createdAt: Date;
+}
+
+export interface WriteJournalParams {
+  projectId: string;
+  sessionId?: number | null;
+  title: string;
+  body: string;
+  tags?: string[];
+  model?: string | null;
+  provider?: string | null;
+  agent?: string | null;
+  supersedes?: number | null;
+  metadata?: Record<string, unknown>;
+}
+
+export interface JournalSearchParams {
+  query?: string;
+  tags?: string[];
+  projectId?: string;
+  sessionId?: number;
+  dateFrom?: Date;
+  dateTo?: Date;
+  activeOnly?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export interface JournalSearchResult {
+  entries: JournalEntry[];
+  total: number;
+}

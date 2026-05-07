@@ -173,6 +173,87 @@ export class CLI {
           console.log(`    ${type}: ${count}`);
         });
       });
+
+    // ─── Journal commands (append-only evidence) ──────────────
+
+    const journal = this.program.command('journal').description('Append-only journal for evidence capture');
+
+    journal
+      .command('write <title> <body>')
+      .description('Write a journal entry (immutable, append-only)')
+      .option('--tags <tags>', 'Comma-separated tags (e.g. debugging,perf)')
+      .option('-p, --project <project>', 'Project ID', this.projectId)
+      .option('--supersedes <id>', 'ID of entry this correction supersedes')
+      .action(async (title, body, options) => {
+        const tags = options.tags ? (options.tags as string).split(',').map((t: string) => t.trim()) : [];
+        const supersedes = options.supersedes ? parseInt(options.supersedes as string) : null;
+
+        const entry = await this.memory.writeJournal({
+          projectId: options.project as string,
+          title,
+          body,
+          tags,
+          supersedes,
+        });
+
+        console.log(`Journal entry #${entry.id}: "${entry.title}"`);
+        if (tags.length > 0) {
+          console.log(`Tags: ${entry.tags.join(', ')}`);
+        }
+        if (supersedes) {
+          console.log(`Supersedes entry #${supersedes}`);
+        }
+      });
+
+    journal
+      .command('search [query]')
+      .description('Search journal entries')
+      .option('--tags <tags>', 'Comma-separated tags (AND logic)')
+      .option('-p, --project <project>', 'Filter by project')
+      .option('--active-only', 'Exclude invalidated entries')
+      .option('-l, --limit <number>', 'Limit results', '20')
+      .action(async (query, options) => {
+        const tags = options.tags ? (options.tags as string).split(',').map((t: string) => t.trim()) : undefined;
+
+        const result = await this.memory.searchJournal({
+          query: query || undefined,
+          tags,
+          projectId: options.project as string | undefined,
+          activeOnly: options.activeOnly as boolean | undefined,
+          limit: parseInt(options.limit as string),
+        });
+
+        console.log(`Found ${result.total} journal entr${result.total !== 1 ? 'ies' : 'y'}`);
+        for (const entry of result.entries) {
+          const date = entry.createdAt.toLocaleDateString();
+          const status = entry.invalidatedAt ? '⚠' : ' ';
+          console.log(`  ${status} #${entry.id} ${date} ${entry.title}`);
+          if (entry.tags.length > 0) {
+            console.log(`     Tags: ${entry.tags.join(', ')}`);
+          }
+        }
+      });
+
+    journal
+      .command('read <id>')
+      .description('Read a journal entry by ID')
+      .action(async (id) => {
+        const entry = await this.memory.readJournal(parseInt(id));
+        if (!entry) {
+          console.error('Journal entry not found');
+          return;
+        }
+
+        console.log(`#${entry.id} ${entry.title}`);
+        console.log(`Project: ${entry.projectId} | Created: ${entry.createdAt.toISOString()}`);
+        if (entry.tags.length > 0) console.log(`Tags: ${entry.tags.join(', ')}`);
+        if (entry.model) console.log(`Model: ${entry.model} | Provider: ${entry.provider} | Agent: ${entry.agent}`);
+        if (entry.invalidatedAt) {
+          console.log(`⚠ INVALIDATED at ${entry.invalidatedAt.toISOString()} — Superseded by #${entry.supersededBy}`);
+        }
+        console.log('');
+        console.log(entry.body);
+      });
   }
 
   private async getOrCreateSessionId(projectId: string): Promise<number> {
