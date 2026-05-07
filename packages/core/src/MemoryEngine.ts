@@ -160,6 +160,16 @@ export class MemoryEngine {
       }
     }
 
+    // Migrate: clean up empty string topic_key → NULL (Issue #69)
+    try {
+      const result = this.db.prepare("UPDATE observations SET topic_key = NULL WHERE topic_key = ''").run();
+      if (result.changes > 0) {
+        console.error(`✓ Migration: cleaned up ${result.changes} empty topic_key value(s)`);
+      }
+    } catch {
+      // Table may not have topic_key column yet
+    }
+
     // FTS5 — standalone mode (no content= parameter).
     // FTS5 owns its own data copy, supports full CRUD (INSERT, DELETE, UPDATE),
     // and avoids SQLITE_CORRUPT_VTAB that occurred with content='observations' mode
@@ -359,7 +369,7 @@ export class MemoryEngine {
     }
     if (updates.topicKey !== undefined) {
       fields.push('topic_key = ?');
-      values.push(updates.topicKey || '');
+      values.push(updates.topicKey ?? null);
     }
     if (updates.metadata !== undefined) {
       fields.push('metadata = ?');

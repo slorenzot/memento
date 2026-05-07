@@ -311,6 +311,51 @@ describe('MemoryEngine — CRUD + Timing', () => {
       expect(updated.topicKey).toBe('new-topic');
     });
 
+    it('#69 — should clear topicKey when updated with null', async () => {
+      const created = await engine.createObservation({
+        sessionId: session.id,
+        title: 'Clear Topic',
+        content: 'Content',
+        type: 'note',
+        topicKey: 'to-be-cleared',
+        projectId: 'test-project',
+        metadata: {},
+      });
+
+      const updated = await engine.updateObservation(created.id, { topicKey: null });
+      expect(updated.topicKey).toBeNull();
+    });
+
+    it('#69 — create and update topicKey should be consistent with null', async () => {
+      // Create without topic → null
+      const a = await engine.createObservation({
+        sessionId: session.id,
+        title: 'No Topic',
+        content: 'C',
+        type: 'note',
+        topicKey: null,
+        projectId: 'test-project',
+        metadata: {},
+      });
+
+      // Create with topic, then clear → should also be null
+      const b = await engine.createObservation({
+        sessionId: session.id,
+        title: 'Temp Topic',
+        content: 'C',
+        type: 'note',
+        topicKey: 'temp',
+        projectId: 'test-project',
+        metadata: {},
+      });
+      const bUpdated = await engine.updateObservation(b.id, { topicKey: null });
+
+      // Both should have the same value (null, not '')
+      expect(a.topicKey).toBeNull();
+      expect(bUpdated.topicKey).toBeNull();
+      expect(a.topicKey).toBe(bUpdated.topicKey);
+    });
+
     it('#28 — update with no fields returns unchanged', async () => {
       const created = await engine.createObservation({
         sessionId: session.id,
