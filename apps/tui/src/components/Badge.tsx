@@ -1,9 +1,10 @@
 import React from 'react';
 import { Text } from 'ink';
 import { TYPE_COLORS, TYPE_ICONS, colors } from '../theme';
+import type { Observation } from '@slorenzot/memento-core';
 
 interface BadgeProps {
-  type: 'decision' | 'bug' | 'discovery' | 'note' | 'summary' | 'learning';
+  type: Observation['type'];
   deleted?: boolean;
 }
 

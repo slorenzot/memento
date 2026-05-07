@@ -10,6 +10,10 @@ export const TYPE_COLORS: Record<string, ChalkInstance> = {
   note: chalk.yellow,
   summary: chalk.magenta,
   learning: chalk.blue,
+  pattern: chalk.hex('#FF8C00'),
+  architecture: chalk.hex('#9B59B6'),
+  config: chalk.hex('#1ABC9C'),
+  preference: chalk.hex('#E91E63'),
 };
 
 export const TYPE_ICONS: Record<string, string> = {
@@ -19,6 +23,10 @@ export const TYPE_ICONS: Record<string, string> = {
   note: '►',
   summary: '★',
   learning: '◈',
+  pattern: '◎',
+  architecture: '⬡',
+  config: '⚙',
+  preference: '♥',
 };
 
 // ─── Semantic Colors ─────────────────────────────────────────
