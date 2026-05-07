@@ -160,55 +160,21 @@ export class MemoryEngine {
       }
     }
 
-    // FTS5
+    // FTS5 — standalone mode (no content= parameter).
+    // FTS5 owns its own data copy, supports full CRUD (INSERT, DELETE, UPDATE),
+    // and avoids SQLITE_CORRUPT_VTAB that occurred with content='observations' mode
+    // under bun:sqlite + WAL + concurrent access. See: GitHub Issue #68.
     this.db.exec(`
       CREATE VIRTUAL TABLE IF NOT EXISTS observations_fts USING fts5(
         title, content, topic_key, project_id,
-        content='observations',
         tokenize='porter unicode61'
       );
     `);
 
-    // FTS triggers — drop and recreate to ensure latest version
-    this.db.exec('DROP TRIGGER IF EXISTS observations_ai');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_ad');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_au');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_soft_delete');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_undelete');
-
-    this.db.exec(`
-      CREATE TRIGGER observations_ai AFTER INSERT ON observations BEGIN
-        INSERT INTO observations_fts(rowid, title, content, topic_key, project_id)
-        VALUES (new.id, new.title, new.content, new.topic_key, new.project_id);
-      END;
-
-      CREATE TRIGGER observations_ad AFTER DELETE ON observations BEGIN
-        DELETE FROM observations_fts WHERE rowid = old.id;
-      END;
-
-      CREATE TRIGGER observations_au AFTER UPDATE ON observations
-        WHEN NEW.deleted_at IS NULL AND OLD.deleted_at IS NULL
-      BEGIN
-        DELETE FROM observations_fts WHERE rowid = old.id;
-        INSERT INTO observations_fts(rowid, title, content, topic_key, project_id)
-        VALUES (new.id, new.title, new.content, new.topic_key, new.project_id);
-      END;
-
-      CREATE TRIGGER observations_soft_delete
-        AFTER UPDATE OF deleted_at ON observations
-        WHEN NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL
-      BEGIN
-        DELETE FROM observations_fts WHERE rowid = OLD.id;
-      END;
-
-      CREATE TRIGGER observations_undelete
-        AFTER UPDATE OF deleted_at ON observations
-        WHEN NEW.deleted_at IS NULL AND OLD.deleted_at IS NOT NULL
-      BEGIN
-        INSERT INTO observations_fts(rowid, title, content, topic_key, project_id)
-        VALUES (NEW.id, NEW.title, NEW.content, NEW.topic_key, NEW.project_id);
-      END;
-    `);
+    // FTS5 sync is managed at application-level in each CRUD method.
+    // Previous trigger-based approach caused SQLITE_CORRUPT_VTAB under
+    // concurrent access (DELETE+INSERT on FTS5 virtual table within a trigger).
+    // See: GitHub Issue #68
 
     // ─── Journal tables (append-only evidence) ────────────────
     this.db.exec(`
@@ -344,9 +310,17 @@ export class MemoryEngine {
           metadata,
           scope
         );
-      return typeof result.lastInsertRowid === 'bigint'
-        ? Number(result.lastInsertRowid)
-        : result.lastInsertRowid;
+      const insertId =
+        typeof result.lastInsertRowid === 'bigint'
+          ? Number(result.lastInsertRowid)
+          : result.lastInsertRowid;
+
+      // Application-level FTS5 sync (was trigger observations_ai)
+      this.db.prepare(
+        'INSERT INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)'
+      ).run(insertId, data.title, data.content, data.topicKey ?? '', data.projectId);
+
+      return insertId;
     });
 
     const observation = await this.getObservationById(id, true);
@@ -396,9 +370,37 @@ export class MemoryEngine {
 
     fields.push('revision_count = revision_count + 1');
     values.push(id);
-    await this.withRetry(() =>
-      this.db.prepare(`UPDATE observations SET ${fields.join(', ')} WHERE id = ?`).run(...values)
-    );
+
+    // Check if any FTS5-indexed fields changed
+    const hasFtsUpdate =
+      updates.title !== undefined ||
+      updates.content !== undefined ||
+      updates.topicKey !== undefined;
+
+    if (hasFtsUpdate) {
+      // Atomic transaction: UPDATE + FTS5 rebuild
+      // Replaces trigger observations_au that caused SQLITE_CORRUPT_VTAB (#68)
+      await this.withRetry(() => {
+        this.db.transaction(() => {
+          this.db.prepare(`UPDATE observations SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+          // Re-read updated row for FTS5 sync
+          const row = this.db
+            .prepare('SELECT title, content, topic_key, project_id FROM observations WHERE id = ?')
+            .get(id) as { title: string; content: string; topic_key: string; project_id: string } | undefined;
+          if (row) {
+            this.db.prepare('DELETE FROM observations_fts WHERE rowid = ?').run(id);
+            this.db.prepare(
+              'INSERT INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)'
+            ).run(id, row.title, row.content, row.topic_key, row.project_id);
+          }
+        })();
+      });
+    } else {
+      // No FTS5 fields changed — just UPDATE
+      await this.withRetry(() =>
+        this.db.prepare(`UPDATE observations SET ${fields.join(', ')} WHERE id = ?`).run(...values)
+      );
+    }
 
     const updated = await this.getObservationById(id, true);
     if (!updated) throw new Error('Failed to update observation');
@@ -418,15 +420,19 @@ export class MemoryEngine {
     // If there's a reason, store it in metadata
     if (reason) {
       const meta = { ...obs.metadata, deleteReason: reason };
-      await this.withRetry(() =>
+      await this.withRetry(() => {
         this.db
           .prepare('UPDATE observations SET deleted_at = ?, metadata = ? WHERE id = ?')
-          .run(now, this.serialize(meta), id)
-      );
+          .run(now, this.serialize(meta), id);
+        // Application-level FTS5 sync (was trigger observations_soft_delete)
+        this.db.prepare('DELETE FROM observations_fts WHERE rowid = ?').run(id);
+      });
     } else {
-      await this.withRetry(() =>
-        this.db.prepare('UPDATE observations SET deleted_at = ? WHERE id = ?').run(now, id)
-      );
+      await this.withRetry(() => {
+        this.db.prepare('UPDATE observations SET deleted_at = ? WHERE id = ?').run(now, id);
+        // Application-level FTS5 sync (was trigger observations_soft_delete)
+        this.db.prepare('DELETE FROM observations_fts WHERE rowid = ?').run(id);
+      });
     }
   }
 
@@ -436,9 +442,18 @@ export class MemoryEngine {
     if (!obs) throw new Error('Observation not found');
     if (!obs.deletedAt) throw new Error('Observation is not deleted');
 
-    await this.withRetry(() =>
-      this.db.prepare('UPDATE observations SET deleted_at = NULL WHERE id = ?').run(id)
-    );
+    await this.withRetry(() => {
+      this.db.prepare('UPDATE observations SET deleted_at = NULL WHERE id = ?').run(id);
+      // Application-level FTS5 sync (was trigger observations_undelete)
+      const row = this.db
+        .prepare('SELECT title, content, topic_key, project_id FROM observations WHERE id = ?')
+        .get(id) as { title: string; content: string; topic_key: string; project_id: string } | undefined;
+      if (row) {
+        this.db.prepare(
+          'INSERT INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)'
+        ).run(id, row.title, row.content, row.topic_key, row.project_id);
+      }
+    });
 
     const restored = await this.getObservationById(id, true);
     if (!restored) throw new Error('Failed to restore observation');
@@ -470,6 +485,8 @@ export class MemoryEngine {
     if (ids.length === 0) return { purgedCount: 0, purgedIds: [] };
 
     const placeholders = ids.map(() => '?').join(',');
+    // Application-level FTS5 sync (was trigger observations_ad)
+    this.db.prepare(`DELETE FROM observations_fts WHERE rowid IN (${placeholders})`).run(...ids);
     this.db.prepare(`DELETE FROM observations WHERE id IN (${placeholders})`).run(...ids);
 
     return { purgedCount: ids.length, purgedIds: ids };
@@ -683,8 +700,14 @@ export class MemoryEngine {
             ? Number(insertResult.lastInsertRowid)
             : insertResult.lastInsertRowid;
 
-        // Delete originals
+        // Application-level FTS5 sync: insert merged, delete originals
+        this.db.prepare(
+          'INSERT INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)'
+        ).run(newId, synthTitle, synthContent, synthTopicKey ?? '', projectId);
+
+        // Delete originals (from both observations and observations_fts)
         const placeholders = sourceIds.map(() => '?').join(',');
+        this.db.prepare(`DELETE FROM observations_fts WHERE rowid IN (${placeholders})`).run(...sourceIds);
         this.db.prepare(`DELETE FROM observations WHERE id IN (${placeholders})`).run(...sourceIds);
 
         // Fetch the newly created merged observation
@@ -1575,13 +1598,8 @@ export class MemoryEngine {
     const countResult = this.db.prepare('SELECT COUNT(*) as count FROM observations').get() as { count: number } | undefined;
     const deleted = countResult?.count || 0;
 
-    // Drop everything
+    // Drop everything (no observation triggers — FTS5 sync is application-level)
     this.db.exec('DROP TABLE IF EXISTS observations_fts');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_ai');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_ad');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_au');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_soft_delete');
-    this.db.exec('DROP TRIGGER IF EXISTS observations_undelete');
     this.db.exec('DROP TRIGGER IF EXISTS journal_ai');
     this.db.exec('DROP TABLE IF EXISTS journal_fts');
     this.db.exec('DROP TABLE IF EXISTS journal_tags');
@@ -1609,7 +1627,9 @@ export class MemoryEngine {
       .get(projectId) as { count: number };
     const deleted = obsCount.count + promptCount.count;
 
-    // Delete observations and prompts for this project
+    // Delete observations (FTS5 first, then main table) and prompts for this project
+    // Application-level FTS5 sync (was trigger observations_ad)
+    this.db.prepare('DELETE FROM observations_fts WHERE rowid IN (SELECT id FROM observations WHERE project_id = ?)').run(projectId);
     this.db.prepare('DELETE FROM observations WHERE project_id = ?').run(projectId);
     this.db.prepare('DELETE FROM prompts WHERE project_id = ?').run(projectId);
 

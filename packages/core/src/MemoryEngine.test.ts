@@ -347,22 +347,13 @@ describe('MemoryEngine — CRUD + Timing', () => {
       const before = await engine.search({ query: 'Before Edit FTS' });
       expect(before.total).toBeGreaterThanOrEqual(1);
 
-      try {
-        await engine.updateObservation(obs.id, {
-          title: 'After Edit FTS UniqueMarker',
-          content: 'Updated searchable content with UniqueMarker',
-        });
+      await engine.updateObservation(obs.id, {
+        title: 'After Edit FTS UniqueMarker',
+        content: 'Updated searchable content with UniqueMarker',
+      });
 
-        const afterNew = await engine.search({ query: 'UniqueMarker' });
-        expect(afterNew.total).toBeGreaterThanOrEqual(1);
-      } catch (error: any) {
-        // FTS5 trigger can fail with SQLITE_CORRUPT_VTAB in parallel test scenarios
-        // This is a known SQLite FTS5 concurrency issue, not a product bug
-        if (!error.message?.includes('malformed') && !error.message?.includes('CORRUPT')) {
-          throw error;
-        }
-        console.warn('⚠️  #32 skipped: FTS5 VTAB corruption in parallel test run');
-      }
+      const afterNew = await engine.search({ query: 'UniqueMarker' });
+      expect(afterNew.total).toBeGreaterThanOrEqual(1);
     });
 
     it('should delete an observation', async () => {
