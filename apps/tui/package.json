@@ -1,6 +1,6 @@
 {
   "name": "@slorenzot/memento-tui",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "description": "Terminal UI explorer for Memento database — read-only visual navigation with keyboard controls",
   "keywords": [
     "memento",
@@ -24,7 +24,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@slorenzot/memento-core": "^1.0.0",
+    "@slorenzot/memento-core": "^1.1.0",
     "chalk": "^5.3.0",
     "ink": "^4.4.1",
     "react": "^18.2.0"
