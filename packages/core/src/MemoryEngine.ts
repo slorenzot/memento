@@ -1512,18 +1512,18 @@ export class MemoryEngine {
       metadata: { type: 'import', source: 'mem_import', timestamp: new Date().toISOString() },
     });
 
-    // Use transaction for atomic import
-    this.db.exec('BEGIN');
-
-    try {
+    // Use db.transaction() for safe atomic import (#70)
+    // Replaces manual BEGIN/COMMIT which was fragile — if createObservation's
+    // withRetry() hit SQLITE_BUSY inside a manual transaction, the retry would
+    // fail because the transaction was already in error state.
+    const doImport = this.db.transaction(() => {
       for (const obs of data.observations) {
         // Validate required fields
         if (!obs.title || !obs.content || !obs.type) {
           result.errors.push(`Invalid observation: missing required fields (title, content, type)`);
           if (conflictStrategy === 'fail') {
-            this.db.exec('ROLLBACK');
             result.failed++;
-            return result;
+            throw new Error('IMPORT_ABORT');
           }
           result.failed++;
           continue;
@@ -1533,9 +1533,8 @@ export class MemoryEngine {
         if (!validTypes.includes(obs.type as Observation['type'])) {
           result.errors.push(`Invalid type: "${obs.type}". Valid types: ${validTypes.join(', ')}`);
           if (conflictStrategy === 'fail') {
-            this.db.exec('ROLLBACK');
             result.failed++;
-            return result;
+            throw new Error('IMPORT_ABORT');
           }
           result.failed++;
           continue;
@@ -1551,44 +1550,90 @@ export class MemoryEngine {
             }
             if (conflictStrategy === 'overwrite') {
               if (!dryRun) {
-                await this.updateObservation(existing.id, {
-                  title: obs.title,
-                  content: obs.content,
-                  type: obs.type as Observation['type'],
-                  topicKey: obs.topicKey ?? null,
-                  metadata: obs.metadata || {},
-                });
+                // Direct UPDATE + FTS5 sync (avoids withRetry inside transaction)
+                const fields: string[] = [];
+                const values: (string | number | null)[] = [];
+
+                if (obs.title !== undefined) { fields.push('title = ?'); values.push(obs.title); }
+                if (obs.content !== undefined) { fields.push('content = ?'); values.push(obs.content); }
+                if (obs.type !== undefined) { fields.push('type = ?'); values.push(obs.type as string); }
+                if (obs.topicKey !== undefined) { fields.push('topic_key = ?'); values.push(obs.topicKey ?? null); }
+                if (obs.metadata !== undefined) { fields.push('metadata = ?'); values.push(this.serialize(obs.metadata || {})); }
+
+                fields.push('revision_count = revision_count + 1');
+                values.push(existing.id);
+
+                this.db.prepare(`UPDATE observations SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+
+                // FTS5 sync — delete + re-insert
+                this.db.prepare('DELETE FROM observations_fts WHERE rowid = ?').run(existing.id);
+                const row = this.db
+                  .prepare('SELECT title, content, topic_key, project_id FROM observations WHERE id = ?')
+                  .get(existing.id) as { title: string; content: string; topic_key: string; project_id: string } | undefined;
+                if (row) {
+                  this.db.prepare(
+                    'INSERT INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)'
+                  ).run(existing.id, row.title, row.content, row.topic_key, row.project_id);
+                }
               }
               result.overwritten++;
               continue;
             }
             if (conflictStrategy === 'fail') {
-              this.db.exec('ROLLBACK');
               result.errors.push(`Duplicate uuid: ${obs.uuid}`);
               result.failed++;
-              return result;
+              throw new Error('IMPORT_ABORT');
             }
           }
         }
 
         if (!dryRun) {
-          const imported = await this.createObservation({
-            sessionId: session.id,
-            title: obs.title,
-            content: obs.content,
-            type: obs.type as Observation['type'],
-            topicKey: obs.topicKey || null,
-            projectId: targetProject,
-            metadata: obs.metadata || {},
-          });
-          result.observations.push(imported);
+          // Direct INSERT + FTS5 sync (avoids withRetry inside transaction)
+          const uuid = obs.uuid || crypto.randomUUID();
+          const metadata = this.serialize(obs.metadata || {});
+          const createdAt = Date.now();
+
+          const insertResult = this.db.prepare(
+            `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, deleted_at, metadata, scope) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'project')`
+          ).run(
+            uuid,
+            session.id,
+            obs.title,
+            obs.content,
+            obs.type,
+            obs.topicKey ?? null,
+            targetProject,
+            createdAt,
+            metadata
+          );
+
+          const insertId =
+            typeof insertResult.lastInsertRowid === 'bigint'
+              ? Number(insertResult.lastInsertRowid)
+              : insertResult.lastInsertRowid;
+
+          // FTS5 sync
+          this.db.prepare(
+            'INSERT INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)'
+          ).run(insertId, obs.title, obs.content, obs.topicKey ?? '', targetProject);
+
+          // Fetch created observation for result
+          const importedRow = this.db.prepare('SELECT * FROM observations WHERE id = ?').get(insertId);
+          if (importedRow) {
+            result.observations.push(this.mapObservation(importedRow as Record<string, unknown>));
+          }
         }
         result.imported++;
       }
+    });
 
-      this.db.exec('COMMIT');
+    try {
+      doImport();
     } catch (error) {
-      this.db.exec('ROLLBACK');
+      if (error instanceof Error && error.message === 'IMPORT_ABORT') {
+        // Transaction auto-rolled back; return partial result with errors
+        return result;
+      }
       throw error;
     }
 
