@@ -1,0 +1,29 @@
+{
+  "packages": {
+    "packages/core": {
+      "component": "core"
+    },
+    "packages/mcp-server": {
+      "component": "mcp-server"
+    },
+    "packages/cli": {
+      "component": "cli"
+    },
+    "packages/api": {
+      "component": "api"
+    },
+    "packages/web-ui": {
+      "component": "web-ui"
+    }
+  },
+  "versioning": "make-release",
+  "changelog-sections": [
+    { "section": "Features", "type": "feat" },
+    { "section": "Bug Fixes", "type": "fix" },
+    { "section": "Performance", "type": "perf" },
+    { "section": "Reverts", "type": "revert" },
+    { "section": "Documentation", "type": "docs" },
+    { "section": "Miscellaneous", "type": "chore" }
+  ],
+  "release-type": "node"
+}
