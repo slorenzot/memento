@@ -18,8 +18,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "prepare": "npm run build"
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "@slorenzot/memento-core": "workspace:*",

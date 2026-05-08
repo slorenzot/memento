@@ -556,7 +556,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           ctx.activeSessionId = sessionId;
         }
 
-        const prompt = await ctx.engine.savePrompt({
+        await ctx.engine.savePrompt({
           sessionId,
           content,
           projectId: currentProjectId,

@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2"
+
+      - name: Install dependencies
+        run: bun install --ignore-scripts
+
+      - name: Build core
+        run: bun run --filter @slorenzot/memento-core build
+
+      - name: Build all packages
+        run: bun run build
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Test
+        run: bun test

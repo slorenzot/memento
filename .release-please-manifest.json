@@ -1,0 +1,7 @@
+{
+  "packages/core": "1.1.0",
+  "packages/mcp-server": "1.1.0",
+  "packages/cli": "1.1.0",
+  "packages/api": "0.3.0",
+  "packages/web-ui": "0.1.1"
+}

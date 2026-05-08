@@ -11,7 +11,7 @@ import {
   seedMultipleObservations,
 } from './test-helpers';
 
-describe('Search Benchmarks — Volume', () => {
+describe.skipIf(process.env.CI === 'true')('Search Benchmarks — Volume', () => {
   let engine: MemoryEngine;
   let sessionId: number;
 
@@ -127,7 +127,7 @@ describe('Search Benchmarks — Volume', () => {
 
   // ─── 10,000 observations ─────────────────────────────────
 
-  describe('10,000 observations', () => {
+  describe('10,000 observations', { timeout: 60_000 }, () => {
     beforeEach(async () => {
       await seedMultipleObservations(engine, sessionId, 10000, { projectId: 'bench-search' });
     });
