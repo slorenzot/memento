@@ -127,10 +127,10 @@ describe('Search Benchmarks — Volume', () => {
 
   // ─── 10,000 observations ─────────────────────────────────
 
-  describe('10,000 observations', () => {
+  describe('10,000 observations', { timeout: 60_000 }, () => {
     beforeEach(async () => {
       await seedMultipleObservations(engine, sessionId, 10000, { projectId: 'bench-search' });
-    }, 60_000);
+    });
 
     it('#80 — FTS5 query (< 500ms)', async () => {
       await seedObservation(engine, sessionId, {
