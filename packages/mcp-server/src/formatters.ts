@@ -155,7 +155,7 @@ export function formatStats(stats: DashboardStats, activeSessionId: number | nul
   // Types breakdown
   const typeEntries = Object.entries(stats.byType)
     .filter(([, count]) => count > 0)
-    .sort(([, a], [, b]) => b - a);
+    .sort(([keyA, a], [keyB, b]) => b - a || keyA.localeCompare(keyB));
   if (typeEntries.length > 0) {
     const typeStr = typeEntries.map(([type, count]) => `${type}(${String(count)})`).join(' ');
     lines.push(`Types: ${typeStr}`);
@@ -163,7 +163,7 @@ export function formatStats(stats: DashboardStats, activeSessionId: number | nul
 
   // Projects breakdown
   const projectEntries = Object.entries(stats.byProject)
-    .sort(([, a], [, b]) => b - a);
+    .sort(([keyA, a], [keyB, b]) => b - a || keyA.localeCompare(keyB));
   if (projectEntries.length > 0) {
     const projStr = projectEntries.map(([proj, count]) => `${proj}(${String(count)})`).join(' ');
     lines.push(`Projects: ${projStr}`);
@@ -265,7 +265,7 @@ export function formatConfig(data: {
   // Statistics
   const typeEntries = Object.entries(data.statistics.byType)
     .filter(([, count]) => count > 0)
-    .sort(([, a], [, b]) => b - a);
+    .sort(([keyA, a], [keyB, b]) => b - a || keyA.localeCompare(keyB));
   const typeStr = typeEntries.map(([type, count]) => `${type}(${count})`).join(' ');
 
   lines.push('');
