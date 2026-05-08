@@ -11,7 +11,7 @@ import {
   seedMultipleObservations,
 } from './test-helpers';
 
-describe('Search Benchmarks — Volume', () => {
+describe.skipIf(process.env.CI === 'true')('Search Benchmarks — Volume', () => {
   let engine: MemoryEngine;
   let sessionId: number;
 
