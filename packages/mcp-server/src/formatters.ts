@@ -157,7 +157,7 @@ export function formatStats(stats: DashboardStats, activeSessionId: number | nul
     .filter(([, count]) => count > 0)
     .sort(([, a], [, b]) => b - a);
   if (typeEntries.length > 0) {
-    const typeStr = typeEntries.map(([type, count]) => `${type}(${count})`).join(' ');
+    const typeStr = typeEntries.map(([type, count]) => `${type}(${String(count)})`).join(' ');
     lines.push(`Types: ${typeStr}`);
   }
 
@@ -165,7 +165,7 @@ export function formatStats(stats: DashboardStats, activeSessionId: number | nul
   const projectEntries = Object.entries(stats.byProject)
     .sort(([, a], [, b]) => b - a);
   if (projectEntries.length > 0) {
-    const projStr = projectEntries.map(([proj, count]) => `${proj}(${count})`).join(' ');
+    const projStr = projectEntries.map(([proj, count]) => `${proj}(${String(count)})`).join(' ');
     lines.push(`Projects: ${projStr}`);
   }
 
