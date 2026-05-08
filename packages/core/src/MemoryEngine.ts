@@ -522,7 +522,7 @@ export class MemoryEngine {
     const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;
     const total = countResult ? countResult.count : 0;
 
-    sql += ' ORDER BY deleted_at DESC LIMIT ?';
+    sql += ' ORDER BY deleted_at DESC, id DESC LIMIT ?';
     const rows = this.db.prepare(sql).all(...values, limit) as Record<string, unknown>[];
     const observations = rows.map((row) => this.mapObservation(row));
 
@@ -553,7 +553,7 @@ export class MemoryEngine {
       for (const row of rows) {
         const obs = this.db
           .prepare(
-            'SELECT * FROM observations WHERE project_id = ? AND topic_key = ? AND deleted_at IS NULL ORDER BY created_at ASC'
+            'SELECT * FROM observations WHERE project_id = ? AND topic_key = ? AND deleted_at IS NULL ORDER BY created_at ASC, id ASC'
           )
           .all(projectId, row.topic_key) as Record<string, unknown>[];
 
@@ -567,7 +567,7 @@ export class MemoryEngine {
       // by_similarity — compare recent observations pairwise
       const allObs = this.db
         .prepare(
-          'SELECT * FROM observations WHERE project_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 200'
+          'SELECT * FROM observations WHERE project_id = ? AND deleted_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 200'
         )
         .all(projectId) as Record<string, unknown>[];
 
@@ -787,7 +787,7 @@ export class MemoryEngine {
       values.push(dateTo.getTime());
     }
 
-    sql += ' ORDER BY created_at ASC';
+    sql += ' ORDER BY created_at ASC, id ASC';
 
     const rows = this.db.prepare(sql).all(...values) as Record<string, unknown>[];
     const observations = rows.map((row) => this.mapObservation(row));
@@ -985,7 +985,7 @@ export class MemoryEngine {
     const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;
     const total = countResult ? countResult.count : 0;
 
-    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    sql += ' ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?';
     values.push(limit, offset);
 
     const rows = this.db.prepare(sql).all(...values);
@@ -1872,7 +1872,7 @@ export class MemoryEngine {
     const total = countResult?.count ?? 0;
 
     // Fetch
-    sql += ' ORDER BY journal.created_at DESC LIMIT ? OFFSET ?';
+    sql += ' ORDER BY journal.created_at DESC, journal.id DESC LIMIT ? OFFSET ?';
     values.push(limit, offset);
 
     const rows = this.db.prepare(sql).all(...values) as Record<string, unknown>[];
