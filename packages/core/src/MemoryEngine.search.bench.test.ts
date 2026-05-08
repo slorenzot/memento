@@ -130,7 +130,7 @@ describe('Search Benchmarks — Volume', () => {
   describe('10,000 observations', () => {
     beforeEach(async () => {
       await seedMultipleObservations(engine, sessionId, 10000, { projectId: 'bench-search' });
-    });
+    }, 60_000);
 
     it('#80 — FTS5 query (< 500ms)', async () => {
       await seedObservation(engine, sessionId, {
