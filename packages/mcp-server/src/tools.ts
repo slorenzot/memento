@@ -112,7 +112,17 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           content: [
             {
               type: 'text',
-              text: `Observation #${obs.id} "${obs.title}" saved (${obs.type}, ${currentProjectId})`,
+              text: (() => {
+                const base = `Observation #${obs.id} "${obs.title}" saved (${obs.type}, ${currentProjectId})`;
+                // Auto-suggest topic_key if not provided
+                if (!topic_key && title) {
+                  const source = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+                  const typePrefix = type ? `${type}/` : '';
+                  const suggested = `${typePrefix}${source}`;
+                  return `${base}\nSuggested topic_key: ${suggested}`;
+                }
+                return base;
+              })(),
             },
           ],
         };
@@ -124,7 +134,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_search',
-    'Search observations using full-text search (FTS5). Start with small limits and expand only if needed. Results are TRUNCATED — use mem_get_observation with the returned ID for full content. Returns: human-readable Markdown with observation list.',
+    'Search observations using full-text search (FTS5). Start with small limits and expand only if needed. Results are TRUNCATED — use mem_get_observation with the returned ID for full content. Use `sort` for chronological ordering instead of mem_timeline. Returns: human-readable Markdown with observation list.',
     {
       query: z.string().optional().describe('Search query (FTS5 syntax)'),
       type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning', 'pattern', 'architecture', 'config', 'preference']).optional().describe('Filter by observation type'),
@@ -134,10 +144,26 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
       offset: z.number().optional().describe('Offset for pagination'),
       include_deleted: z.boolean().optional().describe('Include soft-deleted observations'),
       scope: z.enum(['project', 'personal']).optional().describe('Filter by scope'),
+      sort: z.enum(['relevance', 'chronological']).optional().describe('Sort order: "relevance" (default, FTS5 rank) or "chronological" (created_at ASC, replaces mem_timeline)'),
     },
     { title: 'Search observations', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    async ({ query, type, project_id, topic_key, limit, offset, include_deleted, scope }) => {
+    async ({ query, type, project_id, topic_key, limit, offset, include_deleted, scope, sort }) => {
       try {
+        const sortMode = sort || 'relevance';
+
+        // Chronological mode: delegate to getTimeline for strict chronological order
+        if (sortMode === 'chronological') {
+          const result = await ctx.engine.getTimeline({
+            projectId: project_id,
+            limit: limit || 50,
+            offset,
+          });
+          return {
+            content: [{ type: 'text', text: formatObservationList(result) }],
+          };
+        }
+
+        // Relevance mode: default FTS5 search
         const result = await ctx.engine.search({
           query,
           type: type as Observation['type'] | undefined,
@@ -209,24 +235,67 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     }
   );
 
-  // ─── Soft Delete / Restore / Purge ──────────────────────────
+  // ─── Delete / Restore / Purge (consolidated) ─────────────────
 
   server.tool(
     'mem_delete',
-    'Soft-delete an observation. The record is hidden from searches but can be restored with mem_restore. For permanent deletion, use mem_purge after soft-deleting. Soft-delete is the safe default — always prefer this over purge. Returns: human-readable confirmation.',
+    'Delete, restore, purge, or list deleted observations. Use `action` to control behavior: "soft" (default, safe hide), "restore" (bring back), "permanent" (irreversible delete, requires confirm), "list" (view deleted). Returns: human-readable confirmation.',
     {
-      id: z.number().describe('Observation ID to soft-delete'),
-      reason: z.string().optional().describe('Reason for deletion (stored in metadata)'),
+      id: z.number().optional().describe('Observation ID (required for soft/restore actions)'),
+      action: z.enum(['soft', 'permanent', 'restore', 'list']).optional().describe('Action: "soft" (default, soft-delete), "permanent" (irreversible, requires confirm), "restore" (undo delete), "list" (view deleted)'),
+      reason: z.string().optional().describe('Reason for deletion (stored in metadata, for "soft" action)'),
+      confirm: z.boolean().optional().describe('Must be true for "permanent" action'),
+      project_id: z.string().optional().describe('Project filter for "list" and "permanent" actions'),
+      observation_ids: z.array(z.number()).optional().describe('Specific IDs to purge (for "permanent" action)'),
+      limit: z.number().optional().describe('Max results for "list" action (default: 20)'),
     },
-    { title: 'Soft-delete observation', readOnlyHint: false, destructiveHint: true, idempotentHint: false },
-    async ({ id, reason }) => {
+    { title: 'Manage observation lifecycle', readOnlyHint: false, destructiveHint: true, idempotentHint: false },
+    async ({ id, action, reason, confirm, project_id, observation_ids, limit }) => {
       try {
-        await ctx.engine.deleteObservation(id, reason);
-        return {
-          content: [
-            { type: 'text', text: `Observation #${id} soft-deleted` },
-          ],
-        };
+        const act = action || 'soft';
+
+        switch (act) {
+          case 'soft': {
+            if (!id) throw new Error('id is required for soft-delete action');
+            await ctx.engine.deleteObservation(id, reason);
+            return {
+              content: [{ type: 'text', text: `Observation #${id} soft-deleted` }],
+            };
+          }
+
+          case 'restore': {
+            if (!id) throw new Error('id is required for restore action');
+            const restored = await ctx.engine.restoreObservation(id);
+            return {
+              content: [{ type: 'text', text: `Observation #${restored.id} restored` }],
+            };
+          }
+
+          case 'permanent': {
+            if (!confirm) {
+              return {
+                content: [{ type: 'text', text: 'Error: confirm must be true to execute permanent deletion' }],
+              };
+            }
+            const result = await ctx.engine.purgeObservations({
+              projectId: project_id,
+              observationIds: observation_ids,
+            });
+            return {
+              content: [{ type: 'text', text: `Purged ${result.purgedCount} deleted observation${result.purgedCount !== 1 ? 's' : ''}` }],
+            };
+          }
+
+          case 'list': {
+            const result = await ctx.engine.listDeleted({ projectId: project_id, limit });
+            return {
+              content: [{ type: 'text', text: formatObservationList(result) }],
+            };
+          }
+
+          default:
+            throw new Error(`Unknown action: ${act}`);
+        }
       } catch (error: unknown) {
         return handleToolError(error, ctx);
       }
@@ -235,21 +304,16 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_restore',
-    'Restore a soft-deleted observation back to active state. Use mem_list_deleted to find deleted observation IDs, then restore them with this tool. Returns: human-readable confirmation.',
+    '[DEPRECATED] Use mem_delete with action="restore" instead. Restore a soft-deleted observation back to active state. Returns: human-readable confirmation.',
     {
-      id: z.number().describe('Observation ID to restore (from mem_list_deleted)'),
+      id: z.number().describe('Observation ID to restore'),
     },
-    { title: 'Restore deleted observation', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    { title: 'Restore deleted observation (deprecated)', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     async ({ id }) => {
       try {
         const restored = await ctx.engine.restoreObservation(id);
         return {
-          content: [
-            {
-              type: 'text',
-              text: `Observation #${restored.id} restored`,
-            },
-          ],
+          content: [{ type: 'text', text: `Observation #${restored.id} restored (deprecated: use mem_delete with action="restore")` }],
         };
       } catch (error: unknown) {
         return handleToolError(error, ctx);
@@ -259,36 +323,24 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_purge',
-    'PERMANENTLY delete soft-deleted observations. This is IRREVERSIBLE — soft-deleted observations are gone forever. Requires confirm: true. Use mem_list_deleted first to review what will be purged. Prefer soft-delete (mem_delete) + review before purging. Returns: human-readable confirmation with purge count.',
+    '[DEPRECATED] Use mem_delete with action="permanent" instead. PERMANENTLY delete soft-deleted observations. Requires confirm: true. Returns: human-readable confirmation with purge count.',
     {
       confirm: z.boolean().describe('Must be true to execute purge'),
       project_id: z.string().optional().describe('Purge all deleted obs in this project'),
-      observation_ids: z
-        .array(z.number())
-        .optional()
-        .describe('Specific soft-deleted observation IDs to purge'),
+      observation_ids: z.array(z.number()).optional().describe('Specific soft-deleted observation IDs to purge'),
     },
-    { title: 'Purge deleted observations', readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+    { title: 'Purge deleted observations (deprecated)', readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     async ({ confirm, project_id, observation_ids }) => {
       try {
         if (!confirm) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: 'Error: confirm must be true to execute purge',
-              },
-            ],
-          };
+          return { content: [{ type: 'text', text: 'Error: confirm must be true to execute purge' }] };
         }
-
         const result = await ctx.engine.purgeObservations({
           projectId: project_id,
           observationIds: observation_ids,
         });
-
         return {
-          content: [{ type: 'text', text: `Purged ${result.purgedCount} deleted observation${result.purgedCount !== 1 ? 's' : ''}` }],
+          content: [{ type: 'text', text: `Purged ${result.purgedCount} deleted observation${result.purgedCount !== 1 ? 's' : ''} (deprecated: use mem_delete with action="permanent")` }],
         };
       } catch (error: unknown) {
         return handleToolError(error, ctx);
@@ -298,12 +350,12 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_list_deleted',
-    'List soft-deleted observations that can be restored with mem_restore or permanently removed with mem_purge. Use this to review what has been deleted before deciding to restore or purge. Returns: human-readable Markdown with deleted observation list.',
+    '[DEPRECATED] Use mem_delete with action="list" instead. List soft-deleted observations. Returns: human-readable Markdown with deleted observation list.',
     {
       project_id: z.string().optional().describe('Filter by project identifier'),
       limit: z.number().optional().describe('Max results (default: 20)'),
     },
-    { title: 'List deleted observations', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    { title: 'List deleted observations (deprecated)', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     async ({ project_id, limit }) => {
       try {
         const result = await ctx.engine.listDeleted({ projectId: project_id, limit });
@@ -483,7 +535,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_list_sessions',
-    'List all sessions, optionally filtered by project. Use this to find session IDs for mem_get_session, or to review session history. Returns: human-readable Markdown with session list.',
+    '[DEPRECATED] Use mem_status with section="sessions" instead. List all sessions. Returns: human-readable Markdown with session list.',
     {
       project_id: z.string().optional().describe('Filter by project identifier'),
       limit: z.number().optional().describe('Max sessions to return (default: 20)'),
@@ -512,7 +564,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_get_session',
-    'Get full details of a specific session by ID, including metadata and timestamps. Use mem_list_sessions first to find session IDs. Returns: human-readable Markdown with session details.',
+    '[DEPRECATED] Use mem_status with session_id parameter instead. Get full details of a specific session by ID. Returns: human-readable Markdown with session details.',
     {
       id: z.number().describe('Session ID (from mem_list_sessions)'),
     },
@@ -603,7 +655,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_suggest_topic_key',
-    'Suggest a stable topic_key from a title, content, or type. Pure computation — does NOT touch the database. Normalizes text to lowercase-kebab-case with a type prefix. Returns: human-readable suggestion.',
+    '[DEPRECATED] mem_save now auto-suggests a topic_key in its response. Suggest a stable topic_key from a title, content, or type. Returns: human-readable suggestion.',
     {
       title: z.string().optional().describe('Observation title to derive key from'),
       content: z.string().optional().describe('Observation content to derive key from'),
@@ -828,7 +880,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_timeline',
-    'Get chronological timeline of observations across all projects or filtered by project. Unlike mem_search which uses FTS5 relevance ranking, this returns observations in strict chronological order. Returns: human-readable Markdown with chronological observation list.',
+    '[DEPRECATED] Use mem_search with sort="chronological" instead. Get chronological timeline of observations. Returns: human-readable Markdown with chronological observation list.',
     {
       project_id: z.string().optional().describe('Filter by project identifier'),
       limit: z.number().optional().describe('Max results to return'),
@@ -851,9 +903,119 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     }
   );
 
+  // ─── Status (compound diagnostic tool) ──────────────────────
+
+  server.tool(
+    'mem_status',
+    'Get system diagnostics: health, stats, config, or sessions. Use `section` to request specific info, or "all" for a combined overview. Pass `session_id` to get details for a specific session. Returns: human-readable Markdown with requested diagnostic info.',
+    {
+      section: z.enum(['all', 'health', 'stats', 'config', 'sessions']).optional().describe('Which section to return (default: "all")'),
+      session_id: z.number().optional().describe('Get specific session details (replaces mem_get_session)'),
+      project_id: z.string().optional().describe('Filter sessions by project (for "sessions" section)'),
+      limit: z.number().optional().describe('Max sessions to return (default: 20, for "sessions" section)'),
+    },
+    { title: 'System status and diagnostics', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    async ({ section, session_id, project_id, limit }) => {
+      try {
+        const sec = section || 'all';
+        const sections: string[] = [];
+
+        // Specific session by ID
+        if (session_id) {
+          const s = await ctx.engine.getSession(session_id);
+          if (!s) throw new Error(`Session ${session_id} not found`);
+          return {
+            content: [{ type: 'text', text: formatSession(s) }],
+          };
+        }
+
+        // Health section
+        if (sec === 'all' || sec === 'health') {
+          const isHealthy = ctx.engine.isHealthy();
+          const result = isHealthy ? await ctx.engine.search({}) : { total: 0, observations: [] };
+          const initError = ctx.engine.getInitError();
+
+          sections.push(formatHealth({
+            status: isHealthy ? 'healthy' : 'unhealthy',
+            version: '1.0.0',
+            storage: 'sqlite-persistent',
+            databasePath: ctx.dbPath,
+            projectId: ctx.projectId,
+            databaseHealth: isHealthy ? 'ok' : 'failed',
+            ...(initError && { initError: initError.message }),
+            observations: result.total,
+            activeSession: ctx.activeSessionId,
+          }));
+        }
+
+        // Stats section
+        if (sec === 'all' || sec === 'stats') {
+          const stats = await ctx.engine.getDashboardStats();
+          sections.push(formatStats(stats, ctx.activeSessionId));
+        }
+
+        // Config section
+        if (sec === 'all' || sec === 'config') {
+          const searchResult = await ctx.engine.search({});
+          const currentDbPath = ctx.engine.getDatabasePath();
+          const byType: Record<string, number> = {};
+          for (const o of searchResult.observations) {
+            byType[o.type] = (byType[o.type] || 0) + 1;
+          }
+          const dbStats = getDatabaseStats(currentDbPath);
+
+          sections.push(formatConfig({
+            name: 'memento',
+            version: '1.0.0',
+            config: {
+              storagePath: currentDbPath,
+              projectId: ctx.projectId,
+              projectRoot: process.cwd(),
+              hasConfigFile: existsSync(join(process.cwd(), '.mementorc')),
+            },
+            storage: {
+              type: 'SQLite Persistent',
+              method: 'bun:sqlite',
+              databasePath: currentDbPath,
+              walEnabled: true,
+            },
+            diskUsage: dbStats,
+            statistics: {
+              totalObservations: searchResult.total,
+              byType,
+              activeSession: ctx.activeSessionId,
+            },
+            environment: {
+              nodeVersion: process.version,
+              platform: process.platform,
+              arch: process.arch,
+              bunVersion: (process as { versions?: { bun?: string } }).versions?.bun || 'unknown',
+            },
+            tools: [] as string[],
+          }));
+        }
+
+        // Sessions section
+        if (sec === 'all' || sec === 'sessions') {
+          const result = await ctx.engine.listSessions({
+            projectId: project_id,
+            limit: limit || 20,
+          });
+          sections.push(formatSessionList({ sessions: result.sessions, total: result.total }));
+        }
+
+        return {
+          content: [{ type: 'text', text: sections.join('\n\n---\n\n') }],
+        };
+      } catch (error: unknown) {
+        return handleToolError(error, ctx);
+      }
+    }
+  );
+
   server.tool(
     'mem_stats',
-    'Get memory statistics: total observations, count by type (decision/bug/discovery/note), count by project, and active session ID. Useful for understanding memory usage at a glance. Returns: human-readable Markdown with statistics summary.',
+    '[DEPRECATED] Use mem_status with section="stats" instead. Get memory statistics. Returns: human-readable Markdown with statistics summary.',
     {},
     { title: 'Memory statistics', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     async () => {
@@ -876,7 +1038,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_health',
-    'Check system health: database status, version, storage type, database path, project ID, and observation count. Use this to diagnose connectivity or initialization issues. Returns: human-readable Markdown with health status.',
+    '[DEPRECATED] Use mem_status with section="health" instead. Check system health. Returns: human-readable Markdown with health status.',
     {},
     { title: 'Health check', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     async () => {
@@ -1028,7 +1190,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_config',
-    'Get current Memento configuration and system status: storage path, project ID, SQLite details, disk usage (with WAL/SHM sizes), observation statistics by type, environment info (Node/Bun versions), and list of all available tools. Returns: human-readable Markdown with full configuration.',
+    '[DEPRECATED] Use mem_status with section="config" instead. Get current Memento configuration and system status. Returns: human-readable Markdown with full configuration.',
     {},
     { title: 'System configuration', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     async () => {
@@ -1074,30 +1236,20 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
                   arch: process.arch,
                   bunVersion: (process as { versions?: { bun?: string } }).versions?.bun || 'unknown',
                 },
-                tools: [
+                 tools: [
                   'mem_save',
                   'mem_search',
                   'mem_get_observation',
                   'mem_update',
                   'mem_delete',
-                  'mem_restore',
-                  'mem_purge',
-                  'mem_list_deleted',
                   'mem_merge',
                   'mem_export',
                   'mem_session_start',
                   'mem_session_end',
-                  'mem_list_sessions',
-                  'mem_get_session',
-                  'mem_save_prompt',
-                  'mem_context',
-                  'mem_suggest_topic_key',
                   'mem_session_summary',
+                  'mem_context',
                   'mem_capture_passive',
-                  'mem_timeline',
-                  'mem_stats',
-                  'mem_health',
-                  'mem_config',
+                  'mem_status',
                   'mem_journal_write',
                   'mem_journal_read',
                   'mem_journal_search',
