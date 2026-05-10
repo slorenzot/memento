@@ -750,6 +750,37 @@ describe('Tool Handlers', () => {
       expect(secondText).toContain('Captured 0 learnings');
       expect(secondText).toContain('3 duplicates');
     });
+
+    it('should deduplicate across different sources (cross-source dedup)', async () => {
+      const content = '## Key Learnings:\n- Always use prepared statements for SQL\n- WAL mode improves write performance';
+
+      // First call with source A
+      const firstResponse = await setup.client.callTool({
+        name: 'mem_capture_passive',
+        arguments: {
+          content,
+          project_id: 'test-project',
+          source: 'source-a',
+        },
+      });
+
+      const firstText = parseActionText(firstResponse);
+      expect(firstText).toContain('Captured 2 learnings');
+
+      // Second call with DIFFERENT source but SAME content
+      const secondResponse = await setup.client.callTool({
+        name: 'mem_capture_passive',
+        arguments: {
+          content,
+          project_id: 'test-project',
+          source: 'source-b',
+        },
+      });
+
+      const secondText = parseActionText(secondResponse);
+      expect(secondText).toContain('Captured 0 learnings');
+      expect(secondText).toContain('2 duplicates');
+    });
   });
 
   // ─── Updated Tool Behavior ────────────────────────────────

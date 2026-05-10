@@ -824,11 +824,11 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         }
 
         // Step 2: Deduplicate against existing learnings in DB
+        // Search ALL learnings in project (not filtered by topicKey) so dedup works across sources
         const topicKey = source ? `learnings/${source.toLowerCase().replace(/\s+/g, '-')}` : null;
         const existingResult = await ctx.engine.search({
           type: 'learning',
           projectId: currentProjectId,
-          ...(topicKey ? { topicKey } : {}),
           limit: 100,
         });
         const existingContents = existingResult.observations.map((obs) => obs.content);
