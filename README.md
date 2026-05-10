@@ -878,6 +878,10 @@ Current Configuration:
 - ✅ Proper attribution to the author (Soulberto Lorenzo)
 - ✅ Using for personal non-commercial projects
 
+## 📖 Migration Guide
+
+For upgrading between major versions, see [MIGRATION.md](./MIGRATION.md).
+
 ## 📈 Roadmap
 
 ### v1.1.0 (Next)

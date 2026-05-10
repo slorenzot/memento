@@ -24,7 +24,8 @@
     "dist",
     "skills",
     "commands",
-    "README.md"
+    "README.md",
+    "MIGRATION.md"
   ],
   "scripts": {
     "build": "tsc",
