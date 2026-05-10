@@ -991,7 +991,13 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
               arch: process.arch,
               bunVersion: (process as { versions?: { bun?: string } }).versions?.bun || 'unknown',
             },
-            tools: [] as string[],
+            tools: [
+              'mem_save', 'mem_search', 'mem_get_observation', 'mem_update',
+              'mem_delete', 'mem_merge', 'mem_export',
+              'mem_session_start', 'mem_session_end', 'mem_session_summary',
+              'mem_save_prompt', 'mem_context', 'mem_capture_passive', 'mem_status',
+              'mem_journal_write', 'mem_journal_read', 'mem_journal_search',
+            ],
           }));
         }
 
