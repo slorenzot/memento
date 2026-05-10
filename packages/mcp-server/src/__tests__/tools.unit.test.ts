@@ -541,6 +541,33 @@ describe('Tool Handlers', () => {
     });
   });
 
+  describe('mem_status', () => {
+    it('should show registered tools in config section', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_status',
+        arguments: { section: 'config' },
+      });
+
+      const text = parseActionText(response);
+      expect(text).toContain('memento v1.0.0');
+      expect(text).toContain('SQLite Persistent');
+      expect(text).toContain('Tools: 17 registered');
+    });
+
+    it('should return all sections with section="all"', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_status',
+        arguments: { section: 'all' },
+      });
+
+      const text = parseActionText(response);
+      expect(text).toContain('healthy');
+      expect(text).toContain('observations');
+      expect(text).toContain('memento v1.0.0');
+      expect(text).toContain('Sessions');
+    });
+  });
+
   // ─── Agent Convenience Tools ───────────────────────────────
 
   describe('mem_save_prompt', () => {
