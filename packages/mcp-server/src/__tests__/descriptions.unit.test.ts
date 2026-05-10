@@ -23,9 +23,9 @@ describe('Tool Metadata Quality', () => {
 
   // ─── Tool Count ───────────────────────────────────────────
 
-  it('should register exactly 26 tools', async () => {
+  it('should register exactly 27 tools', async () => {
     const result = await setup.client.listTools();
-    expect(result.tools).toHaveLength(26);
+    expect(result.tools).toHaveLength(27);
   });
 
   // ─── Tool Names ───────────────────────────────────────────
@@ -58,6 +58,7 @@ describe('Tool Metadata Quality', () => {
       'mem_session_start',
       'mem_session_summary',
       'mem_stats',
+      'mem_status',
       'mem_suggest_topic_key',
       'mem_timeline',
       'mem_update',
@@ -117,6 +118,7 @@ describe('Tool Metadata Quality', () => {
     'mem_export',
     'mem_journal_read',
     'mem_journal_search',
+    'mem_status',
   ];
 
   it('read-only tools should have readOnlyHint: true', async () => {
@@ -186,17 +188,18 @@ describe('Tool Metadata Quality', () => {
     expect(search!.description).toContain('mem_get_observation');
   });
 
-  it('mem_delete should mention mem_restore and mem_purge', async () => {
+  it('mem_delete should describe action parameter', async () => {
     const result = await setup.client.listTools();
     const del = result.tools.find((t) => t.name === 'mem_delete');
-    expect(del!.description).toContain('mem_restore');
-    expect(del!.description).toContain('mem_purge');
+    expect(del!.description).toContain('action');
+    expect(del!.description).toContain('restore');
+    expect(del!.description).toContain('permanent');
   });
 
-  it('mem_purge should mention mem_list_deleted', async () => {
+  it('mem_purge should be marked as deprecated', async () => {
     const result = await setup.client.listTools();
     const purge = result.tools.find((t) => t.name === 'mem_purge');
-    expect(purge!.description).toContain('mem_list_deleted');
+    expect(purge!.description).toContain('DEPRECATED');
   });
 
   it('mem_merge should mention dry_run', async () => {
@@ -205,9 +208,9 @@ describe('Tool Metadata Quality', () => {
     expect(merge!.description).toContain('dry_run');
   });
 
-  it('mem_timeline should differentiate from mem_search', async () => {
+  it('mem_search should mention sort parameter for chronological', async () => {
     const result = await setup.client.listTools();
-    const timeline = result.tools.find((t) => t.name === 'mem_timeline');
-    expect(timeline!.description).toContain('mem_search');
+    const search = result.tools.find((t) => t.name === 'mem_search');
+    expect(search!.description).toContain('sort');
   });
 });
