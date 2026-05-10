@@ -39,10 +39,10 @@ describe('MCP Integration', () => {
       expect(result.tools.length).toBeGreaterThan(0);
     });
 
-    it('listTools should return 27 tools with valid schemas', async () => {
+    it('listTools should return 16 tools with valid schemas', async () => {
       const result = await setup.client.listTools();
 
-      expect(result.tools).toHaveLength(27);
+      expect(result.tools).toHaveLength(16);
 
       for (const tool of result.tools) {
         // Each tool must have name, description, and inputSchema
@@ -127,10 +127,10 @@ describe('MCP Integration', () => {
       });
       expect(parseActionText(afterDelete)).toContain('Found 0 observations');
 
-      // 6. Restore
+      // 6. Restore via mem_delete
       const restoreResponse = await setup.client.callTool({
-        name: 'mem_restore',
-        arguments: { id: obsId },
+        name: 'mem_delete',
+        arguments: { id: obsId, action: 'restore' },
       });
       expect(parseActionText(restoreResponse)).toContain('restored');
 
@@ -141,18 +141,18 @@ describe('MCP Integration', () => {
       });
       expect(parseActionText(afterRestore)).toContain('Found 1 observation');
 
-      // 7. Purge (delete first, then purge)
+      // 7. Purge via mem_delete (delete first, then purge)
       await setup.client.callTool({ name: 'mem_delete', arguments: { id: obsId } });
       const purgeResponse = await setup.client.callTool({
-        name: 'mem_purge',
-        arguments: { confirm: true, project_id: 'test-project' },
+        name: 'mem_delete',
+        arguments: { action: 'permanent', confirm: true, project_id: 'test-project' },
       });
       expect(parseActionText(purgeResponse)).toContain('Purged');
 
       // Verify gone from deleted list
       const deletedList = await setup.client.callTool({
-        name: 'mem_list_deleted',
-        arguments: { project_id: 'test-project' },
+        name: 'mem_delete',
+        arguments: { action: 'list', project_id: 'test-project' },
       });
       expect(parseActionText(deletedList)).toContain('Found 0 observations');
     });
@@ -184,8 +184,8 @@ describe('MCP Integration', () => {
 
       // 3. Verify session contains observations
       const getSessionResponse = await setup.client.callTool({
-        name: 'mem_get_session',
-        arguments: { id: sessionId },
+        name: 'mem_status',
+        arguments: { session_id: sessionId },
       });
       const sessionText = parseActionText(getSessionResponse);
       expect(sessionText).toContain(`Session #${sessionId}`);

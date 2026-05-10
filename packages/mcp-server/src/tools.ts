@@ -302,72 +302,6 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     }
   );
 
-  server.tool(
-    'mem_restore',
-    '[DEPRECATED] Use mem_delete with action="restore" instead. Restore a soft-deleted observation back to active state. Returns: human-readable confirmation.',
-    {
-      id: z.number().describe('Observation ID to restore'),
-    },
-    { title: 'Restore deleted observation (deprecated)', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    async ({ id }) => {
-      try {
-        const restored = await ctx.engine.restoreObservation(id);
-        return {
-          content: [{ type: 'text', text: `Observation #${restored.id} restored (deprecated: use mem_delete with action="restore")` }],
-        };
-      } catch (error: unknown) {
-        return handleToolError(error, ctx);
-      }
-    }
-  );
-
-  server.tool(
-    'mem_purge',
-    '[DEPRECATED] Use mem_delete with action="permanent" instead. PERMANENTLY delete soft-deleted observations. Requires confirm: true. Returns: human-readable confirmation with purge count.',
-    {
-      confirm: z.boolean().describe('Must be true to execute purge'),
-      project_id: z.string().optional().describe('Purge all deleted obs in this project'),
-      observation_ids: z.array(z.number()).optional().describe('Specific soft-deleted observation IDs to purge'),
-    },
-    { title: 'Purge deleted observations (deprecated)', readOnlyHint: false, destructiveHint: true, idempotentHint: true },
-    async ({ confirm, project_id, observation_ids }) => {
-      try {
-        if (!confirm) {
-          return { content: [{ type: 'text', text: 'Error: confirm must be true to execute purge' }] };
-        }
-        const result = await ctx.engine.purgeObservations({
-          projectId: project_id,
-          observationIds: observation_ids,
-        });
-        return {
-          content: [{ type: 'text', text: `Purged ${result.purgedCount} deleted observation${result.purgedCount !== 1 ? 's' : ''} (deprecated: use mem_delete with action="permanent")` }],
-        };
-      } catch (error: unknown) {
-        return handleToolError(error, ctx);
-      }
-    }
-  );
-
-  server.tool(
-    'mem_list_deleted',
-    '[DEPRECATED] Use mem_delete with action="list" instead. List soft-deleted observations. Returns: human-readable Markdown with deleted observation list.',
-    {
-      project_id: z.string().optional().describe('Filter by project identifier'),
-      limit: z.number().optional().describe('Max results (default: 20)'),
-    },
-    { title: 'List deleted observations (deprecated)', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    async ({ project_id, limit }) => {
-      try {
-        const result = await ctx.engine.listDeleted({ projectId: project_id, limit });
-        return {
-          content: [{ type: 'text', text: formatObservationList(result) }],
-        };
-      } catch (error: unknown) {
-        return handleToolError(error, ctx);
-      }
-    }
-  );
-
   // ─── Merge ──────────────────────────────────────────────────
 
   server.tool(
@@ -533,101 +467,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     }
   );
 
-  server.tool(
-    'mem_list_sessions',
-    '[DEPRECATED] Use mem_status with section="sessions" instead. List all sessions. Returns: human-readable Markdown with session list.',
-    {
-      project_id: z.string().optional().describe('Filter by project identifier'),
-      limit: z.number().optional().describe('Max sessions to return (default: 20)'),
-    },
-    { title: 'List sessions', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    async ({ project_id, limit }) => {
-      try {
-        const result = await ctx.engine.listSessions({
-          projectId: project_id,
-          limit: limit || 20,
-        });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: formatSessionList({ sessions: result.sessions, total: result.total }),
-            },
-          ],
-        };
-      } catch (error: unknown) {
-        return handleToolError(error, ctx);
-      }
-    }
-  );
-
-  server.tool(
-    'mem_get_session',
-    '[DEPRECATED] Use mem_status with session_id parameter instead. Get full details of a specific session by ID. Returns: human-readable Markdown with session details.',
-    {
-      id: z.number().describe('Session ID (from mem_list_sessions)'),
-    },
-    { title: 'Get session details', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    async ({ id }) => {
-      try {
-        const s = await ctx.engine.getSession(id);
-        if (!s) throw new Error(`Session ${id} not found`);
-        return {
-          content: [{ type: 'text', text: formatSession(s) }],
-        };
-      } catch (error: unknown) {
-        return handleToolError(error, ctx);
-      }
-    }
-  );
-
   // ─── Agent Convenience Tools ────────────────────────────────
-
-  server.tool(
-    'mem_save_prompt',
-    'Save a user prompt to persistent memory for conversation tracking. Auto-creates a session if none is active. Returns: human-readable confirmation.',
-    {
-      content: z.string().describe('The prompt text to save'),
-      project_id: z.string().optional().describe('Project identifier'),
-      session_id: z.number().optional().describe('Session ID (uses active session if not provided)'),
-    },
-    { title: 'Save prompt', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    async ({ content, project_id, session_id }) => {
-      try {
-        const currentProjectId = project_id || ctx.projectId;
-        let sessionId = session_id || ctx.activeSessionId;
-
-        if (!sessionId) {
-          const session = await ctx.engine.createSession({
-            projectId: currentProjectId,
-            endedAt: null,
-            metadata: {},
-          });
-          sessionId = session.id;
-          ctx.activeSessionId = sessionId;
-        }
-
-        await ctx.engine.savePrompt({
-          sessionId,
-          content,
-          projectId: currentProjectId,
-          metadata: {},
-        });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Prompt saved for project "${currentProjectId}"`,
-            },
-          ],
-        };
-      } catch (error: unknown) {
-        return handleToolError(error, ctx);
-      }
-    }
-  );
 
   server.tool(
     'mem_context',
@@ -646,53 +486,6 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
         return {
           content: [{ type: 'text', text: formatObservationList(result) }],
-        };
-      } catch (error: unknown) {
-        return handleToolError(error, ctx);
-      }
-    }
-  );
-
-  server.tool(
-    'mem_suggest_topic_key',
-    '[DEPRECATED] mem_save now auto-suggests a topic_key in its response. Suggest a stable topic_key from a title, content, or type. Returns: human-readable suggestion.',
-    {
-      title: z.string().optional().describe('Observation title to derive key from'),
-      content: z.string().optional().describe('Observation content to derive key from'),
-      type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning', 'pattern', 'architecture', 'config', 'preference']).optional().describe('Observation type for prefix'),
-    },
-    { title: 'Suggest topic key', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    async ({ title, content, type }) => {
-      try {
-        const source = title || content || '';
-        if (!source) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: 'Error: provide at least a title or content',
-              },
-            ],
-          };
-        }
-
-        // Normalize: lowercase, replace non-alphanumeric with hyphens, collapse multiple hyphens
-        const base = source
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '')
-          .slice(0, 60);
-
-        const prefix = type ? `${type}/` : '';
-        const suggested_key = `${prefix}${base}`;
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Suggested topic key: ${suggested_key}`,
-            },
-          ],
         };
       } catch (error: unknown) {
         return handleToolError(error, ctx);
@@ -876,33 +669,6 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     }
   );
 
-  // ─── Utility Tools ──────────────────────────────────────────
-
-  server.tool(
-    'mem_timeline',
-    '[DEPRECATED] Use mem_search with sort="chronological" instead. Get chronological timeline of observations. Returns: human-readable Markdown with chronological observation list.',
-    {
-      project_id: z.string().optional().describe('Filter by project identifier'),
-      limit: z.number().optional().describe('Max results to return'),
-      offset: z.number().optional().describe('Offset for pagination'),
-    },
-    { title: 'Observation timeline', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    async ({ project_id, limit, offset }) => {
-      try {
-        const result = await ctx.engine.getTimeline({
-          projectId: project_id,
-          limit,
-          offset,
-        });
-        return {
-          content: [{ type: 'text', text: formatObservationList(result) }],
-        };
-      } catch (error: unknown) {
-        return handleToolError(error, ctx);
-      }
-    }
-  );
-
   // ─── Status (compound diagnostic tool) ──────────────────────
 
   server.tool(
@@ -995,7 +761,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
               'mem_save', 'mem_search', 'mem_get_observation', 'mem_update',
               'mem_delete', 'mem_merge', 'mem_export',
               'mem_session_start', 'mem_session_end', 'mem_session_summary',
-              'mem_save_prompt', 'mem_context', 'mem_capture_passive', 'mem_status',
+              'mem_context', 'mem_capture_passive', 'mem_status',
               'mem_journal_write', 'mem_journal_read', 'mem_journal_search',
             ],
           }));
@@ -1012,64 +778,6 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
         return {
           content: [{ type: 'text', text: sections.join('\n\n---\n\n') }],
-        };
-      } catch (error: unknown) {
-        return handleToolError(error, ctx);
-      }
-    }
-  );
-
-  server.tool(
-    'mem_stats',
-    '[DEPRECATED] Use mem_status with section="stats" instead. Get memory statistics. Returns: human-readable Markdown with statistics summary.',
-    {},
-    { title: 'Memory statistics', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    async () => {
-      try {
-        const stats = await ctx.engine.getDashboardStats();
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: formatStats(stats, ctx.activeSessionId),
-            },
-          ],
-        };
-      } catch (error: unknown) {
-        return handleToolError(error, ctx);
-      }
-    }
-  );
-
-  server.tool(
-    'mem_health',
-    '[DEPRECATED] Use mem_status with section="health" instead. Check system health. Returns: human-readable Markdown with health status.',
-    {},
-    { title: 'Health check', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    async () => {
-      try {
-        const isHealthy = ctx.engine.isHealthy();
-        const result = isHealthy ? await ctx.engine.search({}) : { total: 0, observations: [] };
-        const initError = ctx.engine.getInitError();
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: formatHealth({
-                status: isHealthy ? 'healthy' : 'unhealthy',
-                version: '1.0.0',
-                storage: 'sqlite-persistent',
-                databasePath: ctx.dbPath,
-                projectId: ctx.projectId,
-                databaseHealth: isHealthy ? 'ok' : 'failed',
-                ...(initError && { initError: initError.message }),
-                observations: result.total,
-                activeSession: ctx.activeSessionId,
-              }),
-            },
-          ],
         };
       } catch (error: unknown) {
         return handleToolError(error, ctx);
@@ -1194,81 +902,6 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     }
   );
 
-  server.tool(
-    'mem_config',
-    '[DEPRECATED] Use mem_status with section="config" instead. Get current Memento configuration and system status. Returns: human-readable Markdown with full configuration.',
-    {},
-    { title: 'System configuration', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    async () => {
-      try {
-        const searchResult = await ctx.engine.search({});
-        const currentDbPath = ctx.engine.getDatabasePath();
-
-        const byType: Record<string, number> = {};
-        for (const o of searchResult.observations) {
-          byType[o.type] = (byType[o.type] || 0) + 1;
-        }
-
-        const dbStats = getDatabaseStats(currentDbPath);
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: formatConfig({
-                name: 'memento',
-                version: '1.0.0',
-                config: {
-                  storagePath: currentDbPath,
-                  projectId: ctx.projectId,
-                  projectRoot: process.cwd(),
-                  hasConfigFile: existsSync(join(process.cwd(), '.mementorc')),
-                },
-                storage: {
-                  type: 'SQLite Persistent',
-                  method: 'bun:sqlite',
-                  databasePath: currentDbPath,
-                  walEnabled: true,
-                },
-                diskUsage: dbStats,
-                statistics: {
-                  totalObservations: searchResult.total,
-                  byType,
-                  activeSession: ctx.activeSessionId,
-                },
-                environment: {
-                  nodeVersion: process.version,
-                  platform: process.platform,
-                  arch: process.arch,
-                  bunVersion: (process as { versions?: { bun?: string } }).versions?.bun || 'unknown',
-                },
-                 tools: [
-                  'mem_save',
-                  'mem_search',
-                  'mem_get_observation',
-                  'mem_update',
-                  'mem_delete',
-                  'mem_merge',
-                  'mem_export',
-                  'mem_session_start',
-                  'mem_session_end',
-                  'mem_session_summary',
-                  'mem_context',
-                  'mem_capture_passive',
-                  'mem_status',
-                  'mem_journal_write',
-                  'mem_journal_read',
-                  'mem_journal_search',
-                ],
-              }),
-            },
-          ],
-        };
-      } catch (error: unknown) {
-        return handleToolError(error, ctx);
-      }
-    }
-  );
 }
 
 // ─── Disk Helpers ───────────────────────────────────────────

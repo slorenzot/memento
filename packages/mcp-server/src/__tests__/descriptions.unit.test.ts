@@ -23,9 +23,9 @@ describe('Tool Metadata Quality', () => {
 
   // ─── Tool Count ───────────────────────────────────────────
 
-  it('should register exactly 27 tools', async () => {
+  it('should register exactly 16 tools', async () => {
     const result = await setup.client.listTools();
-    expect(result.tools).toHaveLength(27);
+    expect(result.tools).toHaveLength(16);
   });
 
   // ─── Tool Names ───────────────────────────────────────────
@@ -36,31 +36,20 @@ describe('Tool Metadata Quality', () => {
 
     const expected = [
       'mem_capture_passive',
-      'mem_config',
       'mem_context',
       'mem_delete',
       'mem_export',
       'mem_get_observation',
-      'mem_get_session',
-      'mem_health',
       'mem_journal_read',
       'mem_journal_search',
       'mem_journal_write',
-      'mem_list_deleted',
-      'mem_list_sessions',
       'mem_merge',
-      'mem_purge',
-      'mem_restore',
       'mem_save',
-      'mem_save_prompt',
       'mem_search',
       'mem_session_end',
       'mem_session_start',
       'mem_session_summary',
-      'mem_stats',
       'mem_status',
-      'mem_suggest_topic_key',
-      'mem_timeline',
       'mem_update',
     ].sort();
 
@@ -106,15 +95,7 @@ describe('Tool Metadata Quality', () => {
   const READ_ONLY_TOOLS = [
     'mem_search',
     'mem_get_observation',
-    'mem_list_deleted',
-    'mem_list_sessions',
-    'mem_get_session',
     'mem_context',
-    'mem_suggest_topic_key',
-    'mem_timeline',
-    'mem_stats',
-    'mem_health',
-    'mem_config',
     'mem_export',
     'mem_journal_read',
     'mem_journal_search',
@@ -139,7 +120,7 @@ describe('Tool Metadata Quality', () => {
     }
   });
 
-  const DESTRUCTIVE_TOOLS = ['mem_delete', 'mem_purge', 'mem_merge'];
+  const DESTRUCTIVE_TOOLS = ['mem_delete', 'mem_merge'];
 
   it('destructive tools should have destructiveHint: true', async () => {
     const result = await setup.client.listTools();
@@ -194,12 +175,6 @@ describe('Tool Metadata Quality', () => {
     expect(del!.description).toContain('action');
     expect(del!.description).toContain('restore');
     expect(del!.description).toContain('permanent');
-  });
-
-  it('mem_purge should be marked as deprecated', async () => {
-    const result = await setup.client.listTools();
-    const purge = result.tools.find((t) => t.name === 'mem_purge');
-    expect(purge!.description).toContain('DEPRECATED');
   });
 
   it('mem_merge should mention dry_run', async () => {
