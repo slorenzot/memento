@@ -67,7 +67,7 @@ async function main() {
   console.error(`  Database: ${dbPath}`);
   console.error(`  Project: ${projectId}`);
   console.error(`  Health: ${engine.isHealthy() ? '✓ Healthy' : '✗ Unhealthy'}`);
-  console.error(`  Tools: 18 (mem_*)`);
+  console.error(`  Tools: 16 (mem_*)`);
   console.error(`  Ready to accept connections...\n`);
 }
 
