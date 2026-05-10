@@ -6,6 +6,8 @@
 [![MCP](https://img.shields.io/badge/MCP-Protocol-green.svg)](https://modelcontextprotocol.io)
 [![NPM Version](https://img.shields.io/npm/v/@slorenzot/memento-core.svg)](https://www.npmjs.org/package/@slorenzot/memento-core)
 
+[Español](README.es.md) | [English](README.md)
+
 **Memento** es un sistema de memoria persistente diseñado específicamente para agentes de codificación de IA. Resuelve el problema del olvido proporcionando un cerebro persistente que permite a los agentes mantener contexto, aprender y mejorar a través del tiempo.
 
 > Memento no solo recuerda — COORDINA. Es el cerebro compartido que permite a un orquestador delegar trabajo a sub-agentes, rastrear progreso, retomar tareas interrumpidas, y medir costos. Todo con 3 tablas y cero fricción.
@@ -920,5 +922,3 @@ Este proyecto está bajo Licencia **Creative Commons Attribution-NonCommercial-N
 **⚠️ Recordar:** Este proyecto tiene licencia restrictiva. Respeta los términos de la licencia CC BY-NC-ND 4.0.
 
 **📊 Versión:** Core v1.0.0 | MCP Server v1.0.0 | CLI v1.0.0 | API v0.3.0 | Web UI v0.1.1
-
-**[📖 English version](./README.md)**
