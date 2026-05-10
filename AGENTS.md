@@ -60,7 +60,8 @@ Dependency flow: `core → mcp-server → cli / api / tui → web-ui`
 ## Code Conventions
 
 - **10 observation types**: `decision | bug | discovery | note | summary | learning | pattern | architecture | config | preference`
-- **27 MCP tools**: all prefixed `mem_*` (defined in `packages/mcp-server/src/tools.ts`)
+- **27 MCP tools** (16 active + 11 deprecated): all prefixed `mem_*` (defined in `packages/mcp-server/src/tools.ts`)
+- **Consolidated tools**: `mem_delete(action=...)`, `mem_search(sort=...)`, `mem_status(section=...)` absorb 10 deprecated tools
 - **MCP responses**: plain text, not JSON
 - **Module format**: CJS for core/mcp/cli/api, ESM for web-ui/tui
 - **Named exports**: default exports only for React components and entry points
