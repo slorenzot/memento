@@ -136,9 +136,9 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_search',
-    'Search observations using full-text search (FTS5). Start with small limits and expand only if needed. Results are TRUNCATED — use mem_get_observation with the returned ID for full content. Use `sort` for chronological ordering instead of mem_timeline. Returns: human-readable Markdown with observation list.',
+    'Search observations using full-text search (FTS5). Start with small limits and expand only if needed. Results are TRUNCATED — use mem_get_observation with the returned ID for full content. Use `sort` for chronological ordering instead of mem_timeline. Use `mode` for semantic or hybrid search. Returns: human-readable Markdown with observation list.',
     {
-      query: z.string().optional().describe('Search query (FTS5 syntax)'),
+      query: z.string().optional().describe('Search query (FTS5 syntax for keyword mode, natural language for semantic/hybrid)'),
       type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning', 'pattern', 'architecture', 'config', 'preference']).optional().describe('Filter by observation type'),
       project_id: z.string().optional().describe('Filter by project identifier'),
       topic_key: z.string().optional().describe('Filter by topic key (exact match)'),
@@ -147,10 +147,12 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
       include_deleted: z.boolean().optional().describe('Include soft-deleted observations'),
       scope: z.enum(['project', 'personal']).optional().describe('Filter by scope'),
       sort: z.enum(['relevance', 'chronological']).optional().describe('Sort order: "relevance" (default, FTS5 rank) or "chronological" (created_at ASC, replaces mem_timeline)'),
+      mode: z.enum(['keyword', 'semantic', 'hybrid']).optional().describe('Search mode: "keyword" (default, FTS5), "semantic" (embeddings), "hybrid" (combined)'),
     },
     { title: 'Search observations', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    async ({ query, type, project_id, topic_key, limit, offset, include_deleted, scope, sort }) => {
+    async ({ query, type, project_id, topic_key, limit, offset, include_deleted, scope, sort, mode }) => {
       try {
+        const searchMode = mode || 'keyword';
         const sortMode = sort || 'relevance';
 
         // Chronological mode: delegate to getTimeline for strict chronological order
@@ -165,7 +167,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           };
         }
 
-        // Relevance mode: default FTS5 search
+        // Relevance mode with search mode support
         const result = await ctx.engine.search({
           query,
           type: type as Observation['type'] | undefined,
@@ -175,7 +177,19 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           offset,
           includeDeleted: include_deleted,
           scope: scope as 'project' | 'personal' | undefined,
+          mode: searchMode as 'keyword' | 'semantic' | 'hybrid' | undefined,
         });
+
+        // Include scores in output for semantic/hybrid modes
+        if (result.scores && result.scores.size > 0) {
+          const scoreInfo = Array.from(result.scores.entries())
+            .map(([id, score]) => `  #${id}: ${score.toFixed(3)}`)
+            .join('\n');
+          const base = formatObservationList(result);
+          return {
+            content: [{ type: 'text', text: `${base}\n\nSimilarity scores:\n${scoreInfo}` }],
+          };
+        }
 
         return {
           content: [{ type: 'text', text: formatObservationList(result) }],

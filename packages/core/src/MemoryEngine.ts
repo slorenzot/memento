@@ -1,4 +1,5 @@
 import * as crypto from 'crypto';
+import { EmbeddingService } from './EmbeddingService.js';
 import type {
   Observation,
   Session,
@@ -34,9 +35,11 @@ export class MemoryEngine {
   private db: any;
   private dbPath: string;
   private initError: Error | null = null;
+  private embeddingService: EmbeddingService;
 
   constructor(dbPath: string = './data/memento.db') {
     this.dbPath = dbPath;
+    this.embeddingService = new EmbeddingService();
 
     try {
       const dbDir = dirname(dbPath);
@@ -250,6 +253,18 @@ export class MemoryEngine {
         VALUES (new.id, new.title, new.body, new.project_id);
       END;
     `);
+
+    // ─── Embeddings table (semantic search) ──────────────────────
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS embeddings (
+        observation_id INTEGER PRIMARY KEY REFERENCES observations(id) ON DELETE CASCADE,
+        embedding BLOB NOT NULL,
+        model TEXT NOT NULL DEFAULT 'all-MiniLM-L6-v2',
+        dimensions INTEGER NOT NULL DEFAULT 384,
+        generated_at INTEGER NOT NULL
+      );
+    `);
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_embeddings_obs ON embeddings(observation_id)');
   }
 
   private serialize(value: unknown): string {
@@ -353,6 +368,12 @@ export class MemoryEngine {
 
     const observation = await this.getObservationById(id, true);
     if (!observation) throw new Error('Failed to retrieve created observation');
+
+    // Generate embedding asynchronously (non-blocking, fire-and-forget)
+    this.generateEmbedding(id).catch(() => {
+      // Silently ignore — embedding generation failure doesn't affect save
+    });
+
     return observation;
   }
 
@@ -437,6 +458,14 @@ export class MemoryEngine {
 
     const updated = await this.getObservationById(id, true);
     if (!updated) throw new Error('Failed to update observation');
+
+    // Regenerate embedding if content-affecting fields changed
+    if (hasFtsUpdate) {
+      this.generateEmbedding(id).catch(() => {
+        // Silently ignore — embedding regeneration failure doesn't affect update
+      });
+    }
+
     return updated;
   }
 
@@ -940,6 +969,29 @@ export class MemoryEngine {
   }
 
   async search(params: SearchParams): Promise<SearchResult> {
+    const mode = params.mode || 'keyword';
+
+    // Semantic and hybrid modes require a query string
+    if ((mode === 'semantic' || mode === 'hybrid') && !params.query) {
+      // Fall back to keyword mode if no query provided
+      return this.searchKeyword(params);
+    }
+
+    switch (mode) {
+      case 'semantic':
+        return this.searchSemantic(params);
+      case 'hybrid':
+        return this.searchHybrid(params);
+      case 'keyword':
+      default:
+        return this.searchKeyword(params);
+    }
+  }
+
+  /**
+   * Keyword search using existing FTS5 (unchanged behavior).
+   */
+  private async searchKeyword(params: SearchParams): Promise<SearchResult> {
     const {
       query,
       type,
@@ -1014,6 +1066,212 @@ export class MemoryEngine {
     const rows = this.db.prepare(sql).all(...values);
     const observations = (rows as Record<string, unknown>[]).map((row) => this.mapObservation(row));
     return { observations, total };
+  }
+
+  /**
+   * Semantic search using cosine similarity on embeddings.
+   * Falls back to keyword search if embeddings are unavailable.
+   */
+  private async searchSemantic(params: SearchParams): Promise<SearchResult> {
+    this.checkHealth();
+    const { query, type, projectId, topicKey, limit = 10, scope } = params;
+    if (!query) return { observations: [], total: 0 };
+
+    // Generate query embedding
+    const queryEmbedding = await this.embeddingService.generate(query);
+    if (!queryEmbedding) {
+      // Fall back to keyword search if embedding service unavailable
+      return this.searchKeyword(params);
+    }
+
+    // Build candidate filter
+    let candidateSql = 'SELECT o.* FROM observations o WHERE o.deleted_at IS NULL';
+    const values: (string | number)[] = [];
+
+    if (type) {
+      candidateSql += ' AND o.type = ?';
+      values.push(type);
+    }
+    if (projectId) {
+      candidateSql += ' AND o.project_id = ?';
+      values.push(projectId);
+    }
+    if (topicKey) {
+      candidateSql += ' AND o.topic_key = ?';
+      values.push(topicKey);
+    }
+    if (scope) {
+      candidateSql += ' AND o.scope = ?';
+      values.push(scope);
+    }
+
+    // Only observations that have embeddings
+    candidateSql += ' AND EXISTS (SELECT 1 FROM embeddings e WHERE e.observation_id = o.id)';
+
+    const rows = this.db.prepare(candidateSql).all(...values) as Record<string, unknown>[];
+    const candidates = rows.map((row) => this.mapObservation(row));
+
+    // Score each candidate by cosine similarity
+    const scored: Array<{ observation: Observation; score: number }> = [];
+    for (const obs of candidates) {
+      const embeddingRow = this.db
+        .prepare('SELECT embedding, dimensions FROM embeddings WHERE observation_id = ?')
+        .get(obs.id) as { embedding: Buffer; dimensions: number } | undefined;
+
+      if (!embeddingRow) continue;
+
+      const storedEmbedding = EmbeddingService.deserializeEmbedding(
+        embeddingRow.embedding,
+        embeddingRow.dimensions
+      );
+      const score = EmbeddingService.cosineSimilarity(queryEmbedding.embedding, storedEmbedding);
+
+      scored.push({ observation: obs, score });
+    }
+
+    // Sort by score descending
+    scored.sort((a, b) => b.score - a.score);
+
+    const total = scored.length;
+    const results = scored.slice(0, limit);
+    const scores = new Map(results.map((r) => [r.observation.id, r.score]));
+    const observations = results.map((r) => r.observation);
+
+    return { observations, total, scores };
+  }
+
+  /**
+   * Hybrid search combining FTS5 BM25 + cosine similarity.
+   * Score = 0.4 * bm25_normalized + 0.6 * cosine_similarity
+   */
+  private async searchHybrid(params: SearchParams): Promise<SearchResult> {
+    this.checkHealth();
+    const { query, limit = 10 } = params;
+    if (!query) return { observations: [], total: 0 };
+
+    // Run both searches in parallel
+    const [keywordResult, semanticResult] = await Promise.all([
+      this.searchKeyword({ ...params, limit: limit * 3 }), // Get more candidates for re-ranking
+      this.searchSemantic({ ...params, limit: limit * 3 }),
+    ]);
+
+    // Normalize BM25 scores (use position-based ranking as proxy)
+    const maxBm25Rank = keywordResult.observations.length;
+    const bm25Scores = new Map<number, number>();
+    keywordResult.observations.forEach((obs, index) => {
+      // Higher rank (earlier) = higher score
+      bm25Scores.set(obs.id, maxBm25Rank > 0 ? 1 - index / maxBm25Rank : 0);
+    });
+
+    // Get semantic scores
+    const semanticScores = semanticResult.scores || new Map<number, number>();
+
+    // Combine all unique observation IDs
+    const allIds = new Set([...bm25Scores.keys(), ...semanticScores.keys()]);
+
+    // Calculate hybrid scores
+    const hybridWeight = { bm25: 0.4, cosine: 0.6 };
+    const scored: Array<{ observationId: number; score: number }> = [];
+
+    for (const id of allIds) {
+      const bm25 = bm25Scores.get(id) ?? 0;
+      const cosine = semanticScores.get(id) ?? 0;
+      const hybridScore = hybridWeight.bm25 * bm25 + hybridWeight.cosine * cosine;
+      scored.push({ observationId: id, score: hybridScore });
+    }
+
+    scored.sort((a, b) => b.score - a.score);
+    const topResults = scored.slice(0, limit);
+
+    // Fetch full observations
+    const observations: Observation[] = [];
+    const scores = new Map<number, number>();
+
+    for (const result of topResults) {
+      const obs = await this.getObservation(result.observationId);
+      if (obs) {
+        observations.push(obs);
+        scores.set(obs.id, result.score);
+      }
+    }
+
+    return { observations, total: scored.length, scores };
+  }
+
+  // ─── Embedding Management ──────────────────────────────────
+
+  /**
+   * Generate and store embedding for an observation.
+   * Non-blocking: does not throw on failure.
+   */
+  async generateEmbedding(observationId: number): Promise<boolean> {
+    this.checkHealth();
+
+    const obs = await this.getObservationById(observationId);
+    if (!obs) return false;
+
+    const text = `${obs.title} ${obs.content}`;
+    const result = await this.embeddingService.generate(text);
+    if (!result) return false;
+
+    const blob = EmbeddingService.serializeEmbedding(result.embedding);
+    const now = Date.now();
+
+    await this.withRetry(() => {
+      this.db.prepare(
+        `INSERT OR REPLACE INTO embeddings (observation_id, embedding, model, dimensions, generated_at)
+         VALUES (?, ?, ?, ?, ?)`
+      ).run(observationId, blob, result.model, result.dimensions, now);
+    });
+
+    return true;
+  }
+
+  /**
+   * Delete embedding for an observation.
+   */
+  async deleteEmbedding(observationId: number): Promise<void> {
+    this.checkHealth();
+    this.db.prepare('DELETE FROM embeddings WHERE observation_id = ?').run(observationId);
+  }
+
+  /**
+   * Get embedding status (is the service available?).
+   */
+  async getEmbeddingStatus() {
+    return this.embeddingService.status;
+  }
+
+  /**
+   * Backfill embeddings for observations that don't have them.
+   * Processes in batches. Returns count of embeddings generated.
+   */
+  async backfillEmbeddings(batchSize: number = 50): Promise<{ processed: number; failed: number }> {
+    this.checkHealth();
+
+    const rows = this.db.prepare(
+      `SELECT o.id FROM observations o
+       WHERE o.deleted_at IS NULL
+       AND NOT EXISTS (SELECT 1 FROM embeddings e WHERE e.observation_id = o.id)
+       ORDER BY o.id ASC`
+    ).all() as { id: number }[];
+
+    let processed = 0;
+    let failed = 0;
+
+    for (let i = 0; i < rows.length; i += batchSize) {
+      const batch = rows.slice(i, i + batchSize);
+      for (const row of batch) {
+        const success = await this.generateEmbedding(row.id);
+        if (success) {
+          processed++;
+        } else {
+          failed++;
+        }
+      }
+    }
+
+    return { processed, failed };
   }
 
   // ─── Sessions ──────────────────────────────────────────────

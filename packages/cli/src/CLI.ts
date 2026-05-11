@@ -192,6 +192,26 @@ export class CLI {
         console.log(`Observation #${obs.id} "${obs.title}" unpinned`);
       });
 
+    // ─── Embedding commands ──────────────────────────────────
+
+    this.program
+      .command('backfill-embeddings')
+      .description('Generate embeddings for observations that do not have them')
+      .option('-b, --batch-size <number>', 'Batch size', '50')
+      .action(async (options) => {
+        const batchSize = parseInt(options.batchSize as string);
+        console.log('Starting embedding backfill...');
+        const status = await this.memory.getEmbeddingStatus();
+        if (!status.available) {
+          console.error(`Embedding service unavailable: ${status.error || 'model not loaded'}`);
+          console.error('Install @huggingface/transformers to enable semantic search');
+          return;
+        }
+        console.log(`Using model: ${status.model}`);
+        const result = await this.memory.backfillEmbeddings(batchSize);
+        console.log(`Backfill complete: ${result.processed} embeddings generated, ${result.failed} failed`);
+      });
+
     // ─── Journal commands (append-only evidence) ──────────────
 
     const journal = this.program.command('journal').description('Append-only journal for evidence capture');

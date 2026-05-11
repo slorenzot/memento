@@ -51,11 +51,13 @@ export interface SearchParams {
   offset?: number;
   includeDeleted?: boolean;
   scope?: 'project' | 'personal';
+  mode?: 'keyword' | 'semantic' | 'hybrid';
 }
 
 export interface SearchResult {
   observations: Observation[];
   total: number;
+  scores?: Map<number, number>; // observation id → relevance score (for semantic/hybrid)
 }
 
 // --- Merge types ---
