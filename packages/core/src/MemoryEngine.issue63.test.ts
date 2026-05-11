@@ -133,9 +133,9 @@ describe('Issue #63 — Stable Ordering for Prompt Caching', () => {
 
       expect(result.observations.length).toBe(5);
 
-      // created_at ASC, id ASC
+      // created_at DESC, id DESC (newest first)
       const returnedIds = result.observations.map((o) => o.id);
-      expect(returnedIds).toEqual(ids);
+      expect(returnedIds).toEqual([...ids].reverse());
     });
   });
 
