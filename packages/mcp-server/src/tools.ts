@@ -80,9 +80,10 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
       project_id: z.string().optional().describe('Project identifier'),
       metadata: z.record(z.unknown()).optional().describe('Additional metadata'),
       scope: z.enum(['project', 'personal']).optional().describe('Scope: project (default) or personal'),
+      pinned: z.boolean().optional().describe('Pin observation for always-injection in system prompt (default: false)'),
     },
     { title: 'Save observation', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    async ({ title, content, type, topic_key, project_id, metadata, scope }) => {
+    async ({ title, content, type, topic_key, project_id, metadata, scope, pinned }) => {
       try {
         const currentProjectId = project_id || ctx.projectId;
         let sessionId = ctx.activeSessionId;
@@ -106,6 +107,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           projectId: currentProjectId,
           metadata: metadata || {},
           scope: scope as 'project' | 'personal' | undefined,
+          pinned: pinned || false,
         });
 
         return {
@@ -207,22 +209,24 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_update',
-    'Update an existing observation\'s title, content, type, or topic_key. Use this to correct or refine previously saved observations. All fields are optional — only provided fields will be updated. Returns: human-readable confirmation.',
+    'Update an existing observation\'s title, content, type, topic_key, or pinned status. Use this to correct or refine previously saved observations. All fields are optional — only provided fields will be updated. Returns: human-readable confirmation.',
     {
       id: z.number().describe('Observation ID to update'),
       title: z.string().optional().describe('New title (short, searchable)'),
       content: z.string().optional().describe('New content (What/Why/Where/Learned format)'),
       type: z.enum(['decision', 'bug', 'discovery', 'note', 'summary', 'learning', 'pattern', 'architecture', 'config', 'preference']).optional().describe('New observation type'),
       topic_key: z.string().optional().describe('New or updated topic key for grouping'),
+      pinned: z.boolean().optional().describe('Pin/unpin for system prompt injection'),
     },
     { title: 'Update observation', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    async ({ id, title, content, type, topic_key }) => {
+    async ({ id, title, content, type, topic_key, pinned }) => {
       try {
         const updated = await ctx.engine.updateObservation(id, {
           title,
           content,
           type: type as Observation['type'] | undefined,
           topicKey: topic_key,
+          pinned,
         });
         return {
           content: [
@@ -293,8 +297,10 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             };
           }
 
-          default:
-            throw new Error(`Unknown action: ${act}`);
+          default: {
+            const _exhaustive: never = act;
+            throw new Error(`Unknown action: ${_exhaustive as string}`);
+          }
         }
       } catch (error: unknown) {
         return handleToolError(error, ctx);
@@ -351,6 +357,46 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
               text: `Merged ${results.length} group${results.length !== 1 ? 's' : ''} (${totalObs} observations consolidated)`,
             },
           ],
+        };
+      } catch (error: unknown) {
+        return handleToolError(error, ctx);
+      }
+    }
+  );
+
+  // ─── Pin / Unpin ────────────────────────────────────────────
+
+  server.tool(
+    'mem_pin',
+    'Pin an observation so it is always injected into the system prompt by the OpenCode plugin. Pinned observations are included before non-pinned ones, within the token budget. Returns: human-readable confirmation.',
+    {
+      id: z.number().describe('Observation ID to pin'),
+    },
+    { title: 'Pin observation', readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    async ({ id }) => {
+      try {
+        const obs = await ctx.engine.pinObservation(id);
+        return {
+          content: [{ type: 'text', text: `Observation #${obs.id} "${obs.title}" pinned — will be included in system prompt injection` }],
+        };
+      } catch (error: unknown) {
+        return handleToolError(error, ctx);
+      }
+    }
+  );
+
+  server.tool(
+    'mem_unpin',
+    'Unpin an observation so it is no longer always injected into the system prompt. Returns: human-readable confirmation.',
+    {
+      id: z.number().describe('Observation ID to unpin'),
+    },
+    { title: 'Unpin observation', readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    async ({ id }) => {
+      try {
+        const obs = await ctx.engine.unpinObservation(id);
+        return {
+          content: [{ type: 'text', text: `Observation #${obs.id} "${obs.title}" unpinned` }],
         };
       } catch (error: unknown) {
         return handleToolError(error, ctx);
@@ -760,6 +806,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             tools: [
               'mem_save', 'mem_search', 'mem_get_observation', 'mem_update',
               'mem_delete', 'mem_merge', 'mem_export',
+              'mem_pin', 'mem_unpin',
               'mem_session_start', 'mem_session_end', 'mem_session_summary',
               'mem_context', 'mem_capture_passive', 'mem_status',
               'mem_journal_write', 'mem_journal_read', 'mem_journal_search',

@@ -174,6 +174,24 @@ export class CLI {
         });
       });
 
+    // ─── Pin / Unpin commands ──────────────────────────────────
+
+    this.program
+      .command('pin <id>')
+      .description('Pin an observation for system prompt injection')
+      .action(async (id) => {
+        const obs = await this.memory.pinObservation(parseInt(id));
+        console.log(`📌 Observation #${obs.id} "${obs.title}" pinned — will be included in system prompt`);
+      });
+
+    this.program
+      .command('unpin <id>')
+      .description('Unpin an observation')
+      .action(async (id) => {
+        const obs = await this.memory.unpinObservation(parseInt(id));
+        console.log(`Observation #${obs.id} "${obs.title}" unpinned`);
+      });
+
     // ─── Journal commands (append-only evidence) ──────────────
 
     const journal = this.program.command('journal').description('Append-only journal for evidence capture');

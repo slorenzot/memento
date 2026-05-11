@@ -88,6 +88,7 @@ export async function seedObservation(
     projectId?: string;
     metadata?: Record<string, unknown>;
     scope?: 'project' | 'personal';
+    pinned?: boolean;
   } = {}
 ) {
   return engine.createObservation({
@@ -99,6 +100,7 @@ export async function seedObservation(
     projectId: overrides.projectId ?? _lastSessionProjectId,
     metadata: overrides.metadata ?? {},
     scope: overrides.scope,
+    pinned: overrides.pinned,
   });
 }
 

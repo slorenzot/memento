@@ -11,6 +11,7 @@ export interface Observation {
   deletedAt: Date | null;
   metadata: Record<string, unknown>;
   scope: 'project' | 'personal';
+  pinned: boolean;
   revisionCount: number;
   duplicatesCount?: number;
 }
@@ -250,4 +251,24 @@ export interface JournalSearchParams {
 export interface JournalSearchResult {
   entries: JournalEntry[];
   total: number;
+}
+
+// --- Prompt Injection types (OpenCode Plugin) ---
+
+export type PromptInjectionStrategy = 'recent-pinned' | 'pinned-only';
+
+export interface PromptInjectionConfig {
+  enabled: boolean;
+  maxObservations: number;
+  maxTokens: number;
+  strategy: PromptInjectionStrategy;
+  types: Observation['type'][];
+  projectId?: string;
+}
+
+export interface RenderedPromptContext {
+  xml: string;
+  observationCount: number;
+  tokenCount: number;
+  budgetExceeded: boolean;
 }
