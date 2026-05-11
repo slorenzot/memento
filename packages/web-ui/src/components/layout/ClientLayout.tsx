@@ -1,20 +1,38 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { MobileNav } from '@/components/layout/MobileNav';
+import { useUIStore, resolveTheme } from '@/stores/ui-store';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const theme = useUIStore((s) => s.theme);
+  const [mounted, setMounted] = useState(false);
 
-  // Close mobile nav on route change
+  // Apply dark class to <html> based on theme preference
   useEffect(() => {
-    setMobileNavOpen(false);
-  }, []);
+    setMounted(true);
+
+    function applyTheme() {
+      const effective = resolveTheme(theme);
+      const html = document.documentElement;
+      html.classList.toggle('dark', effective === 'dark');
+    }
+
+    applyTheme();
+
+    // Listen for system preference changes when theme is 'system'
+    if (theme === 'system') {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      mq.addEventListener('change', applyTheme);
+      return () => mq.removeEventListener('change', applyTheme);
+    }
+  }, [theme]);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-[var(--color-bg)] text-[var(--color-text-primary)]">
       {/* Desktop sidebar */}
       <Sidebar />
 
