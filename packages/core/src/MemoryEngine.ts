@@ -1319,6 +1319,7 @@ export class MemoryEngine {
     projectId: string;
     endedAt: Date | null;
     metadata: Record<string, unknown>;
+    seedIfEmpty?: boolean;
   }): Promise<Session> {
     const uuid = crypto.randomUUID();
     const startedAt = new Date();
@@ -1336,7 +1337,67 @@ export class MemoryEngine {
         : result.lastInsertRowid;
     const session = await this.getSessionById(id);
     if (!session) throw new Error('Failed to retrieve created session');
+
+    // Seed default observations if requested and this is the first session for the project
+    if (data.seedIfEmpty) {
+      await this.seedIfEmpty(data.projectId, id);
+    }
+
     return session;
+  }
+
+  /**
+   * Seed default observations if project has no observations yet.
+   * Creates 3 seeds: persona (personal scope), human (personal), project (project scope).
+   */
+  private async seedIfEmpty(projectId: string, sessionId: number): Promise<void> {
+    // Check if project already has observations
+    const existing = this.db
+      .prepare('SELECT COUNT(*) as count FROM observations WHERE project_id = ? AND deleted_at IS NULL')
+      .get(projectId) as { count: number } | undefined;
+
+    if (existing && existing.count > 0) return;
+
+    // Seed personal-scope observations (only if no personal observations exist)
+    const personalExisting = this.db
+      .prepare("SELECT COUNT(*) as count FROM observations WHERE scope = 'personal' AND deleted_at IS NULL")
+      .get() as { count: number } | undefined;
+
+    if (!personalExisting || personalExisting.count === 0) {
+      await this.createObservation({
+        sessionId,
+        title: 'Agent Persona',
+        content: 'Instructions for how the agent should behave and respond. Fill this in with your preferred communication style, tone, and approach.',
+        type: 'preference',
+        topicKey: 'persona',
+        projectId,
+        metadata: { seed: true },
+        scope: 'personal',
+      });
+
+      await this.createObservation({
+        sessionId,
+        title: 'User Preferences',
+        content: 'Key details about the user: preferred language, frameworks, communication style, constraints, and habits.',
+        type: 'preference',
+        topicKey: 'human',
+        projectId,
+        metadata: { seed: true },
+        scope: 'personal',
+      });
+    }
+
+    // Seed project-scope observation
+    await this.createObservation({
+      sessionId,
+      title: 'Project Knowledge',
+      content: 'Durable, high-signal information about this codebase: commands, architecture notes, conventions, and gotchas.',
+      type: 'note',
+      topicKey: 'project',
+      projectId,
+      metadata: { seed: true },
+      scope: 'project',
+    });
   }
 
   async endSession(id: number): Promise<Session> {
