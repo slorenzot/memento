@@ -148,7 +148,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
       offset: z.number().optional().describe('Offset for pagination'),
       include_deleted: z.boolean().optional().describe('Include soft-deleted observations'),
       scope: z.enum(['project', 'personal']).optional().describe('Filter by scope'),
-      sort: z.enum(['relevance', 'chronological']).optional().describe('Sort order: "relevance" (default, FTS5 rank) or "chronological" (created_at ASC, replaces mem_timeline)'),
+      sort: z.enum(['relevance', 'chronological']).optional().describe('Sort order: "relevance" (default, FTS5 rank) or "chronological" (created_at DESC, replaces mem_timeline)'),
       mode: z.enum(['keyword', 'semantic', 'hybrid']).optional().describe('Search mode: "keyword" (default, FTS5), "semantic" (embeddings), "hybrid" (combined)'),
     },
     { title: 'Search observations', readOnlyHint: true, destructiveHint: false, idempotentHint: true },

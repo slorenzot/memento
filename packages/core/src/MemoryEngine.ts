@@ -1723,7 +1723,7 @@ export class MemoryEngine {
     const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;
     const total = countResult?.count ?? 0;
 
-    sql += ' ORDER BY created_at ASC, id ASC LIMIT ? OFFSET ?';
+    sql += ' ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?';
     const rows = this.db.prepare(sql).all(...values, limit, offset);
     const observations = (rows as Record<string, unknown>[]).map((row) => this.mapObservation(row));
 
