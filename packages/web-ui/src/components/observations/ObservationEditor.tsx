@@ -2,11 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-
-const TYPES = [
-  'decision', 'bug', 'discovery', 'note', 'summary',
-  'learning', 'pattern', 'architecture', 'config', 'preference',
-];
+import clsx from 'clsx';
+import { OBSERVATION_TYPES, ObservationTypeIcon } from '@/components/shared/ObservationTypeIcon';
 
 interface ObservationEditorProps {
   mode: 'create' | 'edit';
@@ -121,15 +118,24 @@ export function ObservationEditor({ mode, initialData, observationId }: Observat
           <label className="mb-1 block text-[13px] font-medium text-[var(--color-secondary)]">
             Type
           </label>
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-[14px] text-[var(--color-text-primary)]"
-          >
-            {TYPES.map((t) => (
-              <option key={t} value={t}>{t}</option>
+          <div className="flex flex-wrap gap-1.5">
+            {OBSERVATION_TYPES.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setType(t)}
+                className={clsx(
+                  'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-medium transition-colors',
+                  type === t
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'bg-[var(--color-surface-hover)] text-[var(--color-secondary)] hover:opacity-80',
+                )}
+              >
+                <ObservationTypeIcon type={t} size={12} strokeWidth={2.5} />
+                {t}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
         <div>
