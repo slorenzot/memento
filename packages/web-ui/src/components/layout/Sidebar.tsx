@@ -10,10 +10,10 @@ import {
   Activity,
   PanelLeftClose,
   PanelLeft,
-  Brain,
   Settings,
 } from 'lucide-react';
 import { useUIStore } from '@/stores/ui-store';
+import { MementoLogo } from './MementoLogo';
 import clsx from 'clsx';
 
 const navItems = [
@@ -41,11 +41,8 @@ export function Sidebar() {
       )}
     >
       {/* Logo */}
-      <div className={clsx('flex items-center h-14 px-4 border-b border-[var(--color-border)]', collapsed ? 'justify-center' : 'gap-3')}>
-        <Brain className="w-5 h-5 text-[var(--color-text-primary)] shrink-0" />
-        {!collapsed && (
-          <span className="text-[14px] font-medium text-[var(--color-text-primary)]">Memento</span>
-        )}
+      <div className={clsx('flex items-center h-14 px-4 border-b border-[var(--color-border)]', collapsed && 'justify-center')}>
+        <MementoLogo size={22} collapsed={collapsed} />
       </div>
 
       {/* Navigation */}
