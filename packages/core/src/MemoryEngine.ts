@@ -1732,9 +1732,10 @@ export class MemoryEngine {
   async getRecentContext(params: {
     projectId?: string;
     limit?: number;
+    scope?: 'project' | 'personal';
   }): Promise<{ observations: Observation[]; total: number }> {
     this.checkHealth();
-    const { projectId, limit = 20 } = params;
+    const { projectId, limit = 20, scope } = params;
 
     let sql = 'SELECT * FROM observations WHERE deleted_at IS NULL';
     const values: (string | number)[] = [];
@@ -1742,6 +1743,10 @@ export class MemoryEngine {
     if (projectId) {
       sql += ' AND project_id = ?';
       values.push(projectId);
+    }
+    if (scope) {
+      sql += ' AND scope = ?';
+      values.push(scope);
     }
 
     sql += ' ORDER BY created_at DESC, id DESC LIMIT ?';
