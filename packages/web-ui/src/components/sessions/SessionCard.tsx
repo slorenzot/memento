@@ -1,6 +1,9 @@
+'use client';
+
 import Link from 'next/link';
 import { RelativeTime } from '@/components/shared/RelativeTime';
 import { Badge } from '@/components/shared/Badge';
+import { useT } from '@/i18n/translation-context';
 import type { Session } from '@slorenzot/memento-core';
 
 interface SessionCardProps {
@@ -8,6 +11,7 @@ interface SessionCardProps {
 }
 
 export function SessionCard({ session }: SessionCardProps) {
+  const t = useT();
   const isActive = !session.endedAt;
 
   return (
@@ -35,7 +39,7 @@ export function SessionCard({ session }: SessionCardProps) {
           </div>
         </div>
         <span className={`rounded-full px-2 py-0.5 text-[12px] font-medium ${isActive ? 'bg-green-100 text-green-700' : 'bg-[var(--color-surface-hover)] text-[var(--color-secondary)]'}`}>
-          {isActive ? 'Active' : 'Ended'}
+          {isActive ? t.common.active : t.common.ended}
         </span>
       </div>
     </Link>

@@ -3,10 +3,14 @@
  *
  * Defines the sidebar structure for the /docs section.
  * Each entry maps to a markdown file in content/docs/.
+ *
+ * `navKey` maps to a translation key in `t.docs.nav[key]`.
+ * The `title` is used as fallback / for static generation.
  */
 
 export interface DocNavItem {
   title: string;
+  navKey?: string; // i18n key in t.docs.nav
   slug?: string; // relative to /docs — maps to content/docs/{slug}.md
   icon?: string;
   children?: DocNavItem[];
@@ -15,73 +19,83 @@ export interface DocNavItem {
 export const docsNav: DocNavItem[] = [
   {
     title: 'Quickstart',
+    navKey: 'quickstart',
     slug: 'quickstart',
   },
   {
     title: 'Core Concepts',
+    navKey: 'coreConcepts',
     children: [
-      { title: 'Observations', slug: 'core-concepts/observations' },
-      { title: 'Sessions', slug: 'core-concepts/sessions' },
-      { title: 'Projects', slug: 'core-concepts/projects' },
-      { title: 'Journal', slug: 'core-concepts/journal' },
-      { title: 'Search', slug: 'core-concepts/search' },
+      { title: 'Observations', navKey: 'observations', slug: 'core-concepts/observations' },
+      { title: 'Sessions', navKey: 'sessions', slug: 'core-concepts/sessions' },
+      { title: 'Projects', navKey: 'projects', slug: 'core-concepts/projects' },
+      { title: 'Journal', navKey: 'journal', slug: 'core-concepts/journal' },
+      { title: 'Search', navKey: 'search', slug: 'core-concepts/search' },
     ],
   },
   {
     title: 'Capabilities',
+    navKey: 'capabilities',
     children: [
-      { title: 'Context Recovery', slug: 'capabilities/context-recovery' },
-      { title: 'Passive Capture', slug: 'capabilities/passive-capture' },
-      { title: 'Export & Import', slug: 'capabilities/export-import' },
-      { title: 'Merge', slug: 'capabilities/merge' },
-      { title: 'Pin & Lock', slug: 'capabilities/pin-lock' },
+      { title: 'Context Recovery', navKey: 'contextRecovery', slug: 'capabilities/context-recovery' },
+      { title: 'Passive Capture', navKey: 'passiveCapture', slug: 'capabilities/passive-capture' },
+      { title: 'Export & Import', navKey: 'exportImport', slug: 'capabilities/export-import' },
+      { title: 'Merge', navKey: 'merge', slug: 'capabilities/merge' },
+      { title: 'Pin & Lock', navKey: 'pinLock', slug: 'capabilities/pin-lock' },
     ],
   },
   {
     title: 'MCP Tools',
+    navKey: 'mcpTools',
     children: [
-      { title: 'Introduction', slug: 'mcp/introduction' },
-      { title: 'Tools Reference', slug: 'mcp/tools-reference' },
+      { title: 'Introduction', navKey: 'mcpIntroduction', slug: 'mcp/introduction' },
+      { title: 'Tools Reference', navKey: 'toolsReference', slug: 'mcp/tools-reference' },
     ],
   },
   {
     title: 'CLI',
+    navKey: 'cli',
     children: [
-      { title: 'Reference', slug: 'cli/reference' },
+      { title: 'Reference', navKey: 'cliReference', slug: 'cli/reference' },
     ],
   },
   {
     title: 'API',
+    navKey: 'api',
     children: [
-      { title: 'Introduction', slug: 'api/introduction' },
-      { title: 'Observations', slug: 'api/observations' },
-      { title: 'Sessions', slug: 'api/sessions' },
-      { title: 'Search', slug: 'api/search' },
+      { title: 'Introduction', navKey: 'apiIntroduction', slug: 'api/introduction' },
+      { title: 'Observations', navKey: 'apiObservations', slug: 'api/observations' },
+      { title: 'Sessions', navKey: 'apiSessions', slug: 'api/sessions' },
+      { title: 'Search', navKey: 'apiSearch', slug: 'api/search' },
     ],
   },
   {
     title: 'Packages',
+    navKey: 'packages',
     children: [
-      { title: 'Core', slug: 'packages/core' },
-      { title: 'MCP Server', slug: 'packages/mcp-server' },
-      { title: 'CLI', slug: 'packages/cli' },
-      { title: 'Web UI', slug: 'packages/web-ui' },
-      { title: 'TUI', slug: 'packages/tui' },
+      { title: 'Core', navKey: 'core', slug: 'packages/core' },
+      { title: 'MCP Server', navKey: 'mcpServer', slug: 'packages/mcp-server' },
+      { title: 'CLI', navKey: 'cliPackage', slug: 'packages/cli' },
+      { title: 'Web UI', navKey: 'webUi', slug: 'packages/web-ui' },
+      { title: 'TUI', navKey: 'tui', slug: 'packages/tui' },
     ],
   },
   {
     title: 'Architecture',
+    navKey: 'architecture',
     children: [
-      { title: 'Database', slug: 'architecture/database' },
-      { title: 'Monorepo', slug: 'architecture/monorepo' },
+      { title: 'Database', navKey: 'database', slug: 'architecture/database' },
+      { title: 'Monorepo', navKey: 'monorepo', slug: 'architecture/monorepo' },
     ],
   },
   {
     title: 'FAQ',
+    navKey: 'faq',
     slug: 'faq',
   },
   {
     title: 'Troubleshooting',
+    navKey: 'troubleshooting',
     slug: 'troubleshooting',
   },
 ];

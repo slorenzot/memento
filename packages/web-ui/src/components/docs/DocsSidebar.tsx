@@ -6,12 +6,17 @@ import clsx from 'clsx';
 import { docsNav, type DocNavItem } from './docs-nav';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
+import { useT } from '@/i18n/translation-context';
 
 function NavGroup({ item, depth = 0 }: { item: DocNavItem; depth?: number }) {
   const pathname = usePathname();
+  const t = useT();
   const [open, setOpen] = useState(true);
 
   const hasChildren = item.children && item.children.length > 0;
+  const navTitle = item.navKey
+    ? (t.docs.nav as Record<string, string>)[item.navKey] ?? item.title
+    : item.title;
 
   if (hasChildren) {
     return (
@@ -23,7 +28,7 @@ function NavGroup({ item, depth = 0 }: { item: DocNavItem; depth?: number }) {
             depth > 0 && 'pl-4',
           )}
         >
-          <span>{item.title}</span>
+          <span>{navTitle}</span>
           <ChevronDown
             className={clsx(
               'w-3 h-3 transition-transform',
@@ -56,7 +61,7 @@ function NavGroup({ item, depth = 0 }: { item: DocNavItem; depth?: number }) {
           : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]',
       )}
     >
-      {item.title}
+      {navTitle}
     </Link>
   );
 }

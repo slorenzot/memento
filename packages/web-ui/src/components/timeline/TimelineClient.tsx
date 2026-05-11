@@ -2,7 +2,11 @@
 
 import { useState, useCallback } from 'react';
 import { ObservationCard } from '@/components/observations/ObservationCard';
+import { useT } from '@/i18n/translation-context';
+import { useUIStore } from '@/stores/ui-store';
 import type { Observation } from '@slorenzot/memento-core';
+import { es } from 'date-fns/locale/es';
+import { enUS } from 'date-fns/locale/en-US';
 
 const TIMELINE_PAGE_SIZE = 100;
 
@@ -10,6 +14,8 @@ interface TimelineClientProps {
   initialObservations: Observation[];
   initialTotal: number;
 }
+
+const dateFnsLocales = { en: enUS, es: es };
 
 function groupByDay(observations: Observation[]): Map<string, Observation[]> {
   const groups = new Map<string, Observation[]>();
@@ -23,16 +29,18 @@ function groupByDay(observations: Observation[]): Map<string, Observation[]> {
   return groups;
 }
 
-function formatDayHeader(dateStr: string): string {
+function formatDayHeader(dateStr: string, t: ReturnType<typeof useT>): string {
   const date = new Date(dateStr + 'T12:00:00');
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
-  if (dateStr === today.toISOString().split('T')[0]) return 'Today';
-  if (dateStr === yesterday.toISOString().split('T')[0]) return 'Yesterday';
+  if (dateStr === today.toISOString().split('T')[0]) return t.common.today;
+  if (dateStr === yesterday.toISOString().split('T')[0]) return t.common.yesterday;
 
-  return date.toLocaleDateString('en-US', {
+  const locale = useUIStore.getState().locale;
+  const dateFnsLocale = dateFnsLocales[locale] ?? dateFnsLocales.en;
+  return date.toLocaleDateString(locale === 'es' ? 'es-ES' : 'en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -41,6 +49,7 @@ function formatDayHeader(dateStr: string): string {
 }
 
 export function TimelineClient({ initialObservations, initialTotal }: TimelineClientProps) {
+  const t = useT();
   const [observations, setObservations] = useState<Observation[]>(initialObservations);
   const [total] = useState(initialTotal);
   const [loading, setLoading] = useState(false);
@@ -72,7 +81,7 @@ export function TimelineClient({ initialObservations, initialTotal }: TimelineCl
   return (
     <div className="space-y-6">
       <h1 className="text-[20px] font-medium text-[var(--color-text-primary)]">
-        Timeline
+        {t.timeline.title}
         <span className="ml-2 text-[14px] font-normal text-[var(--color-tertiary)]">
           ({total})
         </span>
@@ -82,7 +91,7 @@ export function TimelineClient({ initialObservations, initialTotal }: TimelineCl
         {Array.from(groups.entries()).map(([dateStr, dayObservations]) => (
           <div key={dateStr}>
             <h2 className="mb-3 text-[13px] font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
-              {formatDayHeader(dateStr)}
+              {formatDayHeader(dateStr, t)}
             </h2>
             <div className="grid gap-3">
               {dayObservations.map((obs) => (
@@ -100,7 +109,7 @@ export function TimelineClient({ initialObservations, initialTotal }: TimelineCl
             disabled={loading}
             className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-[13px] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] disabled:opacity-50 transition-colors"
           >
-            {loading ? 'Loading...' : 'Load earlier'}
+            {loading ? t.common.loading : t.timeline.loadEarlier}
           </button>
         </div>
       )}

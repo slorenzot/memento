@@ -1,0 +1,207 @@
+{
+  "meta": {
+    "title": "Memento",
+    "description": "Persistent memory system for AI coding agents"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "observations": "Observations",
+    "search": "Search",
+    "timeline": "Timeline",
+    "sessions": "Sessions",
+    "docs": "Docs",
+    "settings": "Settings",
+    "collapse": "Collapse",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar",
+    "closeMenu": "Close menu",
+    "toggleMenu": "Toggle menu"
+  },
+  "types": {
+    "decision": "Decision",
+    "bug": "Bug",
+    "discovery": "Discovery",
+    "note": "Note",
+    "summary": "Summary",
+    "learning": "Learning",
+    "pattern": "Pattern",
+    "architecture": "Architecture",
+    "config": "Config",
+    "preference": "Preference"
+  },
+  "common": {
+    "save": "Save",
+    "saving": "Saving...",
+    "delete": "Delete",
+    "deleting": "Deleting...",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "create": "Create",
+    "saveChanges": "Save changes",
+    "restore": "Restore",
+    "loadMore": "Load more",
+    "loading": "Loading...",
+    "search": "Search",
+    "searching": "Searching...",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page {current} of {total}",
+    "pinned": "pinned",
+    "active": "Active",
+    "ended": "Ended",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "allScopes": "All scopes",
+    "allProjects": "All projects",
+    "metadata": "Metadata",
+    "revisions": "{count} revision | {count} revisions"
+  },
+  "header": {
+    "searchPlaceholder": "Search observations..."
+  },
+  "searchPage": {
+    "title": "Search",
+    "placeholder": "Search observations with FTS5...",
+    "results": "{total} result for \"{query}\" | {total} results for \"{query}\"",
+    "showing": "— showing {shown} of {total}",
+    "noResults": "No observations found.",
+    "loadEarlier": "Load earlier"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "themeDescription": "Choose how Memento looks on your screen.",
+    "language": "Language",
+    "languageDescription": "Choose your preferred language.",
+    "system": "System",
+    "systemDescription": "Follow your OS preference",
+    "dark": "Dark",
+    "darkDescription": "Always use dark mode",
+    "light": "Light",
+    "lightDescription": "Always use light mode"
+  },
+  "observations": {
+    "title": "Observations",
+    "newObservation": "New observation",
+    "noObservations": "No observations yet",
+    "noObservationsDescription": "Create your first observation to start building your persistent memory.",
+    "noMatch": "No observations match these filters."
+  },
+  "observationEditor": {
+    "title": "Title",
+    "titlePlaceholder": "What did you observe?",
+    "content": "Content",
+    "contentPlaceholder": "Describe what/why/where/learned...",
+    "type": "Type",
+    "scope": "Scope",
+    "topicKey": "Topic Key",
+    "topicKeyPlaceholder": "e.g. architecture/auth-model",
+    "project": "Project",
+    "projectPlaceholder": "e.g. my-project",
+    "saveFailed": "Save failed"
+  },
+  "deleteConfirmation": {
+    "title": "Delete \"{title}\"?",
+    "description": "This is a soft delete. The observation can be restored later.",
+    "reasonPlaceholder": "Reason for deletion (optional)",
+    "deleteFailed": "Delete failed"
+  },
+  "sessions": {
+    "title": "Sessions",
+    "noSessions": "No sessions yet",
+    "noSessionsDescription": "Sessions are created automatically when you create observations."
+  },
+  "timeline": {
+    "title": "Timeline",
+    "noObservations": "No observations yet",
+    "noObservationsDescription": "Your timeline will appear here once you create observations.",
+    "loadEarlier": "Load earlier"
+  },
+  "dashboard": {
+    "totalObservations": "Total observations",
+    "active": "Active",
+    "sessions": "Sessions",
+    "projects": "Projects",
+    "byType": "By type",
+    "noObservations": "No observations yet",
+    "recentActivity": "Recent activity",
+    "noObservationsDescription": "Start using Memento to capture decisions, discoveries, and patterns from your coding sessions."
+  },
+  "error": {
+    "somethingWentWrong": "Something went wrong",
+    "unexpectedError": "An unexpected error occurred",
+    "tryAgain": "Try again"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist.",
+    "goHome": "Go home"
+  },
+  "docs": {
+    "docsTitle": "Memento Docs",
+    "hero": {
+      "title": "Memento",
+      "description": "Persistent memory for AI coding agents. Capture decisions, discoveries, and patterns from your coding sessions and recover them across conversations."
+    },
+    "sections": {
+      "gettingStarted": "Getting Started",
+      "packages": "Packages",
+      "resources": "Resources",
+      "capabilities": "Capabilities"
+    },
+    "cards": {
+      "quickstart": { "title": "Quickstart", "description": "Get up and running with your first observation in 5 minutes" },
+      "cliReference": { "title": "CLI Reference", "description": "Full command-line interface documentation" },
+      "mcpTools": { "title": "MCP Tools", "description": "21 tools for AI agent integration via Model Context Protocol" },
+      "apiReference": { "title": "API Reference", "description": "REST API endpoints and examples" },
+      "core": { "title": "Core", "description": "Database engine, observations, sessions, and search" },
+      "mcpServer": { "title": "MCP Server", "description": "Model Context Protocol server with 21 tools" },
+      "cli": { "title": "CLI", "description": "Command-line interface for terminal workflows" },
+      "webUi": { "title": "Web UI", "description": "Next.js dashboard for browsing and managing memory" },
+      "tui": { "title": "TUI", "description": "Terminal UI built with Ink and React" },
+      "coreConcepts": { "title": "Core Concepts", "description": "Observations, sessions, projects, journal, and search" },
+      "architecture": { "title": "Architecture", "description": "Database design, FTS5 search, and monorepo structure" },
+      "faqTroubleshooting": { "title": "FAQ & Troubleshooting", "description": "Common questions and solutions to known issues" },
+      "contextRecovery": { "title": "Context Recovery", "description": "Recover what happened in previous sessions" },
+      "passiveCapture": { "title": "Passive Capture", "description": "Extract learnings from text with automatic deduplication" },
+      "exportImport": { "title": "Export & Import", "description": "Backup and migrate memory in JSON, XML, or TXT" }
+    },
+    "nav": {
+      "quickstart": "Quickstart",
+      "coreConcepts": "Core Concepts",
+      "observations": "Observations",
+      "sessions": "Sessions",
+      "projects": "Projects",
+      "journal": "Journal",
+      "search": "Search",
+      "capabilities": "Capabilities",
+      "contextRecovery": "Context Recovery",
+      "passiveCapture": "Passive Capture",
+      "exportImport": "Export & Import",
+      "merge": "Merge",
+      "pinLock": "Pin & Lock",
+      "mcpTools": "MCP Tools",
+      "mcpIntroduction": "Introduction",
+      "toolsReference": "Tools Reference",
+      "cli": "CLI",
+      "cliReference": "Reference",
+      "api": "API",
+      "apiIntroduction": "Introduction",
+      "apiObservations": "Observations",
+      "apiSessions": "Sessions",
+      "apiSearch": "Search",
+      "packages": "Packages",
+      "core": "Core",
+      "mcpServer": "MCP Server",
+      "cliPackage": "CLI",
+      "webUi": "Web UI",
+      "tui": "TUI",
+      "architecture": "Architecture",
+      "database": "Database",
+      "monorepo": "Monorepo",
+      "faq": "FAQ",
+      "troubleshooting": "Troubleshooting"
+    }
+  }
+}

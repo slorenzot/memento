@@ -1,21 +1,32 @@
 import type { Metadata } from 'next';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import './globals.css';
+import { getLocaleFromCookie } from '@/i18n/get-dictionary';
+import { getDictionary } from '@/i18n/get-dictionary';
 
-export const metadata: Metadata = {
-  title: 'Memento',
-  description: 'Persistent memory system for AI coding agents',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocaleFromCookie();
+  const dict = getDictionary(locale);
+  return {
+    title: dict.meta.title,
+    description: dict.meta.description,
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocaleFromCookie();
+  const dict = getDictionary(locale);
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body>
-        <ClientLayout>{children}</ClientLayout>
+        <ClientLayout locale={locale} dictionary={dict}>
+          {children}
+        </ClientLayout>
       </body>
     </html>
   );

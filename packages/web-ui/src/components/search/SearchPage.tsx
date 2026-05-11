@@ -4,11 +4,13 @@ import { useState, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ObservationCard } from '@/components/observations/ObservationCard';
+import { useT } from '@/i18n/translation-context';
 import type { Observation } from '@slorenzot/memento-core';
 
 const SEARCH_PAGE_SIZE = 50;
 
 export function SearchPage() {
+  const t = useT();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') ?? '';
   const [query, setQuery] = useState(initialQuery);
@@ -87,9 +89,15 @@ export function SearchPage() {
 
   const hasMore = results.length < total;
 
+  const resultsLabel = total === 1
+    ? t.searchPage.results.replace('{total}', String(total)).replace('{query}', query)
+    : t.searchPage.results.replace('{total}', String(total)).replace('{query}', query);
+
   return (
     <div className="space-y-6">
-      <h1 className="text-[20px] font-medium text-[var(--color-text-primary)]">Search</h1>
+      <h1 className="text-[20px] font-medium text-[var(--color-text-primary)]">
+        {t.searchPage.title}
+      </h1>
 
       {/* Search input */}
       <div className="flex gap-3">
@@ -98,7 +106,7 @@ export function SearchPage() {
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          placeholder="Search observations with FTS5..."
+          placeholder={t.searchPage.placeholder}
           className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2.5 text-[14px] text-[var(--color-text-primary)] placeholder:text-[var(--color-tertiary)] focus:border-[var(--color-border-strong)] focus:outline-none"
           autoFocus
         />
@@ -107,7 +115,7 @@ export function SearchPage() {
           disabled={searching || !query.trim()}
           className="rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-50 transition-colors"
         >
-          {searching ? 'Searching...' : 'Search'}
+          {searching ? t.common.searching : t.common.search}
         </button>
       </div>
 
@@ -115,14 +123,14 @@ export function SearchPage() {
       {searched && (
         <div>
           <p className="mb-3 text-[13px] text-[var(--color-tertiary)]">
-            {total} result{total !== 1 ? 's' : ''} for &ldquo;{query}&rdquo;
+            {resultsLabel}
             {hasMore && (
-              <> — showing {results.length} of {total}</>
+              <> {t.searchPage.showing.replace('{shown}', String(results.length)).replace('{total}', String(total))}</>
             )}
           </p>
           {results.length === 0 ? (
             <p className="py-8 text-center text-[14px] text-[var(--color-tertiary)]">
-              No observations found.
+              {t.searchPage.noResults}
             </p>
           ) : (
             <>
@@ -139,7 +147,7 @@ export function SearchPage() {
                     disabled={loadingMore}
                     className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-[13px] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] disabled:opacity-50 transition-colors"
                   >
-                    {loadingMore ? 'Loading...' : 'Load more'}
+                    {loadingMore ? t.common.loading : t.common.loadMore}
                   </button>
                 </div>
               )}

@@ -4,15 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, FileText, Search, Clock, Activity, X } from 'lucide-react';
 import { MementoLogo } from './MementoLogo';
+import { useT } from '@/i18n/translation-context';
 import clsx from 'clsx';
-
-const navItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/observations', label: 'Observations', icon: FileText },
-  { href: '/search', label: 'Search', icon: Search },
-  { href: '/timeline', label: 'Timeline', icon: Clock },
-  { href: '/sessions', label: 'Sessions', icon: Activity },
-];
 
 interface MobileNavProps {
   open: boolean;
@@ -21,6 +14,15 @@ interface MobileNavProps {
 
 export function MobileNav({ open, onClose }: MobileNavProps) {
   const pathname = usePathname();
+  const t = useT();
+
+  const navItems = [
+    { href: '/', label: t.nav.dashboard, icon: LayoutDashboard },
+    { href: '/observations', label: t.nav.observations, icon: FileText },
+    { href: '/search', label: t.nav.search, icon: Search },
+    { href: '/timeline', label: t.nav.timeline, icon: Clock },
+    { href: '/sessions', label: t.nav.sessions, icon: Activity },
+  ];
 
   if (!open) return null;
 
@@ -37,7 +39,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
           <button
             onClick={onClose}
             className="text-[var(--color-secondary)] hover:text-[var(--color-text-primary)]"
-            aria-label="Close menu"
+            aria-label={t.nav.closeMenu}
           >
             <X className="w-5 h-5" />
           </button>

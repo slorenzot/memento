@@ -7,6 +7,7 @@ import { Badge } from '@/components/shared/Badge';
 import { RelativeTime } from '@/components/shared/RelativeTime';
 import { MarkdownContent } from '@/components/shared/MarkdownContent';
 import { DeleteConfirmation } from '@/components/observations/DeleteConfirmation';
+import { useT } from '@/i18n/translation-context';
 import type { Observation } from '@slorenzot/memento-core';
 
 interface ObservationDetailProps {
@@ -15,6 +16,7 @@ interface ObservationDetailProps {
 
 export default function ObservationDetailPage({ observation }: ObservationDetailProps) {
   const router = useRouter();
+  const t = useT();
   const [showDelete, setShowDelete] = useState(false);
 
   return (
@@ -35,7 +37,7 @@ export default function ObservationDetailPage({ observation }: ObservationDetail
             <span>{observation.scope}</span>
             <RelativeTime date={observation.createdAt} />
             {observation.revisionCount > 0 && (
-              <span>{observation.revisionCount} revision{observation.revisionCount > 1 ? 's' : ''}</span>
+              <span>{t.common.revisions.replace('{count}', String(observation.revisionCount))}</span>
             )}
           </div>
         </div>
@@ -46,7 +48,7 @@ export default function ObservationDetailPage({ observation }: ObservationDetail
               href={`/observations/${observation.id}/edit`}
               className="rounded-full border border-[var(--color-border)] px-4 py-1.5 text-[13px] text-[var(--color-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
             >
-              Edit
+              {t.common.edit}
             </Link>
           )}
           {!observation.deletedAt && (
@@ -54,7 +56,7 @@ export default function ObservationDetailPage({ observation }: ObservationDetail
               onClick={() => setShowDelete(true)}
               className="rounded-full border border-red-200 px-4 py-1.5 text-[13px] text-red-600 hover:bg-red-50 transition-colors"
             >
-              Delete
+              {t.common.delete}
             </button>
           )}
           {observation.deletedAt && (
@@ -65,7 +67,7 @@ export default function ObservationDetailPage({ observation }: ObservationDetail
               }}
               className="rounded-full bg-green-600 px-4 py-1.5 text-[13px] text-white hover:bg-green-700 transition-colors"
             >
-              Restore
+              {t.common.restore}
             </button>
           )}
         </div>
@@ -90,7 +92,7 @@ export default function ObservationDetailPage({ observation }: ObservationDetail
       {Object.keys(observation.metadata).length > 0 && (
         <details className="rounded-lg border border-[var(--color-border)] p-4">
           <summary className="cursor-pointer text-[13px] font-medium text-[var(--color-secondary)]">
-            Metadata
+            {t.common.metadata}
           </summary>
           <pre className="mt-2 text-[12px] text-[var(--color-tertiary)]">
             {JSON.stringify(observation.metadata, null, 2)}

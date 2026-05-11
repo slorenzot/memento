@@ -1,13 +1,22 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { type Locale, LOCALE_COOKIE, DEFAULT_LOCALE } from '@/i18n/config';
 
 export type Theme = 'light' | 'dark' | 'system';
 
 interface UIState {
   sidebarCollapsed: boolean;
   theme: Theme;
+  locale: Locale;
   toggleSidebar: () => void;
   setTheme: (theme: Theme) => void;
+  setLocale: (locale: Locale) => void;
+}
+
+function syncLocaleCookie(locale: Locale) {
+  if (typeof document !== 'undefined') {
+    document.cookie = `${LOCALE_COOKIE}=${locale};path=/;max-age=${365 * 86400};samesite=lax`;
+  }
 }
 
 export const useUIStore = create<UIState>()(
@@ -15,8 +24,13 @@ export const useUIStore = create<UIState>()(
     (set) => ({
       sidebarCollapsed: false,
       theme: 'system',
+      locale: DEFAULT_LOCALE,
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setTheme: (theme) => set({ theme }),
+      setLocale: (locale) => {
+        syncLocaleCookie(locale);
+        set({ locale });
+      },
     }),
     {
       name: 'memento-ui',
@@ -24,6 +38,7 @@ export const useUIStore = create<UIState>()(
       partialize: (state) => ({
         sidebarCollapsed: state.sidebarCollapsed,
         theme: state.theme,
+        locale: state.locale,
       }),
     },
   ),
