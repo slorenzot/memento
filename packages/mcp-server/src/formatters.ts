@@ -13,6 +13,32 @@
 import type { Observation, Session, DashboardStats } from '@slorenzot/memento-core';
 import type { JournalEntry } from '@slorenzot/memento-core';
 
+// ─── Size limits by type (Issue #51) ────────────────────────
+
+const DEFAULT_LIMITS: Record<string, number> = {
+  decision: 3000,
+  bug: 2000,
+  discovery: 2000,
+  note: 5000,
+  summary: 5000,
+  learning: 2000,
+  pattern: 3000,
+  architecture: 5000,
+  config: 2000,
+  preference: 1000,
+};
+
+function formatSize(content: string, type: string): string {
+  const current = content.length;
+  const limit = DEFAULT_LIMITS[type] || 5000;
+  const pct = Math.round((current / limit) * 100);
+
+  if (pct > 80) {
+    return `Size: ${current}/${limit} chars ⚠️ NEAR LIMIT (${pct}%)`;
+  }
+  return `Size: ${current}/${limit} chars`;
+}
+
 // ─── Helpers ────────────────────────────────────────────────
 
 function compactDate(date: Date | string | null | undefined): string {
@@ -41,6 +67,7 @@ export function formatObservation(obs: Observation): string {
   meta.push(`Scope: ${obs.scope}`);
   if (obs.pinned) meta.push(`📌 Pinned`);
   if (obs.readOnly) meta.push(`🔒 Read-only`);
+  meta.push(formatSize(obs.content, obs.type));
   meta.push(`Created: ${compactDate(obs.createdAt)}`);
   meta.push(`Revision: ${obs.revisionCount}`);
   lines.push(meta.join(' | '));
