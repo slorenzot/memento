@@ -81,9 +81,10 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
       metadata: z.record(z.unknown()).optional().describe('Additional metadata'),
       scope: z.enum(['project', 'personal']).optional().describe('Scope: project (default) or personal'),
       pinned: z.boolean().optional().describe('Pin observation for always-injection in system prompt (default: false)'),
+      read_only: z.boolean().optional().describe('Mark as read-only to prevent agent modifications (default: false)'),
     },
     { title: 'Save observation', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    async ({ title, content, type, topic_key, project_id, metadata, scope, pinned }) => {
+    async ({ title, content, type, topic_key, project_id, metadata, scope, pinned, read_only }) => {
       try {
         const currentProjectId = project_id || ctx.projectId;
         let sessionId = ctx.activeSessionId;
@@ -108,6 +109,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           metadata: metadata || {},
           scope: scope as 'project' | 'personal' | undefined,
           pinned: pinned || false,
+          readOnly: read_only || false,
         });
 
         return {
@@ -411,6 +413,46 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         const obs = await ctx.engine.unpinObservation(id);
         return {
           content: [{ type: 'text', text: `Observation #${obs.id} "${obs.title}" unpinned` }],
+        };
+      } catch (error: unknown) {
+        return handleToolError(error, ctx);
+      }
+    }
+  );
+
+  // ─── Lock / Unlock (read-only protection) ────────────────────
+
+  server.tool(
+    'mem_lock',
+    'Lock an observation as read-only. Prevents the agent from modifying or deleting it. Only the user can unlock via CLI. Returns: human-readable confirmation.',
+    {
+      id: z.number().describe('Observation ID to lock'),
+    },
+    { title: 'Lock observation', readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    async ({ id }) => {
+      try {
+        const obs = await ctx.engine.lockObservation(id);
+        return {
+          content: [{ type: 'text', text: `Observation #${obs.id} "${obs.title}" locked (read-only)` }],
+        };
+      } catch (error: unknown) {
+        return handleToolError(error, ctx);
+      }
+    }
+  );
+
+  server.tool(
+    'mem_unlock',
+    'Unlock a read-only observation. Allows modifications again. Returns: human-readable confirmation.',
+    {
+      id: z.number().describe('Observation ID to unlock'),
+    },
+    { title: 'Unlock observation', readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    async ({ id }) => {
+      try {
+        const obs = await ctx.engine.unlockObservation(id);
+        return {
+          content: [{ type: 'text', text: `Observation #${obs.id} "${obs.title}" unlocked` }],
         };
       } catch (error: unknown) {
         return handleToolError(error, ctx);
@@ -821,6 +863,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
               'mem_save', 'mem_search', 'mem_get_observation', 'mem_update',
               'mem_delete', 'mem_merge', 'mem_export',
               'mem_pin', 'mem_unpin',
+              'mem_lock', 'mem_unlock',
               'mem_session_start', 'mem_session_end', 'mem_session_summary',
               'mem_context', 'mem_capture_passive', 'mem_status',
               'mem_journal_write', 'mem_journal_read', 'mem_journal_search',

@@ -40,6 +40,7 @@ export function formatObservation(obs: Observation): string {
   if (obs.topicKey) meta.push(`Topic: ${obs.topicKey}`);
   meta.push(`Scope: ${obs.scope}`);
   if (obs.pinned) meta.push(`📌 Pinned`);
+  if (obs.readOnly) meta.push(`🔒 Read-only`);
   meta.push(`Created: ${compactDate(obs.createdAt)}`);
   meta.push(`Revision: ${obs.revisionCount}`);
   lines.push(meta.join(' | '));

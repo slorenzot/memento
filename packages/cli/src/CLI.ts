@@ -192,6 +192,24 @@ export class CLI {
         console.log(`Observation #${obs.id} "${obs.title}" unpinned`);
       });
 
+    // ─── Lock / Unlock commands ──────────────────────────────
+
+    this.program
+      .command('lock <id>')
+      .description('Lock an observation as read-only')
+      .action(async (id) => {
+        const obs = await this.memory.lockObservation(parseInt(id));
+        console.log(`🔒 Observation #${obs.id} "${obs.title}" locked (read-only)`);
+      });
+
+    this.program
+      .command('unlock <id>')
+      .description('Unlock a read-only observation')
+      .action(async (id) => {
+        const obs = await this.memory.unlockObservation(parseInt(id));
+        console.log(`Observation #${obs.id} "${obs.title}" unlocked`);
+      });
+
     // ─── Embedding commands ──────────────────────────────────
 
     this.program

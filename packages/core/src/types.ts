@@ -12,6 +12,7 @@ export interface Observation {
   metadata: Record<string, unknown>;
   scope: 'project' | 'personal';
   pinned: boolean;
+  readOnly: boolean;
   revisionCount: number;
   duplicatesCount?: number;
 }

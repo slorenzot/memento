@@ -96,7 +96,7 @@ export interface TestSetup {
 }
 
 /**
- * Create a McpServer with all 18 tools registered,
+ * Create a McpServer with all 20 tools registered,
  * backed by a temporary SQLite database.
  */
 export function createTestSetup(): TestSetup {
