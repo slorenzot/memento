@@ -623,17 +623,19 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
   server.tool(
     'mem_context',
-    'Get recent observations for context recovery — what was done before compaction or in previous sessions. Unlike mem_search, this does NOT use FTS5, returns observations ordered by created_at DESC with session metadata. Returns: human-readable Markdown with recent observation list.',
+    'Get recent observations for context recovery — what was done before compaction or in previous sessions. Unlike mem_search, this does NOT use FTS5, returns observations ordered by created_at DESC with session metadata. Use `scope` to filter personal vs project observations. Returns: human-readable Markdown with recent observation list.',
     {
       project_id: z.string().optional().describe('Filter by project identifier'),
       limit: z.number().optional().describe('Max results (default: 20)'),
+      scope: z.enum(['project', 'personal']).optional().describe('Filter by scope: personal (user preferences, cross-project) or project (codebase-specific)'),
     },
     { title: 'Get recent context', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    async ({ project_id, limit }) => {
+    async ({ project_id, limit, scope }) => {
       try {
         const result = await ctx.engine.getRecentContext({
           projectId: project_id,
           limit: limit || 20,
+          scope: scope as 'project' | 'personal' | undefined,
         });
 
         return {
