@@ -2,15 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  LayoutDashboard,
-  FileText,
-  Search,
-  Clock,
-  Activity,
-  Brain,
-  X,
-} from 'lucide-react';
+import { LayoutDashboard, FileText, Search, Clock, Activity, X } from 'lucide-react';
+import { MementoLogo } from './MementoLogo';
 import clsx from 'clsx';
 
 const navItems = [
@@ -40,10 +33,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
       <div className="absolute inset-y-0 left-0 w-[240px] bg-[var(--color-bg)] border-r border-[var(--color-border)] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between h-14 px-4 border-b border-[var(--color-border)]">
-          <div className="flex items-center gap-3">
-            <Brain className="w-5 h-5 text-[var(--color-text-primary)]" />
-            <span className="text-[14px] font-medium text-[var(--color-text-primary)]">Memento</span>
-          </div>
+          <MementoLogo size={110} collapsed={false} />
           <button
             onClick={onClose}
             className="text-[var(--color-secondary)] hover:text-[var(--color-text-primary)]"
@@ -56,8 +46,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
         {/* Navigation */}
         <nav className="flex-1 py-4 px-2 space-y-1">
           {navItems.map(({ href, label, icon: Icon }) => {
-            const isActive =
-              href === '/' ? pathname === '/' : pathname.startsWith(href);
+            const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href);
             return (
               <Link
                 key={href}
@@ -67,7 +56,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                   'flex items-center gap-3 rounded-[var(--radius-xl)] px-3 py-2 text-[14px] transition-colors',
                   isActive
                     ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] font-medium'
-                    : 'text-[var(--color-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
+                    : 'text-[var(--color-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]'
                 )}
               >
                 <Icon className="w-[18px] h-[18px] shrink-0" />
