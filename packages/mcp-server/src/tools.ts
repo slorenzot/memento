@@ -576,6 +576,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           projectId: project_id,
           endedAt: null,
           metadata: metadata || {},
+          seedIfEmpty: true,
         });
         ctx.activeSessionId = session.id;
 
