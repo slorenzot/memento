@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Badge } from '@/components/shared/Badge';
 import { RelativeTime } from '@/components/shared/RelativeTime';
+import { MarkdownContent } from '@/components/shared/MarkdownContent';
 import { DeleteConfirmation } from '@/components/observations/DeleteConfirmation';
 import type { Observation } from '@slorenzot/memento-core';
 
@@ -82,9 +83,7 @@ export default function ObservationDetailPage({ observation }: ObservationDetail
 
       {/* Content */}
       <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-6">
-        <pre className="whitespace-pre-wrap font-sans text-[14px] leading-relaxed text-[var(--color-text-primary)]">
-          {observation.content}
-        </pre>
+        <MarkdownContent content={observation.content} />
       </div>
 
       {/* Metadata */}
