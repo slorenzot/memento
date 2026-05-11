@@ -255,6 +255,55 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     }
   );
 
+  // ─── Replace (surgical edits) ────────────────────────────────
+
+  server.tool(
+    'mem_replace',
+    'Replace a substring within an observation content without requiring the full content. More token-efficient than mem_update for small changes. Respects read-only protection. Returns: human-readable confirmation.',
+    {
+      id: z.number().describe('Observation ID to modify'),
+      old_text: z.string().describe('Exact substring to find (must be unique in content)'),
+      new_text: z.string().describe('Replacement text'),
+    },
+    { title: 'Replace text in observation', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    async ({ id, old_text, new_text }) => {
+      try {
+        const obs = await ctx.engine.getObservation(id);
+        if (!obs) throw new Error(`Observation ${id} not found`);
+        if (obs.readOnly) {
+          return {
+            content: [{ type: 'text', text: `Observation #${id} is read-only. Cannot modify.` }],
+          };
+        }
+
+        const content = obs.content;
+        const index = content.indexOf(old_text);
+        if (index === -1) {
+          return {
+            content: [{ type: 'text', text: `Text not found in observation #${id}. No changes made.` }],
+          };
+        }
+
+        // Check for multiple occurrences
+        const secondIndex = content.indexOf(old_text, index + 1);
+        if (secondIndex !== -1) {
+          return {
+            content: [{ type: 'text', text: `Found multiple occurrences of the text in observation #${id}. Provide a more specific (longer) substring to uniquely identify the replacement target.` }],
+          };
+        }
+
+        const newContent = content.slice(0, index) + new_text + content.slice(index + old_text.length);
+        await ctx.engine.updateObservation(id, { content: newContent });
+
+        return {
+          content: [{ type: 'text', text: `Replaced text in observation #${id} "${obs.title}" (${old_text.length} → ${new_text.length} chars)` }],
+        };
+      } catch (error: unknown) {
+        return handleToolError(error, ctx);
+      }
+    }
+  );
+
   // ─── Delete / Restore / Purge (consolidated) ─────────────────
 
   server.tool(
@@ -860,7 +909,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
               bunVersion: (process as { versions?: { bun?: string } }).versions?.bun || 'unknown',
             },
             tools: [
-              'mem_save', 'mem_search', 'mem_get_observation', 'mem_update',
+              'mem_save', 'mem_search', 'mem_get_observation',               'mem_update', 'mem_replace',
               'mem_delete', 'mem_merge', 'mem_export',
               'mem_pin', 'mem_unpin',
               'mem_lock', 'mem_unlock',
