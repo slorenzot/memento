@@ -1,27 +1,61 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { MemoryEngine, loadConfig, resolveDbPath, getProjectId } from '@slorenzot/memento-core';
-import type { Observation, ExportFormat } from '@slorenzot/memento-core';
-import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync } from 'fs';
-import { join, dirname } from 'path';
+import { MemoryEngine, loadConfig, resolveDbPath, getProjectId, createConfig, migrateConfig, findConfigPath, NEW_CONFIG_DIR } from '@slorenzot/memento-core';
+import type { Observation, ExportFormat, CreateConfigResult, MigrateConfigResult } from '@slorenzot/memento-core';
+import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, writeFileSync, readFileSync, appendFileSync } from 'fs';
+import { join, dirname, basename } from 'path';
 import { homedir } from 'os';
 
-const config = loadConfig();
-const dbPath = resolveDbPath(config);
-const projectId = getProjectId(config);
-const memory = new MemoryEngine(dbPath);
-if (memory.isHealthy()) {
-  console.error(`✓ Database initialized successfully at: ${dbPath}`);
-} else {
-  const initError = memory.getInitError();
-  console.error(`✗ Failed to initialize database at ${dbPath}:`, initError?.message);
-}
+// ─── Lazy Memory Initialization ────────────────────────────
+// MemoryEngine is NOT constructed at module scope so that
+// `memento init` can run before any DB exists.
+
+let _memory: MemoryEngine | null = null;
+let _config: ReturnType<typeof loadConfig> | null = null;
+let _dbPath: string | null = null;
+let _projectId: string | null = null;
 let activeSessionId: number | null = null;
+
+function getConfig(): ReturnType<typeof loadConfig> {
+  if (!_config) _config = loadConfig();
+  return _config;
+}
+
+function getDbPath(): string {
+  if (!_dbPath) _dbPath = resolveDbPath(getConfig());
+  return _dbPath;
+}
+
+function getProjectIdCached(): string {
+  if (!_projectId) _projectId = getProjectId(getConfig());
+  return _projectId;
+}
+
+function getMemory(): MemoryEngine {
+  if (!_memory) {
+    _memory = new MemoryEngine(getDbPath());
+    if (_memory.isHealthy()) {
+      console.error(`✓ Database initialized at: ${getDbPath()}`);
+    } else {
+      const initError = _memory.getInitError();
+      console.error(`✗ Failed to initialize database at ${getDbPath()}:`, initError?.message);
+    }
+  }
+  return _memory;
+}
+
+function resetState(): void {
+  _config = null;
+  _dbPath = null;
+  _projectId = null;
+  _memory = null;
+  activeSessionId = null;
+}
 
 async function getOrCreateSessionId(projectId: string): Promise<number> {
   if (activeSessionId) return activeSessionId;
-  const session = await memory.createSession({ projectId, endedAt: null, metadata: {} });
+  const session = await getMemory().createSession({ projectId, endedAt: null, metadata: {} });
   activeSessionId = session.id;
   return session.id;
 }
@@ -42,7 +76,7 @@ program
   .option('--limit <number>', 'Limit results')
   .option('--include-deleted', 'Include soft-deleted observations')
   .action(async (query: string, options: any) => {
-    const result = await memory.search({
+    const result = await getMemory().search({
       query,
       type: options.type,
       projectId: options.project,
@@ -56,7 +90,7 @@ program
         `  [${obs.type}] ${obs.title}${deleted}\n    ${obs.content.substring(0, 100)}...`
       );
     });
-    memory.close();
+    getMemory().close();
   });
 
 // ─── Save ───────────────────────────────────────────────────
@@ -66,10 +100,10 @@ program
   .description('Save an observation')
   .option('-t, --type <type>', 'Observation type', 'note')
   .option('-k, --topic <topic>', 'Topic key')
-  .option('-p, --project <project>', 'Project ID', projectId)
+  .option('-p, --project <project>', 'Project ID', getProjectIdCached())
   .action(async (title: string, content: string, options: any) => {
     const sessionId = await getOrCreateSessionId(options.project);
-    const observation = await memory.createObservation({
+    const observation = await getMemory().createObservation({
       sessionId,
       title,
       content,
@@ -79,7 +113,7 @@ program
       metadata: {},
     });
     console.log(`Saved observation: ${observation.uuid}`);
-    memory.close();
+    getMemory().close();
   });
 
 // ─── Get ────────────────────────────────────────────────────
@@ -88,16 +122,16 @@ program
   .command('get <id>')
   .description('Get observation by ID')
   .action(async (id: string) => {
-    const observation = await memory.getObservation(parseInt(id));
+    const observation = await getMemory().getObservation(parseInt(id));
     if (!observation) {
       console.error('Observation not found');
-      memory.close();
+      getMemory().close();
       return;
     }
     console.log(
       `[${observation.type}] ${observation.title}\n${observation.content}\nTopic: ${observation.topicKey || 'none'}\nCreated: ${observation.createdAt.toISOString()}`
     );
-    memory.close();
+    getMemory().close();
   });
 
 // ─── Update ─────────────────────────────────────────────────
@@ -113,9 +147,9 @@ program
     if (options.title) updates.title = options.title;
     if (options.content) updates.content = options.content;
     if (options.topic) updates.topicKey = options.topic;
-    const observation = await memory.updateObservation(parseInt(id), updates);
+    const observation = await getMemory().updateObservation(parseInt(id), updates);
     console.log(`Updated observation: ${observation.uuid}`);
-    memory.close();
+    getMemory().close();
   });
 
 // ─── Delete (soft) ──────────────────────────────────────────
@@ -125,11 +159,11 @@ program
   .description('Soft-delete observation (can be restored)')
   .option('-r, --reason <reason>', 'Reason for deletion')
   .action(async (id: string, options: any) => {
-    await memory.deleteObservation(parseInt(id), options.reason);
+    await getMemory().deleteObservation(parseInt(id), options.reason);
     console.log(
       `Soft-deleted observation ${id} (use 'restore' to undo, 'purge' to permanently delete)`
     );
-    memory.close();
+    getMemory().close();
   });
 
 // ─── Restore ────────────────────────────────────────────────
@@ -138,9 +172,9 @@ program
   .command('restore <id>')
   .description('Restore a soft-deleted observation')
   .action(async (id: string) => {
-    const obs = await memory.restoreObservation(parseInt(id));
+    const obs = await getMemory().restoreObservation(parseInt(id));
     console.log(`Restored observation: ${obs.uuid} — "${obs.title}"`);
-    memory.close();
+    getMemory().close();
   });
 
 // ─── Purge ──────────────────────────────────────────────────
@@ -154,16 +188,16 @@ program
     if (!options.yes) {
       console.error('⚠️  This will PERMANENTLY delete all soft-deleted observations.');
       console.error('   Use --yes to confirm.');
-      memory.close();
+      getMemory().close();
       return;
     }
 
-    const result = await memory.purgeObservations({ projectId: options.project });
+    const result = await getMemory().purgeObservations({ projectId: options.project });
     console.log(`Purged ${result.purgedCount} observations permanently.`);
     if (result.purgedIds.length > 0) {
       console.log(`IDs: ${result.purgedIds.join(', ')}`);
     }
-    memory.close();
+    getMemory().close();
   });
 
 // ─── List Deleted ───────────────────────────────────────────
@@ -174,7 +208,7 @@ program
   .option('-p, --project <project>', 'Filter by project')
   .option('-l, --limit <number>', 'Limit results', '20')
   .action(async (options: any) => {
-    const result = await memory.listDeleted({
+    const result = await getMemory().listDeleted({
       projectId: options.project,
       limit: parseInt(options.limit),
     });
@@ -182,7 +216,7 @@ program
     result.observations.forEach((obs: Observation) => {
       console.log(`  [#${obs.id}] ${obs.title} — deleted: ${obs.deletedAt?.toISOString()}`);
     });
-    memory.close();
+    getMemory().close();
   });
 
 // ─── Merge ──────────────────────────────────────────────────
@@ -195,7 +229,7 @@ program
   .option('-k, --topic <topic>', 'Merge only this topic key')
   .option('--dry-run', 'Preview candidates without executing')
   .action(async (options: any) => {
-    const results = await memory.mergeObservations({
+    const results = await getMemory().mergeObservations({
       projectId: options.project,
       topicKey: options.topic,
       strategy: options.strategy,
@@ -218,7 +252,7 @@ program
       console.log('  No candidates found for merging.');
     }
 
-    memory.close();
+    getMemory().close();
   });
 
 // ─── Export ─────────────────────────────────────────────────
@@ -235,7 +269,7 @@ program
   .option('--include-deleted', 'Include soft-deleted observations')
   .option('-o, --output <file>', 'Output file path (default: stdout)')
   .action(async (options: any) => {
-    const result = await memory.exportObservations({
+    const result = await getMemory().exportObservations({
       format: options.format as ExportFormat,
       projectId: options.project,
       type: options.type,
@@ -255,7 +289,7 @@ program
       console.log(result.content);
     }
 
-    memory.close();
+    getMemory().close();
   });
 
 // ─── Timeline ───────────────────────────────────────────────
@@ -265,12 +299,12 @@ program
   .description('Show timeline')
   .option('-l, --limit <number>', 'Limit results', '20')
   .action(async (project: string, options: any) => {
-    const result = await memory.search({ projectId: project, limit: parseInt(options.limit) });
+    const result = await getMemory().search({ projectId: project, limit: parseInt(options.limit) });
     console.log(`Timeline (${result.total} observations):`);
     result.observations.forEach((obs: Observation) => {
       console.log(`  ${obs.createdAt.toLocaleDateString()} [${obs.type}] ${obs.title}`);
     });
-    memory.close();
+    getMemory().close();
   });
 
 // ─── Stats ──────────────────────────────────────────────────
@@ -279,8 +313,8 @@ program
   .command('stats')
   .description('Show statistics')
   .action(async () => {
-    const result = await memory.search({});
-    const deleted = await memory.listDeleted({});
+    const result = await getMemory().search({});
+    const deleted = await getMemory().listDeleted({});
     const byType: Record<string, number> = {};
     result.observations.forEach((obs: Observation) => {
       byType[obs.type] = (byType[obs.type] || 0) + 1;
@@ -292,7 +326,7 @@ program
     Object.entries(byType).forEach(([type, count]) => {
       console.log(`    ${type}: ${count}`);
     });
-    memory.close();
+    getMemory().close();
   });
 
 // ─── Install Skill ──────────────────────────────────────────
@@ -433,10 +467,12 @@ program
   .command('status')
   .description('Quick health check and executive summary')
   .action(async () => {
-    const healthy = memory.isHealthy();
-    const dbSize = getDbSize(dbPath);
-    const dashboard = healthy ? await memory.getDashboardStats() : null;
-    const initError = memory.getInitError();
+    const mem = getMemory();
+    const healthy = mem.isHealthy();
+    const currentDbPath = getDbPath();
+    const dbSize = getDbSize(currentDbPath);
+    const dashboard = healthy ? await mem.getDashboardStats() : null;
+    const initError = mem.getInitError();
 
     const W = 42;
     const line = (s: string) => `│ ${s.padEnd(W - 2)}│`;
@@ -451,8 +487,8 @@ program
       console.log(line(`Error:      ${initError.message.substring(0, W - 14)}`));
     }
 
-    console.log(line(`Path:       ${dbPath}`));
-    console.log(line(`Project:    ${projectId}`));
+    console.log(line(`Path:       ${currentDbPath}`));
+    console.log(line(`Project:    ${getProjectIdCached()}`));
 
     if (dashboard) {
       console.log(line(`Session:    ${dashboard.activeSessions > 0 ? `#${dashboard.activeSessions} (active)` : 'none'}`));
@@ -475,7 +511,7 @@ program
     console.log(line(`DB size:    ${dbSize}`));
     console.log(border('╰', '╯'));
 
-    memory.close();
+    mem.close();
   });
 
 // ─── Recents ────────────────────────────────────────────────
@@ -492,7 +528,7 @@ program
     const limit = parseInt(options.limit);
     const since = new Date(Date.now() - hours * 3600000);
 
-    const result = await memory.search({
+    const result = await getMemory().search({
       projectId: options.project,
       type: options.type,
       limit,
@@ -525,7 +561,182 @@ program
     console.log(border('╰', '╯'));
     console.log(`  Showing ${observations.length} of ${result.total} total observations.`);
 
-    memory.close();
+    getMemory().close();
   });
+
+// ─── Init ──────────────────────────────────────────────────
+
+program
+  .command('init [path]')
+  .description('Initialize Memento for a project (config, database, seed observations)')
+  .option('--project <name>', 'Project identifier (default: directory or package name)')
+  .option('--db <path>', 'Database path (default: .memento/memento.db)')
+  .option('--no-seed', 'Skip seed observations')
+  .option('--force', 'Overwrite existing config')
+  .option('--migrate', 'Migrate from .mementorc to .memento/config.json')
+  .option('--global', 'Create global config in ~/.memento/')
+  .action(async (path: string | undefined, options: any) => {
+    const targetDir = path ? join(process.cwd(), path) : process.cwd();
+    const seed = options.seed !== false; // --no-seed → options.seed = false
+    const steps: { label: string; status: 'ok' | 'skip' | 'error'; detail?: string }[] = [];
+
+    // ── Step 0: --migrate mode ──────────────────────────────
+    if (options.migrate) {
+      if (options.global) {
+        console.error('Cannot use --migrate with --global');
+        process.exit(1);
+      }
+
+      const result = migrateConfig(targetDir);
+      if (!result.success) {
+        console.error(`Migration failed: ${result.error}`);
+        process.exit(1);
+      }
+
+      steps.push({ label: 'Migrated .mementorc → .memento/config.json', status: 'ok' });
+      steps.push({ label: `Backup: ${result.backupPath}`, status: 'ok', detail: result.backupPath });
+      steps.push({ label: `Project: ${result.config.project}`, status: 'ok' });
+      steps.push({ label: `Database: ${result.config.database.path}`, status: 'ok' });
+
+      printInitSummary(steps, targetDir, options.global);
+      return;
+    }
+
+    // ── Step 1: Create config ───────────────────────────────
+    try {
+      const result = createConfig({
+        project: options.project,
+        dbPath: options.db,
+        targetDir: options.global ? undefined : targetDir,
+        force: options.force,
+        global: options.global,
+      });
+
+      steps.push({ label: `Config: ${result.configPath}`, status: 'ok' });
+
+      if (result.migrated) {
+        steps.push({ label: 'Migrated settings from .mementorc', status: 'ok' });
+      }
+
+      // ── Step 2: Initialize database ───────────────────────
+      const dbDir = dirname(result.dbPath);
+      mkdirSync(dbDir, { recursive: true });
+      const engine = new MemoryEngine(result.dbPath);
+
+      if (engine.isHealthy()) {
+        steps.push({ label: `Database: ${result.dbPath}`, status: 'ok' });
+      } else {
+        const err = engine.getInitError();
+        steps.push({ label: `Database: ${result.dbPath}`, status: 'error', detail: err?.message });
+      }
+
+      // ── Step 3: Seed observations ─────────────────────────
+      if (seed && engine.isHealthy()) {
+        const projectName = options.project || basename(targetDir);
+        const session = await engine.createSession({
+          projectId: projectName,
+          endedAt: null,
+          metadata: { source: 'memento-init' },
+          seedIfEmpty: true,
+        });
+        await engine.endSession(session.id);
+
+        // Check how many seeds were created
+        const searchResult = await engine.search({ projectId: projectName, limit: 10 });
+        const seedCount = searchResult.observations.filter(
+          (obs: Observation) => obs.metadata?.seed === true
+        ).length;
+
+        if (seedCount > 0) {
+          steps.push({ label: `Seeded ${seedCount} observations`, status: 'ok' });
+        } else {
+          steps.push({ label: 'Seeded observations (project already has data)', status: 'skip' });
+        }
+      } else if (!seed) {
+        steps.push({ label: 'Seed observations', status: 'skip', detail: '--no-seed' });
+      }
+
+      engine.close();
+
+      // ── Step 4: Update .gitignore ─────────────────────────
+      if (!options.global) {
+        const gitignorePath = join(targetDir, '.gitignore');
+        const mementoEntry = NEW_CONFIG_DIR + '/';
+        const dbEntry = '*.db';
+
+        let gitignoreContent = '';
+        if (existsSync(gitignorePath)) {
+          gitignoreContent = readFileSync(gitignorePath, 'utf-8');
+        }
+
+        const entriesToAdd: string[] = [];
+        if (!gitignoreContent.split('\n').some(line => line.trim() === mementoEntry)) {
+          entriesToAdd.push(mementoEntry);
+        }
+        if (!gitignoreContent.split('\n').some(line => line.trim() === dbEntry)) {
+          entriesToAdd.push(dbEntry);
+        }
+
+        if (entriesToAdd.length > 0) {
+          const addition = (gitignoreContent.endsWith('\n') ? '' : '\n') +
+            '\n# Memento\n' +
+            entriesToAdd.join('\n') + '\n';
+          appendFileSync(gitignorePath, addition, 'utf-8');
+          steps.push({ label: `.gitignore updated (${entriesToAdd.length} entries)`, status: 'ok' });
+        } else {
+          steps.push({ label: '.gitignore already up to date', status: 'skip' });
+        }
+      }
+
+      printInitSummary(steps, targetDir, options.global);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`\n  ✗ Init failed: ${message}`);
+      process.exit(1);
+    }
+  });
+
+function printInitSummary(
+  steps: { label: string; status: 'ok' | 'skip' | 'error'; detail?: string }[],
+  targetDir: string,
+  isGlobal: boolean
+): void {
+  console.log('');
+  const W = 54;
+  const lr = '│';
+  const line = (s: string) => `  ${lr} ${s.padEnd(W - 2)}${lr}`;
+  const border = (l: string, r: string) => '  ' + l + '─'.repeat(W - 2) + r;
+
+  console.log(border('╭', '╮'));
+  console.log(line('MEMENTO INIT' + (isGlobal ? ' (global)' : '')));
+  console.log(border('├', '┤'));
+  console.log(line(`Directory: ${targetDir.substring(0, W - 14)}`));
+  console.log(border('├', '┤'));
+
+  for (const step of steps) {
+    const icon = step.status === 'ok' ? '✓' : step.status === 'skip' ? '⊘' : '✗';
+    const text = step.detail
+      ? `${icon} ${step.label} (${step.detail})`
+      : `${icon} ${step.label}`;
+    // Truncate to fit box width
+    const truncated = text.length > W - 4 ? text.substring(0, W - 5) + '…' : text;
+    console.log(line(truncated));
+  }
+
+  // Setup instructions
+  console.log(border('├', '┤'));
+  console.log(line('Ready! Add to opencode.json:'));
+  console.log(line(''));
+  console.log(line('  "mcp": {'));
+  console.log(line('    "servers": {'));
+  console.log(line('      "memento": {'));
+  console.log(line('        "command": "bun",'));
+  console.log(line('        "args": ["run", "mcp"]'));
+  console.log(line('      }'));
+  console.log(line('    }'));
+  console.log(line('  }'));
+  console.log(border('╰', '╯'));
+  console.log('');
+}
 
 program.parseAsync(process.argv);

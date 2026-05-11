@@ -1,7 +1,10 @@
-import { readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
+import { readFileSync, writeFileSync, existsSync, renameSync, mkdirSync } from 'fs';
+import { join, dirname, basename } from 'path';
 import { homedir } from 'os';
 
+// ─── Config Interfaces ─────────────────────────────────────
+
+/** Legacy flat config format (.mementorc) */
 export interface MementoConfig {
   storageMethod?: 'database' | 'storage';
   dbPath?: string;
@@ -9,14 +12,64 @@ export interface MementoConfig {
   projectId?: string;
 }
 
+/** New structured config format (.memento/config.json) */
+export interface MementoConfigV1 {
+  version: 1;
+  project: string;
+  database: {
+    path: string;
+    wal?: boolean;
+  };
+  defaults?: {
+    autoSeed?: boolean;
+    scope?: 'project' | 'personal';
+  };
+}
+
+/** Options for creating a new config */
+export interface CreateConfigOptions {
+  project?: string;
+  dbPath?: string;
+  targetDir?: string;
+  force?: boolean;
+  global?: boolean;
+}
+
+/** Result of config creation */
+export interface CreateConfigResult {
+  configPath: string;
+  dbPath: string;
+  projectDir: string;
+  migrated: boolean;
+  backupPath?: string;
+}
+
+/** Result of config migration */
+export interface MigrateConfigResult {
+  success: boolean;
+  sourcePath: string;
+  targetPath: string;
+  backupPath: string;
+  config: MementoConfigV1;
+  error?: string;
+}
+
+// ─── Constants ──────────────────────────────────────────────
+
 const DEFAULT_CONFIG: MementoConfig = {
   storageMethod: 'database',
   dbPath: '.memento/db/memento.db',
   storagePath: 'database/storage',
 };
 
-const GLOBAL_CONFIG_PATH = join(homedir(), '.memento', 'config');
-const LOCAL_CONFIG_FILE = '.mementorc';
+const LEGACY_CONFIG_FILE = '.mementorc';
+const NEW_CONFIG_DIR = '.memento';
+const NEW_CONFIG_FILE = 'config.json';
+const GLOBAL_CONFIG_DIR = join(homedir(), '.memento');
+const GLOBAL_CONFIG_FILE = 'config.json';
+const GLOBAL_CONFIG_PATH = join(GLOBAL_CONFIG_DIR, GLOBAL_CONFIG_FILE);
+
+// ─── Internal Helpers ───────────────────────────────────────
 
 function loadJSONFile<T>(path: string): T | null {
   if (!existsSync(path)) {
@@ -31,16 +84,53 @@ function loadJSONFile<T>(path: string): T | null {
   }
 }
 
+function isConfigV1(config: unknown): config is MementoConfigV1 {
+  return (
+    typeof config === 'object' &&
+    config !== null &&
+    (config as MementoConfigV1).version === 1 &&
+    typeof (config as MementoConfigV1).project === 'string' &&
+    typeof (config as MementoConfigV1).database?.path === 'string'
+  );
+}
+
+function deriveProjectName(dir: string): string {
+  // Try package.json first
+  const packageJsonPath = join(dir, 'package.json');
+  const packageJson = loadJSONFile<{ name?: string }>(packageJsonPath);
+  if (packageJson?.name) {
+    // Strip @scope/ prefix
+    return packageJson.name.replace(/^@[^/]+\//, '');
+  }
+  // Fall back to directory name
+  return basename(dir);
+}
+
+// ─── Config Discovery ──────────────────────────────────────
+
+/**
+ * Find project config searching upward from startDir.
+ * Priority: .memento/config.json → .mementorc (legacy)
+ */
 export function findProjectConfig(startDir: string = process.cwd()): MementoConfig | null {
   let currentDir = startDir;
   const maxDepth = 10;
   let depth = 0;
 
   while (depth < maxDepth) {
-    const configPath = join(currentDir, LOCAL_CONFIG_FILE);
+    // New format first: .memento/config.json
+    const newConfigPath = join(currentDir, NEW_CONFIG_DIR, NEW_CONFIG_FILE);
+    if (existsSync(newConfigPath)) {
+      const config = loadJSONFile<MementoConfigV1>(newConfigPath);
+      if (isConfigV1(config)) {
+        return configV1ToLegacy(config, currentDir);
+      }
+    }
 
-    if (existsSync(configPath)) {
-      const config = loadJSONFile<MementoConfig>(configPath);
+    // Legacy format: .mementorc
+    const legacyConfigPath = join(currentDir, LEGACY_CONFIG_FILE);
+    if (existsSync(legacyConfigPath)) {
+      const config = loadJSONFile<MementoConfig>(legacyConfigPath);
       if (config) {
         return config;
       }
@@ -59,6 +149,33 @@ export function findProjectConfig(startDir: string = process.cwd()): MementoConf
   return null;
 }
 
+/**
+ * Find the raw config path (new or legacy format).
+ * Returns the absolute path to the config file found.
+ */
+export function findConfigPath(startDir: string = process.cwd()): string | null {
+  let currentDir = startDir;
+  const maxDepth = 10;
+  let depth = 0;
+
+  while (depth < maxDepth) {
+    const newConfigPath = join(currentDir, NEW_CONFIG_DIR, NEW_CONFIG_FILE);
+    if (existsSync(newConfigPath)) return newConfigPath;
+
+    const legacyConfigPath = join(currentDir, LEGACY_CONFIG_FILE);
+    if (existsSync(legacyConfigPath)) return legacyConfigPath;
+
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) break;
+    currentDir = parentDir;
+    depth++;
+  }
+
+  return null;
+}
+
+// ─── Config Loading ─────────────────────────────────────────
+
 export function loadConfig(): MementoConfig {
   let config: MementoConfig = { ...DEFAULT_CONFIG };
 
@@ -72,6 +189,7 @@ export function loadConfig(): MementoConfig {
     config = { ...config, ...globalConfig };
   }
 
+  // Environment variable overrides
   if (process.env.MEMENTO_STORAGE_METHOD) {
     config.storageMethod = process.env.MEMENTO_STORAGE_METHOD as 'database' | 'storage';
   }
@@ -90,6 +208,8 @@ export function loadConfig(): MementoConfig {
 
   return config;
 }
+
+// ─── Path Resolution ────────────────────────────────────────
 
 export function resolveStoragePath(config: MementoConfig): string {
   const storagePath = config.storagePath || DEFAULT_CONFIG.storagePath!;
@@ -129,3 +249,170 @@ export function getProjectId(config: MementoConfig): string {
 
   return packageJson?.name || 'default';
 }
+
+// ─── Config V1 ↔ Legacy Conversion ─────────────────────────
+
+function configV1ToLegacy(v1: MementoConfigV1, _configDir: string): MementoConfig {
+  return {
+    storageMethod: 'database',
+    dbPath: v1.database.path,
+    projectId: v1.project,
+  };
+}
+
+function legacyToConfigV1(legacy: MementoConfig, projectDir: string): MementoConfigV1 {
+  return {
+    version: 1,
+    project: legacy.projectId || deriveProjectName(projectDir),
+    database: {
+      path: legacy.dbPath || join('.memento', 'memento.db'),
+      wal: true,
+    },
+    defaults: {
+      autoSeed: true,
+      scope: 'project',
+    },
+  };
+}
+
+// ─── Config Creation ────────────────────────────────────────
+
+/**
+ * Create a new config file (.memento/config.json or global).
+ * Returns the result with paths and whether migration occurred.
+ */
+export function createConfig(options: CreateConfigOptions = {}): CreateConfigResult {
+  const {
+    project,
+    dbPath,
+    targetDir,
+    force = false,
+    global = false,
+  } = options;
+
+  const resolvedDir = global
+    ? GLOBAL_CONFIG_DIR
+    : (targetDir || process.cwd());
+
+  const configDir = global
+    ? GLOBAL_CONFIG_DIR
+    : join(resolvedDir, NEW_CONFIG_DIR);
+
+  const configPath = join(configDir, NEW_CONFIG_FILE);
+
+  // Check existing config
+  if (!force && existsSync(configPath)) {
+    throw new Error(`Config already exists at ${configPath}. Use --force to overwrite.`);
+  }
+
+  // Check for legacy config to migrate
+  let migrated = false;
+  let backupPath: string | undefined;
+  const legacyPath = join(resolvedDir, LEGACY_CONFIG_FILE);
+
+  let projectName = project || deriveProjectName(resolvedDir);
+  let resolvedDbPath = dbPath || join(NEW_CONFIG_DIR, 'memento.db');
+
+  // If migrating from legacy config
+  if (!global && existsSync(legacyPath)) {
+    const legacyConfig = loadJSONFile<MementoConfig>(legacyPath);
+    if (legacyConfig) {
+      if (!project) projectName = legacyConfig.projectId || projectName;
+      if (!dbPath && legacyConfig.dbPath) {
+        // Keep existing DB path from legacy config
+        resolvedDbPath = legacyConfig.dbPath;
+      }
+      migrated = true;
+    }
+  }
+
+  // Build V1 config
+  const config: MementoConfigV1 = {
+    version: 1,
+    project: projectName,
+    database: {
+      path: resolvedDbPath,
+      wal: true,
+    },
+    defaults: {
+      autoSeed: true,
+      scope: global ? 'personal' : 'project',
+    },
+  };
+
+  // Write config
+  mkdirSync(configDir, { recursive: true });
+  writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
+
+  return {
+    configPath,
+    dbPath: global
+      ? join(GLOBAL_CONFIG_DIR, resolvedDbPath)
+      : join(resolvedDir, resolvedDbPath),
+    projectDir: resolvedDir,
+    migrated,
+    backupPath,
+  };
+}
+
+// ─── Config Migration ──────────────────────────────────────
+
+/**
+ * Migrate a legacy .mementorc to the new .memento/config.json format.
+ * Backs up the original file as .mementorc.bak.
+ */
+export function migrateConfig(sourceDir: string = process.cwd()): MigrateConfigResult {
+  const sourcePath = join(sourceDir, LEGACY_CONFIG_FILE);
+  const targetDir = join(sourceDir, NEW_CONFIG_DIR);
+  const targetPath = join(targetDir, NEW_CONFIG_FILE);
+  const backupPath = sourcePath + '.bak';
+
+  // Validate source exists
+  if (!existsSync(sourcePath)) {
+    return {
+      success: false,
+      sourcePath,
+      targetPath,
+      backupPath,
+      config: {} as MementoConfigV1,
+      error: `No .mementorc found at ${sourcePath}`,
+    };
+  }
+
+  // Load and validate legacy config
+  const legacyConfig = loadJSONFile<MementoConfig>(sourcePath);
+  if (!legacyConfig) {
+    return {
+      success: false,
+      sourcePath,
+      targetPath,
+      backupPath,
+      config: {} as MementoConfigV1,
+      error: `Failed to parse ${sourcePath}`,
+    };
+  }
+
+  // Convert to V1
+  const v1Config = legacyToConfigV1(legacyConfig, sourceDir);
+
+  // Create target directory
+  mkdirSync(targetDir, { recursive: true });
+
+  // Write new config
+  writeFileSync(targetPath, JSON.stringify(v1Config, null, 2) + '\n', 'utf-8');
+
+  // Backup original
+  renameSync(sourcePath, backupPath);
+
+  return {
+    success: true,
+    sourcePath,
+    targetPath,
+    backupPath,
+    config: v1Config,
+  };
+}
+
+// ─── Utility ────────────────────────────────────────────────
+
+export { GLOBAL_CONFIG_DIR, GLOBAL_CONFIG_PATH, NEW_CONFIG_DIR, NEW_CONFIG_FILE, LEGACY_CONFIG_FILE };
