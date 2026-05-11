@@ -11,6 +11,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   Settings,
+  BookOpen,
 } from 'lucide-react';
 import { useUIStore } from '@/stores/ui-store';
 import { MementoLogo } from './MementoLogo';
@@ -25,6 +26,7 @@ const navItems = [
 ];
 
 const bottomItems = [
+  { href: '/docs', label: 'Docs', icon: BookOpen },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
