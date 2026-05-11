@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ObservationCard } from '@/components/observations/ObservationCard';
 import type { Observation } from '@slorenzot/memento-core';
@@ -8,13 +9,18 @@ import type { Observation } from '@slorenzot/memento-core';
 const SEARCH_PAGE_SIZE = 50;
 
 export function SearchPage() {
-  const [query, setQuery] = useState('');
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q') ?? '';
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<Observation[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [searching, setSearching] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [searched, setSearched] = useState(false);
+
+  // Auto-execute search when arriving from header with ?q= param
+  const [initialSearchDone, setInitialSearchDone] = useState(false);
 
   const handleSearch = useCallback(async (searchOffset = 0) => {
     if (!query.trim()) return;
@@ -55,6 +61,14 @@ export function SearchPage() {
       setSearched(true);
     }
   }, [query, results]);
+
+  // Auto-search on mount when arriving with ?q= param from header
+  useEffect(() => {
+    if (initialQuery && !initialSearchDone) {
+      setInitialSearchDone(true);
+      handleSearch();
+    }
+  }, [initialQuery, initialSearchDone, handleSearch]);
 
   const handleLoadMore = useCallback(() => {
     handleSearch(offset + SEARCH_PAGE_SIZE);
