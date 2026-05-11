@@ -21,6 +21,8 @@ import type {
   WriteJournalParams,
   JournalSearchParams,
   JournalSearchResult,
+  PromptInjectionConfig,
+  RenderedPromptContext,
 } from './types.js';
 
 import { Database } from 'bun:sqlite';
@@ -160,6 +162,19 @@ export class MemoryEngine {
       }
     }
 
+    // Migrate: add pinned column if missing (Issue #50)
+    try {
+      this.db.exec('SELECT pinned FROM observations LIMIT 0');
+    } catch {
+      try {
+        this.db.exec('ALTER TABLE observations ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0');
+        console.error('✓ Migration: added pinned column to observations');
+      } catch {
+        // Column may already exist in a concurrent scenario
+      }
+    }
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_observations_pinned ON observations(pinned) WHERE pinned = 1');
+
     // Migrate: clean up empty string topic_key → NULL (Issue #69)
     try {
       const result = this.db.prepare("UPDATE observations SET topic_key = NULL WHERE topic_key = ''").run();
@@ -296,17 +311,19 @@ export class MemoryEngine {
     projectId: string;
     metadata: Record<string, unknown>;
     scope?: 'project' | 'personal';
+    pinned?: boolean;
   }): Promise<Observation> {
     this.checkHealth();
     const uuid = crypto.randomUUID();
     const createdAt = new Date();
     const metadata = this.serialize(data.metadata);
     const scope = data.scope || 'project';
+    const pinned = data.pinned ? 1 : 0;
 
     const id = await this.withRetry(() => {
       const result = this.db
         .prepare(
-          `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, deleted_at, metadata, scope) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`
+          `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, deleted_at, metadata, scope, pinned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`
         )
         .run(
           uuid,
@@ -318,7 +335,8 @@ export class MemoryEngine {
           data.projectId,
           createdAt.getTime(),
           metadata,
-          scope
+          scope,
+          pinned
         );
       const insertId =
         typeof result.lastInsertRowid === 'bigint'
@@ -346,6 +364,7 @@ export class MemoryEngine {
       type?: Observation['type'];
       topicKey?: string | null;
       metadata?: Record<string, unknown>;
+      pinned?: boolean;
     }
   ): Promise<Observation> {
     const current = await this.getObservationById(id);
@@ -374,6 +393,10 @@ export class MemoryEngine {
     if (updates.metadata !== undefined) {
       fields.push('metadata = ?');
       values.push(this.serialize(updates.metadata));
+    }
+    if (updates.pinned !== undefined) {
+      fields.push('pinned = ?');
+      values.push(updates.pinned ? 1 : 0);
     }
 
     if (fields.length === 0) return current;
@@ -1060,6 +1083,134 @@ export class MemoryEngine {
     return prompt;
   }
 
+  // ─── Prompt Injection (OpenCode Plugin) ──────────────────────
+
+  /**
+   * Select observations for prompt injection based on config.
+   * Returns observations sorted deterministically for prompt caching:
+   * 1. Pinned observations (by ID ascending)
+   * 2. Non-pinned observations (by ID ascending)
+   */
+  selectForPrompt(config: PromptInjectionConfig): Observation[] {
+    this.checkHealth();
+
+    const types = config.types.map((t) => `'${t}'`).join(',');
+    const values: (string | number)[] = [];
+
+    let sql = `SELECT * FROM observations WHERE deleted_at IS NULL AND type IN (${types})`;
+
+    if (config.projectId) {
+      sql += ' AND project_id = ?';
+      values.push(config.projectId);
+    }
+
+    if (config.strategy === 'pinned-only') {
+      sql += ' AND pinned = 1';
+    }
+
+    // Deterministic sort: pinned first (by ID ASC), then non-pinned (by ID ASC)
+    sql += ' ORDER BY pinned DESC, id ASC';
+
+    // Fetch more than needed to allow for token budget trimming
+    const rows = this.db.prepare(sql).all(...values) as Record<string, unknown>[];
+    const observations = rows.map((row) => this.mapObservation(row));
+
+    // Apply maxObservations limit
+    const limited = observations.slice(0, config.maxObservations);
+
+    // Apply token budget
+    const maxChars = config.maxTokens * 4; // approximate: chars / 4 = tokens
+    let totalChars = 0;
+    const result: Observation[] = [];
+
+    for (const obs of limited) {
+      const obsChars = this.estimateObservationChars(obs);
+      if (totalChars + obsChars > maxChars && result.length > 0) {
+        break;
+      }
+      totalChars += obsChars;
+      result.push(obs);
+    }
+
+    // Re-sort: pinned first by ID ASC, then non-pinned by ID ASC
+    // (ensures deterministic order even after budget trim)
+    result.sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      return a.id - b.id;
+    });
+
+    return result;
+  }
+
+  /**
+   * Render observations as compact XML for system prompt injection.
+   */
+  renderPromptContext(observations: Observation[], config: PromptInjectionConfig): RenderedPromptContext {
+    if (observations.length === 0) {
+      return { xml: '', observationCount: 0, tokenCount: 0, budgetExceeded: false };
+    }
+
+    const parts: string[] = ['<memento_context>'];
+
+    let totalChars = 0;
+    const maxChars = config.maxTokens * 4;
+    let budgetExceeded = false;
+
+    for (const obs of observations) {
+      const xmlNode = this.renderObservationXml(obs);
+      const nodeChars = xmlNode.length;
+
+      if (totalChars + nodeChars > maxChars && parts.length > 1) {
+        budgetExceeded = true;
+        break;
+      }
+
+      parts.push(xmlNode);
+      totalChars += nodeChars;
+    }
+
+    parts.push('</memento_context>');
+
+    const xml = parts.join('\n');
+    return {
+      xml,
+      observationCount: parts.length - 2, // subtract opening and closing tags
+      tokenCount: Math.ceil(xml.length / 4),
+      budgetExceeded,
+    };
+  }
+
+  private renderObservationXml(obs: Observation): string {
+    const pinnedAttr = obs.pinned ? ' pinned="true"' : '';
+    const projectAttr = obs.projectId ? ` project="${obs.projectId}"` : '';
+    // Compact: title as attribute, content as text (trimmed to first 500 chars for budget)
+    const truncatedContent = obs.content.length > 500
+      ? obs.content.slice(0, 500) + '...'
+      : obs.content;
+    return `<observation id="${obs.id}" type="${obs.type}"${projectAttr}${pinnedAttr}>\n${obs.title}\n${truncatedContent}\n</observation>`;
+  }
+
+  private estimateObservationChars(obs: Observation): number {
+    // Estimate XML overhead: ~100 chars for tags + attributes
+    // Plus title + first 500 chars of content
+    const contentLen = Math.min(obs.content.length, 500);
+    return 100 + obs.title.length + contentLen;
+  }
+
+  /**
+   * Pin an observation (always include in prompt injection).
+   */
+  async pinObservation(id: number): Promise<Observation> {
+    return this.updateObservation(id, { pinned: true });
+  }
+
+  /**
+   * Unpin an observation.
+   */
+  async unpinObservation(id: number): Promise<Observation> {
+    return this.updateObservation(id, { pinned: false });
+  }
+
   // ─── Private helpers ───────────────────────────────────────
 
   private async getObservationById(
@@ -1113,6 +1264,7 @@ export class MemoryEngine {
       deleted_at: number | null;
       metadata: string | null;
       scope: string | null;
+      pinned: number | null;
       revision_count: number | null;
     };
     return {
@@ -1128,6 +1280,7 @@ export class MemoryEngine {
       deletedAt: r.deleted_at ? new Date(r.deleted_at) : null,
       metadata: this.deserialize(r.metadata),
       scope: (r.scope as 'project' | 'personal') || 'project',
+      pinned: Boolean(r.pinned),
       revisionCount: r.revision_count ?? 0,
     };
   }

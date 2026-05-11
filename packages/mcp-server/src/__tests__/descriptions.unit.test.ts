@@ -23,9 +23,9 @@ describe('Tool Metadata Quality', () => {
 
   // ─── Tool Count ───────────────────────────────────────────
 
-  it('should register exactly 16 tools', async () => {
+  it('should register exactly 18 tools', async () => {
     const result = await setup.client.listTools();
-    expect(result.tools).toHaveLength(16);
+    expect(result.tools).toHaveLength(18);
   });
 
   // ─── Tool Names ───────────────────────────────────────────
@@ -44,12 +44,14 @@ describe('Tool Metadata Quality', () => {
       'mem_journal_search',
       'mem_journal_write',
       'mem_merge',
+      'mem_pin',
       'mem_save',
       'mem_search',
       'mem_session_end',
       'mem_session_start',
       'mem_session_summary',
       'mem_status',
+      'mem_unpin',
       'mem_update',
     ].sort();
 

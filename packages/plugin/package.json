@@ -1,0 +1,34 @@
+{
+  "name": "@slorenzot/memento-plugin",
+  "version": "0.1.0",
+  "description": "OpenCode plugin for Memento — injects relevant observations into the system prompt automatically",
+  "keywords": [
+    "memento",
+    "opencode",
+    "plugin",
+    "system-prompt",
+    "memory",
+    "ai"
+  ],
+  "license": "CC-BY-NC-ND-4.0",
+  "author": "Soulberto Lorenzo",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.14.0",
+    "@slorenzot/memento-core": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}
