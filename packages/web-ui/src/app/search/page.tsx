@@ -3,7 +3,7 @@ import { SearchPage } from '@/components/search/SearchPage';
 
 export default function SearchRoute() {
   return (
-    <Suspense>
+    <Suspense fallback={null}>
       <SearchPage />
     </Suspense>
   );
