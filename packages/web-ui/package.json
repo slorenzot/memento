@@ -4,7 +4,7 @@
   "description": "Next.js Web UI for Memento persistent memory system",
   "type": "module",
   "scripts": {
-    "dev": "next dev --turbopack -p 8086",
+    "dev": "next dev -p 8086",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -12,17 +12,19 @@
   },
   "dependencies": {
     "@slorenzot/memento-core": "workspace:*",
-    "next": "^15.3.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "zustand": "^5.0.0",
+    "better-sqlite3": "^12.9.0",
     "clsx": "^2.1.0",
     "date-fns": "^4.0.0",
     "lucide-react": "^0.316.0",
-    "zod": "^3.22.4"
+    "next": "^15.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.22.4",
+    "zustand": "^5.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.11.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
