@@ -30,6 +30,8 @@ export function ObservationFilters({ projects }: ObservationFiltersProps) {
     } else {
       params.delete(key);
     }
+    // Reset to page 1 when changing filters
+    params.delete('page');
     router.push(`/observations?${params.toString()}`);
   }
 

@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { getEngine } from '@/lib/engine';
+import { PAGE_SIZE } from '@/lib/constants';
 import { ObservationCard } from '@/components/observations/ObservationCard';
 import { ObservationFilters } from '@/components/observations/ObservationFilters';
+import { Pagination } from '@/components/shared/Pagination';
 import { EmptyState } from '@/components/shared/EmptyState';
 
 export const dynamic = 'force-dynamic';
@@ -14,17 +16,26 @@ export default async function ObservationsPage({ searchParams }: ObservationsPag
   const params = await searchParams;
   const engine = getEngine();
 
+  const page = Math.max(1, Number(params.page) || 1);
+  const offset = (page - 1) * PAGE_SIZE;
+
   const [result, projects] = await Promise.all([
     engine.search({
       type: params.type as any ?? undefined,
       scope: params.scope as 'project' | 'personal' | undefined ?? undefined,
       projectId: typeof params.projectId === 'string' ? params.projectId : undefined,
-      limit: 50,
+      limit: PAGE_SIZE,
+      offset,
     }),
     engine.listProjects(),
   ]);
 
   const hasFilters = params.type || params.scope || params.projectId;
+  const queryParams: Record<string, string | undefined> = {
+    type: typeof params.type === 'string' ? params.type : undefined,
+    scope: typeof params.scope === 'string' ? params.scope : undefined,
+    projectId: typeof params.projectId === 'string' ? params.projectId : undefined,
+  };
 
   if (result.observations.length === 0 && !hasFilters) {
     return (
@@ -78,6 +89,14 @@ export default async function ObservationsPage({ searchParams }: ObservationsPag
           ))}
         </div>
       )}
+
+      <Pagination
+        currentPage={page}
+        totalItems={result.total}
+        pageSize={PAGE_SIZE}
+        basePath="/observations"
+        queryParams={queryParams}
+      />
     </div>
   );
 }
