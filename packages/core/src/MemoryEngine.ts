@@ -178,6 +178,18 @@ export class MemoryEngine {
     }
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_observations_pinned ON observations(pinned) WHERE pinned = 1');
 
+    // Migrate: add read_only column if missing (Issue #54)
+    try {
+      this.db.exec('SELECT read_only FROM observations LIMIT 0');
+    } catch {
+      try {
+        this.db.exec('ALTER TABLE observations ADD COLUMN read_only INTEGER NOT NULL DEFAULT 0');
+        console.error('✓ Migration: added read_only column to observations');
+      } catch {
+        // Column may already exist in a concurrent scenario
+      }
+    }
+
     // Migrate: clean up empty string topic_key → NULL (Issue #69)
     try {
       const result = this.db.prepare("UPDATE observations SET topic_key = NULL WHERE topic_key = ''").run();
@@ -327,6 +339,7 @@ export class MemoryEngine {
     metadata: Record<string, unknown>;
     scope?: 'project' | 'personal';
     pinned?: boolean;
+    readOnly?: boolean;
   }): Promise<Observation> {
     this.checkHealth();
     const uuid = crypto.randomUUID();
@@ -334,11 +347,12 @@ export class MemoryEngine {
     const metadata = this.serialize(data.metadata);
     const scope = data.scope || 'project';
     const pinned = data.pinned ? 1 : 0;
+    const readOnly = data.readOnly ? 1 : 0;
 
     const id = await this.withRetry(() => {
       const result = this.db
         .prepare(
-          `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, deleted_at, metadata, scope, pinned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`
+          `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, deleted_at, metadata, scope, pinned, read_only) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)`
         )
         .run(
           uuid,
@@ -351,7 +365,8 @@ export class MemoryEngine {
           createdAt.getTime(),
           metadata,
           scope,
-          pinned
+          pinned,
+          readOnly
         );
       const insertId =
         typeof result.lastInsertRowid === 'bigint'
@@ -386,11 +401,20 @@ export class MemoryEngine {
       topicKey?: string | null;
       metadata?: Record<string, unknown>;
       pinned?: boolean;
+      readOnly?: boolean;
     }
   ): Promise<Observation> {
     const current = await this.getObservationById(id);
     if (!current) throw new Error('Observation not found');
     if (current.deletedAt) throw new Error('Cannot update a soft-deleted observation');
+
+    // Read-only protection: only allow changing readOnly itself
+    if (current.readOnly) {
+      const nonReadOnlyFields = Object.keys(updates).filter(k => k !== 'readOnly');
+      if (nonReadOnlyFields.length > 0) {
+        throw new Error(`Observation #${id} is read-only. Only readOnly flag can be changed.`);
+      }
+    }
 
     const fields: string[] = [];
     const values: (string | number | null)[] = [];
@@ -418,6 +442,10 @@ export class MemoryEngine {
     if (updates.pinned !== undefined) {
       fields.push('pinned = ?');
       values.push(updates.pinned ? 1 : 0);
+    }
+    if (updates.readOnly !== undefined) {
+      fields.push('read_only = ?');
+      values.push(updates.readOnly ? 1 : 0);
     }
 
     if (fields.length === 0) return current;
@@ -476,6 +504,7 @@ export class MemoryEngine {
     const obs = await this.getObservationById(id, true);
     if (!obs) throw new Error('Observation not found');
     if (obs.deletedAt) throw new Error('Observation already deleted');
+    if (obs.readOnly) throw new Error(`Observation #${id} is read-only. Cannot delete.`);
 
     const now = Date.now();
 
@@ -695,6 +724,16 @@ export class MemoryEngine {
     }
 
     if (groups.length === 0) return [];
+
+    // Read-only protection: reject merge if any source observation is read-only
+    for (const group of groups) {
+      for (const obs of group.observations) {
+        if (obs.readOnly) {
+          throw new Error(`Cannot merge: observation #${obs.id} is read-only.`);
+        }
+      }
+    }
+
     if (dryRun) {
       return groups.map((g) => ({
         mergedObservation: g.observations[0], // placeholder
@@ -1469,6 +1508,20 @@ export class MemoryEngine {
     return this.updateObservation(id, { pinned: false });
   }
 
+  /**
+   * Lock an observation (set read-only). Prevents all modifications.
+   */
+  async lockObservation(id: number): Promise<Observation> {
+    return this.updateObservation(id, { readOnly: true });
+  }
+
+  /**
+   * Unlock an observation (remove read-only protection).
+   */
+  async unlockObservation(id: number): Promise<Observation> {
+    return this.updateObservation(id, { readOnly: false });
+  }
+
   // ─── Private helpers ───────────────────────────────────────
 
   private async getObservationById(
@@ -1523,6 +1576,7 @@ export class MemoryEngine {
       metadata: string | null;
       scope: string | null;
       pinned: number | null;
+      read_only: number | null;
       revision_count: number | null;
     };
     return {
@@ -1539,6 +1593,7 @@ export class MemoryEngine {
       metadata: this.deserialize(r.metadata),
       scope: (r.scope as 'project' | 'personal') || 'project',
       pinned: Boolean(r.pinned),
+      readOnly: Boolean(r.read_only),
       revisionCount: r.revision_count ?? 0,
     };
   }

@@ -89,8 +89,8 @@ export async function seedObservation(
     metadata?: Record<string, unknown>;
     scope?: 'project' | 'personal';
     pinned?: boolean;
-  } = {}
-) {
+    readOnly?: boolean;
+  } = {}) {
   return engine.createObservation({
     sessionId,
     title: overrides.title ?? 'Test Observation',
@@ -101,6 +101,7 @@ export async function seedObservation(
     metadata: overrides.metadata ?? {},
     scope: overrides.scope,
     pinned: overrides.pinned,
+    readOnly: overrides.readOnly,
   });
 }
 
