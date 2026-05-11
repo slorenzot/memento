@@ -1349,8 +1349,9 @@ export class MemoryEngine {
   /**
    * Seed default observations if project has no observations yet.
    * Creates 3 seeds: persona (personal scope), human (personal), project (project scope).
+   * Public so that `memento init` can call it directly.
    */
-  private async seedIfEmpty(projectId: string, sessionId: number): Promise<void> {
+  async seedIfEmpty(projectId: string, sessionId: number): Promise<void> {
     // Check if project already has observations
     const existing = this.db
       .prepare('SELECT COUNT(*) as count FROM observations WHERE project_id = ? AND deleted_at IS NULL')
