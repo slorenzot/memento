@@ -17,7 +17,6 @@ import type { Plugin, Hooks } from '@opencode-ai/plugin';
 import { MemoryEngine } from '@slorenzot/memento-core';
 import { resolveConfig } from './config.js';
 import { renderContext } from './renderer.js';
-import type { MementoPluginConfig } from './config.js';
 
 export { resolveConfig } from './config.js';
 export { renderContext, renderObservationXml, estimateTokens } from './renderer.js';

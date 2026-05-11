@@ -297,8 +297,10 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
             };
           }
 
-          default:
-            throw new Error(`Unknown action: ${act}`);
+          default: {
+            const _exhaustive: never = act;
+            throw new Error(`Unknown action: ${_exhaustive as string}`);
+          }
         }
       } catch (error: unknown) {
         return handleToolError(error, ctx);
