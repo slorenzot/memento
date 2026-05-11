@@ -4,7 +4,7 @@
   "description": "Next.js Web UI for Memento persistent memory system",
   "type": "module",
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack -p 8086",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
