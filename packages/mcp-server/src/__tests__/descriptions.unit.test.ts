@@ -23,9 +23,9 @@ describe('Tool Metadata Quality', () => {
 
   // ─── Tool Count ───────────────────────────────────────────
 
-  it('should register exactly 20 tools', async () => {
+  it('should register exactly 21 tools', async () => {
     const result = await setup.client.listTools();
-    expect(result.tools).toHaveLength(20);
+    expect(result.tools).toHaveLength(21);
   });
 
   // ─── Tool Names ───────────────────────────────────────────
@@ -55,6 +55,7 @@ describe('Tool Metadata Quality', () => {
       'mem_unpin',
       'mem_unlock',
       'mem_update',
+      'mem_replace',
     ].sort();
 
     expect(names).toEqual(expected);
