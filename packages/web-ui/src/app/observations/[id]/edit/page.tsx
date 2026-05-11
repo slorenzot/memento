@@ -1,0 +1,49 @@
+import { getEngine } from '@/lib/engine';
+import { notFound } from 'next/navigation';
+import { ObservationEditor } from '@/components/observations/ObservationEditor';
+
+export const dynamic = 'force-dynamic';
+
+export default async function EditObservationPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const engine = getEngine();
+  const observation = await engine.getObservation(Number(id));
+
+  if (!observation || observation.deletedAt) {
+    notFound();
+  }
+
+  if (observation.readOnly) {
+    return (
+      <div className="py-8 text-center">
+        <p className="text-[14px] text-[var(--color-tertiary)]">
+          This observation is read-only and cannot be edited.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-[20px] font-medium text-[var(--color-text-primary)]">
+        Edit observation
+      </h1>
+      <ObservationEditor
+        mode="edit"
+        observationId={observation.id}
+        initialData={{
+          title: observation.title,
+          content: observation.content,
+          type: observation.type,
+          topicKey: observation.topicKey,
+          scope: observation.scope,
+          projectId: observation.projectId,
+        }}
+      />
+    </div>
+  );
+}
