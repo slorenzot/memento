@@ -1,33 +1,33 @@
 {
   "name": "@slorenzot/memento-web-ui",
-  "version": "0.1.1",
-  "description": "React web UI for Memento",
+  "version": "0.2.0",
+  "description": "Next.js Web UI for Memento persistent memory system",
+  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "bun tsc --declaration --declarationMap --emitDeclarationOnly --outDir ./dist && vite build",
-    "preview": "vite preview",
-    "test": "bun test",
-    "typecheck": "bun tsc --noEmit"
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "@tanstack/react-query": "^5.17.19",
-    "zustand": "^4.5.0",
+    "@slorenzot/memento-core": "workspace:*",
+    "next": "^15.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.0",
     "clsx": "^2.1.0",
-    "date-fns": "^3.3.1",
+    "date-fns": "^4.0.0",
     "lucide-react": "^0.316.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@types/react": "^18.2.48",
-    "@types/react-dom": "^18.2.18",
-    "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.17",
-    "bun-types": "^1.3.11",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^20.11.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "postcss": "^8.4.33",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5.3.3",
-    "vite": "^5.0.12"
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.3.3"
   }
 }
