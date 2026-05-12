@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
 import { Badge } from '@/components/shared/Badge';
 import { RelativeTime } from '@/components/shared/RelativeTime';
 import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 import type { Observation } from '@slorenzot/memento-core';
+import Link from 'next/link';
 
 interface ObservationCardProps {
   observation: Observation;
@@ -23,7 +22,9 @@ export function ObservationCard({ observation }: ObservationCardProps) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             {observation.pinned && (
-              <span className="text-[var(--color-tertiary)]" title="Pinned">📌</span>
+              <span className="text-[var(--color-tertiary)]" title="Pinned">
+                📌
+              </span>
             )}
             <h3 className="truncate text-[14px] font-medium text-[var(--color-text-primary)]">
               {observation.title}

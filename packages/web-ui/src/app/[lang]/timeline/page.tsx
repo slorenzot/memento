@@ -9,15 +9,31 @@ export const dynamic = 'force-dynamic';
 
 interface LangTimelineProps {
   params: Promise<{ lang: string }>;
+  searchParams: Promise<{ scope?: string; projectId?: string }>;
 }
 
-export default async function LangTimelinePage({ params }: LangTimelineProps) {
+export default async function LangTimelinePage({ params, searchParams }: LangTimelineProps) {
   const { lang } = await params;
+  const filters = await searchParams;
   const engine = getEngine();
   const t = getDictionary(lang as Locale);
-  const result = await engine.getTimeline({ limit: TIMELINE_PAGE_SIZE });
 
-  if (result.observations.length === 0) {
+  const result = await engine.getTimeline({
+    scope: filters.scope,
+    projectId: filters.projectId,
+    limit: TIMELINE_PAGE_SIZE,
+  });
+
+  // Load projects list for filter dropdown
+  let projects: string[] = [];
+  try {
+    const projectRows = await engine.listProjects();
+    projects = projectRows.map((p: { name: string }) => p.name);
+  } catch {
+    // Silently fail — project filter just won't show options
+  }
+
+  if (result.observations.length === 0 && !filters.scope && !filters.projectId) {
     return (
       <div className="space-y-6">
         <h1 className="text-[20px] font-medium text-[var(--color-text-primary)]">
@@ -35,6 +51,9 @@ export default async function LangTimelinePage({ params }: LangTimelineProps) {
     <TimelineClient
       initialObservations={result.observations}
       initialTotal={result.total}
+      initialScope={filters.scope ?? ''}
+      initialProject={filters.projectId ?? ''}
+      projects={projects}
     />
   );
 }

@@ -1719,11 +1719,12 @@ export class MemoryEngine {
 
   async getTimeline(params: {
     projectId?: string;
+    scope?: string;
     limit?: number;
     offset?: number;
   }): Promise<{ observations: Observation[]; total: number }> {
     this.checkHealth();
-    const { projectId, limit = 50, offset = 0 } = params;
+    const { projectId, scope, limit = 50, offset = 0 } = params;
 
     let countSql = 'SELECT COUNT(*) as count FROM observations WHERE deleted_at IS NULL';
     let sql = 'SELECT * FROM observations WHERE deleted_at IS NULL';
@@ -1733,6 +1734,11 @@ export class MemoryEngine {
       countSql += ' AND project_id = ?';
       sql += ' AND project_id = ?';
       values.push(projectId);
+    }
+    if (scope) {
+      countSql += ' AND scope = ?';
+      sql += ' AND scope = ?';
+      values.push(scope);
     }
 
     const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;

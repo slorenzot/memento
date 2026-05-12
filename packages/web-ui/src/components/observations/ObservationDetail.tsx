@@ -54,7 +54,10 @@ export default function ObservationDetailPage({ observation }: ObservationDetail
               <RelativeTime date={observation.createdAt} />
               {observation.revisionCount > 0 && (
                 <span>
-                  {t.common.revisions.replace('{count}', String(observation.revisionCount))}
+                  {(observation.revisionCount === 1
+                    ? t.common.revisions_one
+                    : t.common.revisions_other
+                  ).replace('{count}', String(observation.revisionCount))}
                 </span>
               )}
             </div>

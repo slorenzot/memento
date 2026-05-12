@@ -54,7 +54,8 @@
     "allScopes": "Todos los ámbitos",
     "allProjects": "Todos los proyectos",
     "metadata": "Metadatos",
-    "revisions": "{count} revisión | {count} revisiones"
+    "revisions_one": "{count} revisión",
+    "revisions_other": "{count} revisiones"
   },
   "header": {
     "searchPlaceholder": "Buscar observaciones..."
