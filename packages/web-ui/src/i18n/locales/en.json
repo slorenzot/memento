@@ -112,7 +112,9 @@
   "sessions": {
     "title": "Sessions",
     "noSessions": "No sessions yet",
-    "noSessionsDescription": "Sessions are created automatically when you create observations."
+    "noSessionsDescription": "Sessions are created automatically when you create observations.",
+    "observationSingular": "observation",
+    "observationPlural": "observations"
   },
   "sessionDetail": {
     "session": "Session #{id}",

@@ -9,9 +9,10 @@ import type { Session } from '@slorenzot/memento-core';
 
 interface SessionCardProps {
   session: Session;
+  observationCount?: number;
 }
 
-export function SessionCard({ session }: SessionCardProps) {
+export function SessionCard({ session, observationCount }: SessionCardProps) {
   const t = useT();
   const prefix = useLocalePrefix();
   const isActive = !session.endedAt;
@@ -31,6 +32,7 @@ export function SessionCard({ session }: SessionCardProps) {
           </div>
           <div className="mt-1 flex items-center gap-3 text-[12px] text-[var(--color-tertiary)]">
             <span>{session.projectId}</span>
+            <span>{observationCount ?? session.observationCount ?? 0} {observationCount === 1 ? t.sessions.observationSingular : t.sessions.observationPlural}</span>
             <RelativeTime date={session.startedAt} />
             {session.endedAt && (
               <>
