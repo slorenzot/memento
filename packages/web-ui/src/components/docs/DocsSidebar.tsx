@@ -8,7 +8,11 @@ import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { useT } from '@/i18n/translation-context';
 
-function NavGroup({ item, depth = 0 }: { item: DocNavItem; depth?: number }) {
+interface DocsSidebarProps {
+  lang?: string;
+}
+
+function NavGroup({ item, depth = 0, lang }: { item: DocNavItem; depth?: number; lang?: string }) {
   const pathname = usePathname();
   const t = useT();
   const [open, setOpen] = useState(true);
@@ -17,6 +21,9 @@ function NavGroup({ item, depth = 0 }: { item: DocNavItem; depth?: number }) {
   const navTitle = item.navKey
     ? (t.docs.nav as Record<string, string>)[item.navKey] ?? item.title
     : item.title;
+
+  // Build locale-aware prefix
+  const prefix = lang ? `/${lang}/docs` : '/docs';
 
   if (hasChildren) {
     return (
@@ -39,7 +46,7 @@ function NavGroup({ item, depth = 0 }: { item: DocNavItem; depth?: number }) {
         {open && (
           <div className="mt-0.5">
             {item.children!.map((child) => (
-              <NavGroup key={child.slug ?? child.title} item={child} depth={depth + 1} />
+              <NavGroup key={child.slug ?? child.title} item={child} depth={depth + 1} lang={lang} />
             ))}
           </div>
         )}
@@ -47,8 +54,8 @@ function NavGroup({ item, depth = 0 }: { item: DocNavItem; depth?: number }) {
     );
   }
 
-  const href = item.slug ? `/docs/${item.slug}` : '#';
-  const isActive = item.slug ? pathname === `/docs/${item.slug}` : false;
+  const href = item.slug ? `${prefix}/${item.slug}` : '#';
+  const isActive = item.slug ? pathname === `${prefix}/${item.slug}` : false;
 
   return (
     <Link
@@ -66,11 +73,11 @@ function NavGroup({ item, depth = 0 }: { item: DocNavItem; depth?: number }) {
   );
 }
 
-export function DocsSidebar() {
+export function DocsSidebar({ lang }: DocsSidebarProps) {
   return (
     <nav className="sticky top-8 py-2 space-y-0.5">
       {docsNav.map((item) => (
-        <NavGroup key={item.slug ?? item.title} item={item} />
+        <NavGroup key={item.slug ?? item.title} item={item} lang={lang} />
       ))}
     </nav>
   );
