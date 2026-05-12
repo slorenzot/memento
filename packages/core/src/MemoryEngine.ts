@@ -1424,6 +1424,83 @@ export class MemoryEngine {
     return updated;
   }
 
+  /**
+   * Close stale (orphaned) sessions for a specific project.
+   * Sessions are considered stale if they have no ended_at AND started_at is older than maxAgeMs.
+   * Auto-closed sessions receive metadata: { auto_closed: true, reason: 'stale', closed_at: <timestamp> }.
+   * Returns the count of closed sessions.
+   */
+  closeStaleSessionsForProject(projectId: string, maxAgeMs?: number): { closed: number } {
+    this.checkHealth();
+    const maxAge = maxAgeMs ?? 24 * 60 * 60 * 1000; // default 24h
+    const cutoff = Date.now() - maxAge;
+    const now = Date.now();
+
+    // Get sessions to close (need to update metadata individually)
+    const staleRows = this.db.prepare(
+      'SELECT id, metadata FROM sessions WHERE ended_at IS NULL AND project_id = ? AND started_at < ?'
+    ).all(projectId, cutoff) as { id: number; metadata: string | null }[];
+
+    if (staleRows.length === 0) return { closed: 0 };
+
+    const updateStmt = this.db.prepare(
+      'UPDATE sessions SET ended_at = ?, metadata = ? WHERE id = ?'
+    );
+
+    let closed = 0;
+    for (const row of staleRows) {
+      const existingMeta = this.deserialize(row.metadata);
+      const mergedMeta = {
+        ...existingMeta,
+        auto_closed: true,
+        reason: 'stale',
+        closed_at: now,
+      };
+      updateStmt.run(now, this.serialize(mergedMeta), row.id);
+      closed++;
+    }
+
+    return { closed };
+  }
+
+  /**
+   * Close ALL stale (orphaned) sessions across all projects.
+   * Sessions are considered stale if they have no ended_at AND started_at is older than maxAgeMs.
+   * Returns the count of closed sessions.
+   */
+  closeStaleSessions(maxAgeMs?: number): { closed: number } {
+    this.checkHealth();
+    const maxAge = maxAgeMs ?? 24 * 60 * 60 * 1000; // default 24h
+    const cutoff = Date.now() - maxAge;
+    const now = Date.now();
+
+    // Get sessions to close
+    const staleRows = this.db.prepare(
+      'SELECT id, metadata FROM sessions WHERE ended_at IS NULL AND started_at < ?'
+    ).all(cutoff) as { id: number; metadata: string | null }[];
+
+    if (staleRows.length === 0) return { closed: 0 };
+
+    const updateStmt = this.db.prepare(
+      'UPDATE sessions SET ended_at = ?, metadata = ? WHERE id = ?'
+    );
+
+    let closed = 0;
+    for (const row of staleRows) {
+      const existingMeta = this.deserialize(row.metadata);
+      const mergedMeta = {
+        ...existingMeta,
+        auto_closed: true,
+        reason: 'stale',
+        closed_at: now,
+      };
+      updateStmt.run(now, this.serialize(mergedMeta), row.id);
+      closed++;
+    }
+
+    return { closed };
+  }
+
   async getSession(id: number): Promise<Session | null> {
     return await this.getSessionById(id);
   }

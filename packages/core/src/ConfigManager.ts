@@ -23,8 +23,15 @@ export interface MementoConfigV1 {
   defaults?: {
     autoSeed?: boolean;
     scope?: 'project' | 'personal';
+    session?: {
+      /** Max ms a session can be active before considered stale. Default: 86400000 (24h) */
+      staleThresholdMs?: number;
+    };
   };
 }
+
+/** Default stale threshold: 24 hours in milliseconds */
+export const DEFAULT_STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 /** Options for creating a new config */
 export interface CreateConfigOptions {
@@ -175,6 +182,25 @@ export function findConfigPath(startDir: string = process.cwd()): string | null 
 }
 
 // ─── Config Loading ─────────────────────────────────────────
+
+/**
+ * Read the stale session threshold from V1 config.
+ * Returns DEFAULT_STALE_THRESHOLD_MS (24h) if not configured.
+ */
+export function getStaleThresholdMs(): number {
+  const configPath = findConfigPath();
+  if (!configPath) return DEFAULT_STALE_THRESHOLD_MS;
+
+  // Only V1 config supports this setting
+  if (configPath.endsWith('config.json')) {
+    const v1 = loadJSONFile<MementoConfigV1>(configPath);
+    if (v1?.defaults?.session?.staleThresholdMs) {
+      return v1.defaults.session.staleThresholdMs;
+    }
+  }
+
+  return DEFAULT_STALE_THRESHOLD_MS;
+}
 
 export function loadConfig(): MementoConfig {
   let config: MementoConfig = { ...DEFAULT_CONFIG };

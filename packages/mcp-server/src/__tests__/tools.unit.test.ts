@@ -469,6 +469,75 @@ describe('Tool Handlers', () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain('No active session');
     });
+
+    it('should auto-close stale sessions when starting a new session', async () => {
+      // Create a stale session directly in the engine (25h old)
+      const staleSession = await setup.ctx.engine.createSession({
+        projectId: 'test-project',
+        endedAt: null,
+        metadata: { agent: 'old-session' },
+      });
+
+      // Make it stale (25h ago)
+      const staleTimestamp = Date.now() - 25 * 60 * 60 * 1000;
+      (setup.ctx.engine as any).db
+        .prepare('UPDATE sessions SET started_at = ? WHERE id = ?')
+        .run(staleTimestamp, staleSession.id);
+
+      // Start a new session — should auto-close the stale one
+      const response = await setup.client.callTool({
+        name: 'mem_session_start',
+        arguments: { project_id: 'test-project' },
+      });
+
+      const text = parseActionText(response);
+      expect(text).toContain('started');
+      expect(text).toContain('Auto-closed 1 stale session');
+
+      // Verify stale session was closed
+      const updated = await setup.ctx.engine.getSession(staleSession.id);
+      expect(updated!.endedAt).not.toBeNull();
+      expect(updated!.metadata.auto_closed).toBe(true);
+    });
+
+    it('should not auto-close sessions from other projects', async () => {
+      // Create a stale session for a DIFFERENT project
+      const staleOther = await setup.ctx.engine.createSession({
+        projectId: 'other-project',
+        endedAt: null,
+        metadata: {},
+      });
+
+      const staleTimestamp = Date.now() - 25 * 60 * 60 * 1000;
+      (setup.ctx.engine as any).db
+        .prepare('UPDATE sessions SET started_at = ? WHERE id = ?')
+        .run(staleTimestamp, staleOther.id);
+
+      // Start session for test-project
+      const response = await setup.client.callTool({
+        name: 'mem_session_start',
+        arguments: { project_id: 'test-project' },
+      });
+
+      const text = parseActionText(response);
+      expect(text).toContain('started');
+      expect(text).not.toContain('Auto-closed'); // no stale for test-project
+
+      // Other project session should still be active
+      const otherUpdated = await setup.ctx.engine.getSession(staleOther.id);
+      expect(otherUpdated!.endedAt).toBeNull();
+    });
+
+    it('should not report stale cleanup when no stale sessions exist', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_session_start',
+        arguments: { project_id: 'fresh-project' },
+      });
+
+      const text = parseActionText(response);
+      expect(text).toContain('started');
+      expect(text).not.toContain('Auto-closed');
+    });
   });
 
   // ─── mem_status (consolidated) ────────────────────────────
