@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { RelativeTime } from '@/components/shared/RelativeTime';
-import { Badge } from '@/components/shared/Badge';
 import { useT } from '@/i18n/translation-context';
 import { useLocalePrefix } from '@/i18n/use-locale-prefix';
+import { ClockIcon, FolderIcon, LayersIcon, PlayIcon, StopCircleIcon } from 'lucide-react';
 import type { Session } from '@slorenzot/memento-core';
 
 interface SessionCardProps {
@@ -16,6 +16,7 @@ export function SessionCard({ session, observationCount }: SessionCardProps) {
   const t = useT();
   const prefix = useLocalePrefix();
   const isActive = !session.endedAt;
+  const obsCount = observationCount ?? session.observationCount ?? 0;
 
   return (
     <Link
@@ -25,15 +26,30 @@ export function SessionCard({ session, observationCount }: SessionCardProps) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className={`inline-block h-2 w-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-[var(--color-tertiary)]'}`} />
+            {isActive ? (
+              <PlayIcon className="size-4 text-green-500" />
+            ) : (
+              <StopCircleIcon className="size-4 text-[var(--color-tertiary)]" />
+            )}
             <h3 className="text-[14px] font-medium text-[var(--color-text-primary)]">
               Session #{session.id}
             </h3>
           </div>
-          <div className="mt-1 flex items-center gap-3 text-[12px] text-[var(--color-tertiary)]">
-            <span>{session.projectId}</span>
-            <span>{observationCount ?? session.observationCount ?? 0} {observationCount === 1 ? t.sessions.observationSingular : t.sessions.observationPlural}</span>
-            <RelativeTime date={session.startedAt} />
+          <div className="mt-2 flex items-center gap-3 text-[12px] text-[var(--color-tertiary)]">
+            {session.projectId && (
+              <div className="flex items-center gap-1.5">
+                <FolderIcon className="size-4" />
+                <span>{session.projectId}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5">
+              <LayersIcon className="size-4" />
+              <span>{obsCount} {obsCount === 1 ? t.sessions.observationSingular : t.sessions.observationPlural}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <ClockIcon className="size-4" />
+              <RelativeTime date={session.startedAt} />
+            </div>
             {session.endedAt && (
               <>
                 <span>→</span>
