@@ -23,10 +23,10 @@ export default async function LangSessionDetailPage({
   }
 
   const result = await engine.search({
-    query: '',
+    sessionId: session.id,
     limit: 100,
   });
-  const sessionObs = result.observations.filter((obs) => obs.sessionId === session.id);
+  const sessionObs = result.observations;
 
   const isActive = !session.endedAt;
 

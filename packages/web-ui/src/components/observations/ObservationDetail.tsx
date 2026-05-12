@@ -1,15 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Badge } from '@/components/shared/Badge';
-import { RelativeTime } from '@/components/shared/RelativeTime';
-import { MarkdownContent } from '@/components/shared/MarkdownContent';
 import { DeleteConfirmation } from '@/components/observations/DeleteConfirmation';
+import { Badge } from '@/components/shared/Badge';
+import { MarkdownContent } from '@/components/shared/MarkdownContent';
+import { RelativeTime } from '@/components/shared/RelativeTime';
 import { useT } from '@/i18n/translation-context';
 import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 import type { Observation } from '@slorenzot/memento-core';
+import { CalendarClockIcon } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 interface ObservationDetailProps {
   observation: Observation;
@@ -37,9 +38,12 @@ export default function ObservationDetailPage({ observation }: ObservationDetail
             {observation.topicKey && <span>{observation.topicKey}</span>}
             {observation.projectId && <span>{observation.projectId}</span>}
             <span>{observation.scope}</span>
+            <CalendarClockIcon className="w-4" />
             <RelativeTime date={observation.createdAt} />
             {observation.revisionCount > 0 && (
-              <span>{t.common.revisions.replace('{count}', String(observation.revisionCount))}</span>
+              <span>
+                {t.common.revisions.replace('{count}', String(observation.revisionCount))}
+              </span>
             )}
           </div>
         </div>

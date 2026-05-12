@@ -1040,6 +1040,7 @@ export class MemoryEngine {
       offset = 0,
       includeDeleted = false,
       scope,
+      sessionId,
     } = params;
 
     let sql: string;
@@ -1071,6 +1072,10 @@ export class MemoryEngine {
         sql += ' AND observations.scope = ?';
         values.push(scope);
       }
+      if (sessionId) {
+        sql += ' AND observations.session_id = ?';
+        values.push(sessionId);
+      }
     } else {
       sql = 'SELECT * FROM observations WHERE 1=1';
 
@@ -1092,6 +1097,10 @@ export class MemoryEngine {
       if (scope) {
         sql += ' AND scope = ?';
         values.push(scope);
+      }
+      if (sessionId) {
+        sql += ' AND session_id = ?';
+        values.push(sessionId);
       }
     }
 
@@ -1142,6 +1151,10 @@ export class MemoryEngine {
     if (scope) {
       candidateSql += ' AND o.scope = ?';
       values.push(scope);
+    }
+    if (params.sessionId) {
+      candidateSql += ' AND o.session_id = ?';
+      values.push(params.sessionId);
     }
 
     // Only observations that have embeddings
@@ -1668,6 +1681,7 @@ export class MemoryEngine {
       started_at: number;
       ended_at: number | null;
       metadata: string | null;
+      observation_count?: number;
     };
     return {
       id: r.id,
@@ -1676,6 +1690,7 @@ export class MemoryEngine {
       startedAt: new Date(r.started_at),
       endedAt: r.ended_at ? new Date(r.ended_at) : null,
       metadata: this.deserialize(r.metadata),
+      observationCount: r.observation_count ?? 0,
     };
   }
 
@@ -1779,24 +1794,29 @@ export class MemoryEngine {
 
     const { projectId, activeOnly = false, limit = 50, offset = 0 } = params;
 
-    let sql = 'SELECT * FROM sessions WHERE 1=1';
+    // Build WHERE conditions once, reuse for count and fetch
+    let whereClause = ' WHERE 1=1';
     const values: (string | number)[] = [];
 
     if (projectId) {
-      sql += ' AND project_id = ?';
+      whereClause += ' AND project_id = ?';
       values.push(projectId);
     }
     if (activeOnly) {
-      sql += ' AND ended_at IS NULL';
+      whereClause += ' AND ended_at IS NULL';
     }
 
-    // Count
-    const countSql = sql.replace(/SELECT.*?FROM/, 'SELECT COUNT(*) as count FROM');
-    const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;
+    // Count (no subquery needed)
+    const countResult = this.db.prepare(
+      `SELECT COUNT(*) as count FROM sessions${whereClause}`
+    ).get(...values) as { count: number } | undefined;
     const total = countResult?.count ?? 0;
 
-    // Fetch (id DESC as tiebreaker for same-millisecond timestamps)
-    sql += ' ORDER BY started_at DESC, id DESC LIMIT ? OFFSET ?';
+    // Fetch with observation count subquery
+    const sql = `SELECT s.*,
+      (SELECT COUNT(*) FROM observations o WHERE o.session_id = s.id AND o.deleted_at IS NULL) as observation_count
+      FROM sessions s${whereClause}
+      ORDER BY s.started_at DESC, s.id DESC LIMIT ? OFFSET ?`;
     values.push(limit, offset);
 
     const rows = this.db.prepare(sql).all(...values);

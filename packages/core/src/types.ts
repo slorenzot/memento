@@ -24,6 +24,7 @@ export interface Session {
   startedAt: Date;
   endedAt: Date | null;
   metadata: Record<string, unknown>;
+  observationCount?: number;
 }
 
 export interface Prompt {
@@ -53,6 +54,7 @@ export interface SearchParams {
   includeDeleted?: boolean;
   scope?: 'project' | 'personal';
   mode?: 'keyword' | 'semantic' | 'hybrid';
+  sessionId?: number;
 }
 
 export interface SearchResult {
