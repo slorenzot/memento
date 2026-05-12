@@ -1,6 +1,6 @@
 {
   "name": "@slorenzot/memento-core",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Core memory engine for Memento with bun:sqlite, FTS5 search, soft delete, merge, and export",
   "keywords": [
     "memento",

@@ -13,32 +13,6 @@
 import type { Observation, Session, DashboardStats } from '@slorenzot/memento-core';
 import type { JournalEntry } from '@slorenzot/memento-core';
 
-// ─── Size limits by type (Issue #51) ────────────────────────
-
-const DEFAULT_LIMITS: Record<string, number> = {
-  decision: 3000,
-  bug: 2000,
-  discovery: 2000,
-  note: 5000,
-  summary: 5000,
-  learning: 2000,
-  pattern: 3000,
-  architecture: 5000,
-  config: 2000,
-  preference: 1000,
-};
-
-function formatSize(content: string, type: string): string {
-  const current = content.length;
-  const limit = DEFAULT_LIMITS[type] || 5000;
-  const pct = Math.round((current / limit) * 100);
-
-  if (pct > 80) {
-    return `Size: ${current}/${limit} chars ⚠️ NEAR LIMIT (${pct}%)`;
-  }
-  return `Size: ${current}/${limit} chars`;
-}
-
 // ─── Helpers ────────────────────────────────────────────────
 
 function compactDate(date: Date | string | null | undefined): string {
@@ -65,9 +39,6 @@ export function formatObservation(obs: Observation): string {
   meta.push(`Project: ${obs.projectId}`);
   if (obs.topicKey) meta.push(`Topic: ${obs.topicKey}`);
   meta.push(`Scope: ${obs.scope}`);
-  if (obs.pinned) meta.push(`📌 Pinned`);
-  if (obs.readOnly) meta.push(`🔒 Read-only`);
-  meta.push(formatSize(obs.content, obs.type));
   meta.push(`Created: ${compactDate(obs.createdAt)}`);
   meta.push(`Revision: ${obs.revisionCount}`);
   lines.push(meta.join(' | '));
@@ -184,17 +155,17 @@ export function formatStats(stats: DashboardStats, activeSessionId: number | nul
   // Types breakdown
   const typeEntries = Object.entries(stats.byType)
     .filter(([, count]) => count > 0)
-    .sort(([keyA, a], [keyB, b]) => b - a || keyA.localeCompare(keyB));
+    .sort(([, a], [, b]) => b - a);
   if (typeEntries.length > 0) {
-    const typeStr = typeEntries.map(([type, count]) => `${type}(${String(count)})`).join(' ');
+    const typeStr = typeEntries.map(([type, count]) => `${type}(${count})`).join(' ');
     lines.push(`Types: ${typeStr}`);
   }
 
   // Projects breakdown
   const projectEntries = Object.entries(stats.byProject)
-    .sort(([keyA, a], [keyB, b]) => b - a || keyA.localeCompare(keyB));
+    .sort(([, a], [, b]) => b - a);
   if (projectEntries.length > 0) {
-    const projStr = projectEntries.map(([proj, count]) => `${proj}(${String(count)})`).join(' ');
+    const projStr = projectEntries.map(([proj, count]) => `${proj}(${count})`).join(' ');
     lines.push(`Projects: ${projStr}`);
   }
 
@@ -294,7 +265,7 @@ export function formatConfig(data: {
   // Statistics
   const typeEntries = Object.entries(data.statistics.byType)
     .filter(([, count]) => count > 0)
-    .sort(([keyA, a], [keyB, b]) => b - a || keyA.localeCompare(keyB));
+    .sort(([, a], [, b]) => b - a);
   const typeStr = typeEntries.map(([type, count]) => `${type}(${count})`).join(' ');
 
   lines.push('');

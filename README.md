@@ -6,8 +6,6 @@
 [![MCP](https://img.shields.io/badge/MCP-Protocol-green.svg)](https://modelcontextprotocol.io)
 [![NPM Version](https://img.shields.io/npm/v/@slorenzot/memento-core.svg)](https://www.npmjs.org/package/@slorenzot/memento-core)
 
-[English](README.md) | [Español](README.es.md)
-
 **Memento** is a persistent memory system designed specifically for AI coding agents. It solves the forgetting problem by providing a persistent brain that allows agents to maintain context, learn, and improve over time.
 
 > Memento doesn't just remember — it COORDINATES. It's the shared brain that enables an orchestrator to delegate work to sub-agents, track progress, resume interrupted tasks, and measure costs. All with 3 tables and zero friction.
@@ -878,10 +876,6 @@ Current Configuration:
 - ✅ Proper attribution to the author (Soulberto Lorenzo)
 - ✅ Using for personal non-commercial projects
 
-## 📖 Migration Guide
-
-For upgrading between major versions, see [MIGRATION.md](./MIGRATION.md).
-
 ## 📈 Roadmap
 
 ### v1.1.0 (Next)
@@ -927,3 +921,5 @@ This project is licensed under **Creative Commons Attribution-NonCommercial-NoDe
 **⚠️ Remember:** This project has a restrictive license. Please respect the CC BY-NC-ND 4.0 license terms.
 
 **📊 Version:** Core v1.0.0 | MCP Server v1.0.0 | CLI v1.0.0 | API v0.3.0 | Web UI v0.1.1
+
+**[📖 Versión en español](./README.es.md)**

@@ -256,15 +256,15 @@ describe('Tool Handlers', () => {
       expect(searchText).toContain('Found 0 observations');
     });
 
-    it('should restore soft-deleted observation via mem_delete action', async () => {
+    it('should restore soft-deleted observation', async () => {
       const session = await seedSession(setup.engine, 'test-project');
       const obs = await seedObservation(setup.engine, session.id, { projectId: 'test-project' });
 
       await setup.client.callTool({ name: 'mem_delete', arguments: { id: obs.id } });
 
       const restoreResponse = await setup.client.callTool({
-        name: 'mem_delete',
-        arguments: { id: obs.id, action: 'restore' },
+        name: 'mem_restore',
+        arguments: { id: obs.id },
       });
 
       const restoreText = parseActionText(restoreResponse);
@@ -285,8 +285,8 @@ describe('Tool Handlers', () => {
       await setup.client.callTool({ name: 'mem_delete', arguments: { id: obs.id } });
 
       const response = await setup.client.callTool({
-        name: 'mem_delete',
-        arguments: { action: 'permanent', confirm: false },
+        name: 'mem_purge',
+        arguments: { confirm: false },
       });
 
       const text = parseActionText(response);
@@ -299,8 +299,8 @@ describe('Tool Handlers', () => {
       await setup.client.callTool({ name: 'mem_delete', arguments: { id: obs.id } });
 
       const response = await setup.client.callTool({
-        name: 'mem_delete',
-        arguments: { action: 'permanent', confirm: true, project_id: 'test-project' },
+        name: 'mem_purge',
+        arguments: { confirm: true, project_id: 'test-project' },
       });
 
       const text = parseActionText(response);
@@ -308,21 +308,25 @@ describe('Tool Handlers', () => {
 
       // Gone from deleted list
       const deletedResponse = await setup.client.callTool({
-        name: 'mem_delete',
-        arguments: { action: 'list', project_id: 'test-project' },
+        name: 'mem_list_deleted',
+        arguments: { project_id: 'test-project' },
       });
       const deletedText = parseActionText(deletedResponse);
       expect(deletedText).toContain('Found 0 observations');
     });
+  });
 
-    it('should list deleted observations', async () => {
+  // ─── mem_list_deleted ─────────────────────────────────────
+
+  describe('mem_list_deleted', () => {
+    it('should list deleted observations as Markdown', async () => {
       const session = await seedSession(setup.engine, 'test-project');
       const obs = await seedObservation(setup.engine, session.id, { projectId: 'test-project' });
       await setup.client.callTool({ name: 'mem_delete', arguments: { id: obs.id } });
 
       const response = await setup.client.callTool({
-        name: 'mem_delete',
-        arguments: { action: 'list', project_id: 'test-project' },
+        name: 'mem_list_deleted',
+        arguments: { project_id: 'test-project' },
       });
 
       const text = parseActionText(response);
@@ -471,54 +475,35 @@ describe('Tool Handlers', () => {
     });
   });
 
-  // ─── mem_status (consolidated) ────────────────────────────
+  // ─── Utility Tools ────────────────────────────────────────
 
-  describe('mem_status', () => {
-    it('should show registered tools in config section', async () => {
+  describe('mem_timeline', () => {
+    it('should return chronological observations as Markdown', async () => {
+      const session = await seedSession(setup.engine, 'test-project');
+      await seedObservation(setup.engine, session.id, { title: 'First', projectId: 'test-project' });
+      await seedObservation(setup.engine, session.id, { title: 'Second', projectId: 'test-project' });
+
       const response = await setup.client.callTool({
-        name: 'mem_status',
-        arguments: { section: 'config' },
+        name: 'mem_timeline',
+        arguments: { project_id: 'test-project' },
       });
 
       const text = parseActionText(response);
-      expect(text).toContain('memento v1.0.0');
-      expect(text).toContain('SQLite Persistent');
-      expect(text).toContain('Tools: 21 registered');
+      expect(text).toContain('Found 2 observations');
+      expect(text).toContain('First');
+      expect(text).toContain('Second');
     });
+  });
 
-    it('should return all sections with section="all"', async () => {
-      const response = await setup.client.callTool({
-        name: 'mem_status',
-        arguments: { section: 'all' },
-      });
-
-      const text = parseActionText(response);
-      expect(text).toContain('healthy');
-      expect(text).toContain('observations');
-      expect(text).toContain('memento v1.0.0');
-      expect(text).toContain('Sessions');
-    });
-
-    it('should return health section', async () => {
-      const response = await setup.client.callTool({
-        name: 'mem_status',
-        arguments: { section: 'health' },
-      });
-
-      const text = parseActionText(response);
-      expect(text).toContain('Status: healthy');
-      expect(text).toContain('Version: 1.0.0');
-      expect(text).toContain('Database: ok');
-    });
-
-    it('should return stats section', async () => {
+  describe('mem_stats', () => {
+    it('should return memory statistics as Markdown', async () => {
       const session = await seedSession(setup.engine, 'test-project');
       await seedObservation(setup.engine, session.id, { type: 'bug', projectId: 'test-project' });
       await seedObservation(setup.engine, session.id, { type: 'note', projectId: 'test-project' });
 
       const response = await setup.client.callTool({
-        name: 'mem_status',
-        arguments: { section: 'stats' },
+        name: 'mem_stats',
+        arguments: {},
       });
 
       const text = parseActionText(response);
@@ -526,26 +511,66 @@ describe('Tool Handlers', () => {
       expect(text).toContain('bug(1)');
       expect(text).toContain('note(1)');
     });
+  });
 
-    it('should return session by ID', async () => {
-      const startResponse = await setup.client.callTool({
-        name: 'mem_session_start',
-        arguments: { project_id: 'test-project' },
-      });
-      const startText = parseActionText(startResponse);
-      const sessionId = extractId(startText);
-
+  describe('mem_health', () => {
+    it('should report healthy status as Markdown', async () => {
       const response = await setup.client.callTool({
-        name: 'mem_status',
-        arguments: { session_id: sessionId },
+        name: 'mem_health',
+        arguments: {},
       });
 
       const text = parseActionText(response);
-      expect(text).toContain(`Session #${sessionId}`);
+      expect(text).toContain('Status: healthy');
+      expect(text).toContain('Version: 1.0.0');
+      expect(text).toContain('Database: ok');
+    });
+  });
+
+  describe('mem_config', () => {
+    it('should return full configuration as Markdown', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_config',
+        arguments: {},
+      });
+
+      const text = parseActionText(response);
+      expect(text).toContain('memento v1.0.0');
+      expect(text).toContain('SQLite Persistent');
+      expect(text).toContain('Tools: 26 registered');
     });
   });
 
   // ─── Agent Convenience Tools ───────────────────────────────
+
+  describe('mem_save_prompt', () => {
+    it('should save a prompt and return human-readable confirmation', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_save_prompt',
+        arguments: {
+          content: 'How do I implement FTS5 in SQLite?',
+          project_id: 'test-project',
+        },
+      });
+
+      const text = parseActionText(response);
+      expect(text).toContain('saved');
+      expect(text).toContain('test-project');
+    });
+
+    it('should auto-create session if none active', async () => {
+      expect(setup.ctx.activeSessionId).toBeNull();
+
+      const response = await setup.client.callTool({
+        name: 'mem_save_prompt',
+        arguments: { content: 'Test prompt' },
+      });
+
+      const text = parseActionText(response);
+      expect(text).toContain('saved');
+      expect(setup.ctx.activeSessionId).not.toBeNull();
+    });
+  });
 
   describe('mem_context', () => {
     it('should return recent observations as Markdown', async () => {
@@ -581,6 +606,38 @@ describe('Tool Handlers', () => {
       // Count separators (---) to verify only 2 are shown
       const separatorCount = (text.match(/---/g) || []).length;
       expect(separatorCount).toBe(1); // 2 items = 1 separator between them
+    });
+  });
+
+  describe('mem_suggest_topic_key', () => {
+    it('should generate stable key from title', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_suggest_topic_key',
+        arguments: { title: 'Fixed N+1 Query in UserList' },
+      });
+
+      const text = parseActionText(response);
+      expect(text).toContain('fixed-n-1-query-in-userlist');
+    });
+
+    it('should add type prefix when provided', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_suggest_topic_key',
+        arguments: { title: 'Auth Model', type: 'decision' },
+      });
+
+      const text = parseActionText(response);
+      expect(text).toContain('decision/auth-model');
+    });
+
+    it('should return error when no input provided', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_suggest_topic_key',
+        arguments: {},
+      });
+
+      const text = parseActionText(response);
+      expect(text).toContain('provide at least');
     });
   });
 
@@ -693,36 +750,47 @@ describe('Tool Handlers', () => {
       expect(secondText).toContain('Captured 0 learnings');
       expect(secondText).toContain('3 duplicates');
     });
+  });
 
-    it('should deduplicate across different sources (cross-source dedup)', async () => {
-      const content = '## Key Learnings:\n- Always use prepared statements for SQL\n- WAL mode improves write performance';
+  // ─── Updated Tool Behavior ────────────────────────────────
 
-      // First call with source A
-      const firstResponse = await setup.client.callTool({
-        name: 'mem_capture_passive',
-        arguments: {
-          content,
-          project_id: 'test-project',
-          source: 'source-a',
-        },
+  describe('mem_timeline (updated)', () => {
+    it('should return observations in ASC chronological order as Markdown', async () => {
+      const session = await seedSession(setup.engine, 'test-project');
+      const first = await seedObservation(setup.engine, session.id, { title: 'First', projectId: 'test-project' });
+      const second = await seedObservation(setup.engine, session.id, { title: 'Second', projectId: 'test-project' });
+
+      const response = await setup.client.callTool({
+        name: 'mem_timeline',
+        arguments: { project_id: 'test-project' },
       });
 
-      const firstText = parseActionText(firstResponse);
-      expect(firstText).toContain('Captured 2 learnings');
+      const text = parseActionText(response);
+      expect(text).toContain('Found 2 observations');
+      // First should appear before Second in the text (chronological order)
+      const firstIdx = text.indexOf(`#${first.id}`);
+      const secondIdx = text.indexOf(`#${second.id}`);
+      expect(firstIdx).toBeLessThan(secondIdx);
+    });
+  });
 
-      // Second call with DIFFERENT source but SAME content
-      const secondResponse = await setup.client.callTool({
-        name: 'mem_capture_passive',
-        arguments: {
-          content,
-          project_id: 'test-project',
-          source: 'source-b',
-        },
+  describe('mem_stats (updated)', () => {
+    it('should use getDashboardStats for accurate counts as Markdown', async () => {
+      const session = await seedSession(setup.engine, 'test-project');
+      await seedObservation(setup.engine, session.id, { type: 'bug', projectId: 'test-project' });
+      await seedObservation(setup.engine, session.id, { type: 'note', projectId: 'test-project' });
+      await seedObservation(setup.engine, session.id, { type: 'decision', projectId: 'test-project' });
+
+      const response = await setup.client.callTool({
+        name: 'mem_stats',
+        arguments: {},
       });
 
-      const secondText = parseActionText(secondResponse);
-      expect(secondText).toContain('Captured 0 learnings');
-      expect(secondText).toContain('2 duplicates');
+      const text = parseActionText(response);
+      expect(text).toContain('3 observations');
+      expect(text).toContain('bug(1)');
+      expect(text).toContain('note(1)');
+      expect(text).toContain('decision(1)');
     });
   });
 });

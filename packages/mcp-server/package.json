@@ -1,6 +1,6 @@
 {
   "name": "@slorenzot/memento-mcp-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "MCP server for Memento persistent memory system. Server name: memento. Tools: mem_*. Includes AI skill for teaching agents.",
   "keywords": [
     "mcp",
@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",
-    "@slorenzot/memento-core": "^1.0.0",
+    "@slorenzot/memento-core": "^1.1.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {

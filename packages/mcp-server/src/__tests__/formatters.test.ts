@@ -317,7 +317,7 @@ describe('formatConfig', () => {
         arch: 'arm64',
         bunVersion: '1.2.0',
       },
-      tools: ['mem_save', 'mem_search', 'mem_status'],
+      tools: ['mem_save', 'mem_search', 'mem_stats'],
     });
 
     expect(result).toContain('memento v1.0.0 — Configuration');

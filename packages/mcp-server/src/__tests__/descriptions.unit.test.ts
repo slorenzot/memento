@@ -23,9 +23,9 @@ describe('Tool Metadata Quality', () => {
 
   // ─── Tool Count ───────────────────────────────────────────
 
-  it('should register exactly 21 tools', async () => {
+  it('should register exactly 26 tools', async () => {
     const result = await setup.client.listTools();
-    expect(result.tools).toHaveLength(21);
+    expect(result.tools).toHaveLength(26);
   });
 
   // ─── Tool Names ───────────────────────────────────────────
@@ -36,26 +36,31 @@ describe('Tool Metadata Quality', () => {
 
     const expected = [
       'mem_capture_passive',
+      'mem_config',
       'mem_context',
       'mem_delete',
       'mem_export',
       'mem_get_observation',
+      'mem_get_session',
+      'mem_health',
       'mem_journal_read',
       'mem_journal_search',
       'mem_journal_write',
-      'mem_lock',
+      'mem_list_deleted',
+      'mem_list_sessions',
       'mem_merge',
-      'mem_pin',
+      'mem_purge',
+      'mem_restore',
       'mem_save',
+      'mem_save_prompt',
       'mem_search',
       'mem_session_end',
       'mem_session_start',
       'mem_session_summary',
-      'mem_status',
-      'mem_unpin',
-      'mem_unlock',
+      'mem_stats',
+      'mem_suggest_topic_key',
+      'mem_timeline',
       'mem_update',
-      'mem_replace',
     ].sort();
 
     expect(names).toEqual(expected);
@@ -100,11 +105,18 @@ describe('Tool Metadata Quality', () => {
   const READ_ONLY_TOOLS = [
     'mem_search',
     'mem_get_observation',
+    'mem_list_deleted',
+    'mem_list_sessions',
+    'mem_get_session',
     'mem_context',
+    'mem_suggest_topic_key',
+    'mem_timeline',
+    'mem_stats',
+    'mem_health',
+    'mem_config',
     'mem_export',
     'mem_journal_read',
     'mem_journal_search',
-    'mem_status',
   ];
 
   it('read-only tools should have readOnlyHint: true', async () => {
@@ -125,7 +137,7 @@ describe('Tool Metadata Quality', () => {
     }
   });
 
-  const DESTRUCTIVE_TOOLS = ['mem_delete', 'mem_merge'];
+  const DESTRUCTIVE_TOOLS = ['mem_delete', 'mem_purge', 'mem_merge'];
 
   it('destructive tools should have destructiveHint: true', async () => {
     const result = await setup.client.listTools();
@@ -174,12 +186,17 @@ describe('Tool Metadata Quality', () => {
     expect(search!.description).toContain('mem_get_observation');
   });
 
-  it('mem_delete should describe action parameter', async () => {
+  it('mem_delete should mention mem_restore and mem_purge', async () => {
     const result = await setup.client.listTools();
     const del = result.tools.find((t) => t.name === 'mem_delete');
-    expect(del!.description).toContain('action');
-    expect(del!.description).toContain('restore');
-    expect(del!.description).toContain('permanent');
+    expect(del!.description).toContain('mem_restore');
+    expect(del!.description).toContain('mem_purge');
+  });
+
+  it('mem_purge should mention mem_list_deleted', async () => {
+    const result = await setup.client.listTools();
+    const purge = result.tools.find((t) => t.name === 'mem_purge');
+    expect(purge!.description).toContain('mem_list_deleted');
   });
 
   it('mem_merge should mention dry_run', async () => {
@@ -188,9 +205,9 @@ describe('Tool Metadata Quality', () => {
     expect(merge!.description).toContain('dry_run');
   });
 
-  it('mem_search should mention sort parameter for chronological', async () => {
+  it('mem_timeline should differentiate from mem_search', async () => {
     const result = await setup.client.listTools();
-    const search = result.tools.find((t) => t.name === 'mem_search');
-    expect(search!.description).toContain('sort');
+    const timeline = result.tools.find((t) => t.name === 'mem_timeline');
+    expect(timeline!.description).toContain('mem_search');
   });
 });

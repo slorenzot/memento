@@ -1,5 +1,4 @@
 import * as crypto from 'crypto';
-import { EmbeddingService } from './EmbeddingService.js';
 import type {
   Observation,
   Session,
@@ -22,8 +21,6 @@ import type {
   WriteJournalParams,
   JournalSearchParams,
   JournalSearchResult,
-  PromptInjectionConfig,
-  RenderedPromptContext,
 } from './types.js';
 
 import { Database } from 'bun:sqlite';
@@ -35,11 +32,9 @@ export class MemoryEngine {
   private db: any;
   private dbPath: string;
   private initError: Error | null = null;
-  private embeddingService: EmbeddingService;
 
   constructor(dbPath: string = './data/memento.db') {
     this.dbPath = dbPath;
-    this.embeddingService = new EmbeddingService();
 
     try {
       const dbDir = dirname(dbPath);
@@ -165,31 +160,6 @@ export class MemoryEngine {
       }
     }
 
-    // Migrate: add pinned column if missing (Issue #50)
-    try {
-      this.db.exec('SELECT pinned FROM observations LIMIT 0');
-    } catch {
-      try {
-        this.db.exec('ALTER TABLE observations ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0');
-        console.error('✓ Migration: added pinned column to observations');
-      } catch {
-        // Column may already exist in a concurrent scenario
-      }
-    }
-    this.db.exec('CREATE INDEX IF NOT EXISTS idx_observations_pinned ON observations(pinned) WHERE pinned = 1');
-
-    // Migrate: add read_only column if missing (Issue #54)
-    try {
-      this.db.exec('SELECT read_only FROM observations LIMIT 0');
-    } catch {
-      try {
-        this.db.exec('ALTER TABLE observations ADD COLUMN read_only INTEGER NOT NULL DEFAULT 0');
-        console.error('✓ Migration: added read_only column to observations');
-      } catch {
-        // Column may already exist in a concurrent scenario
-      }
-    }
-
     // Migrate: clean up empty string topic_key → NULL (Issue #69)
     try {
       const result = this.db.prepare("UPDATE observations SET topic_key = NULL WHERE topic_key = ''").run();
@@ -265,18 +235,6 @@ export class MemoryEngine {
         VALUES (new.id, new.title, new.body, new.project_id);
       END;
     `);
-
-    // ─── Embeddings table (semantic search) ──────────────────────
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS embeddings (
-        observation_id INTEGER PRIMARY KEY REFERENCES observations(id) ON DELETE CASCADE,
-        embedding BLOB NOT NULL,
-        model TEXT NOT NULL DEFAULT 'all-MiniLM-L6-v2',
-        dimensions INTEGER NOT NULL DEFAULT 384,
-        generated_at INTEGER NOT NULL
-      );
-    `);
-    this.db.exec('CREATE INDEX IF NOT EXISTS idx_embeddings_obs ON embeddings(observation_id)');
   }
 
   private serialize(value: unknown): string {
@@ -338,21 +296,17 @@ export class MemoryEngine {
     projectId: string;
     metadata: Record<string, unknown>;
     scope?: 'project' | 'personal';
-    pinned?: boolean;
-    readOnly?: boolean;
   }): Promise<Observation> {
     this.checkHealth();
     const uuid = crypto.randomUUID();
     const createdAt = new Date();
     const metadata = this.serialize(data.metadata);
     const scope = data.scope || 'project';
-    const pinned = data.pinned ? 1 : 0;
-    const readOnly = data.readOnly ? 1 : 0;
 
     const id = await this.withRetry(() => {
       const result = this.db
         .prepare(
-          `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, deleted_at, metadata, scope, pinned, read_only) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)`
+          `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, deleted_at, metadata, scope) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`
         )
         .run(
           uuid,
@@ -364,9 +318,7 @@ export class MemoryEngine {
           data.projectId,
           createdAt.getTime(),
           metadata,
-          scope,
-          pinned,
-          readOnly
+          scope
         );
       const insertId =
         typeof result.lastInsertRowid === 'bigint'
@@ -383,12 +335,6 @@ export class MemoryEngine {
 
     const observation = await this.getObservationById(id, true);
     if (!observation) throw new Error('Failed to retrieve created observation');
-
-    // Generate embedding asynchronously (non-blocking, fire-and-forget)
-    this.generateEmbedding(id).catch(() => {
-      // Silently ignore — embedding generation failure doesn't affect save
-    });
-
     return observation;
   }
 
@@ -400,21 +346,11 @@ export class MemoryEngine {
       type?: Observation['type'];
       topicKey?: string | null;
       metadata?: Record<string, unknown>;
-      pinned?: boolean;
-      readOnly?: boolean;
     }
   ): Promise<Observation> {
     const current = await this.getObservationById(id);
     if (!current) throw new Error('Observation not found');
     if (current.deletedAt) throw new Error('Cannot update a soft-deleted observation');
-
-    // Read-only protection: only allow changing readOnly itself
-    if (current.readOnly) {
-      const nonReadOnlyFields = Object.keys(updates).filter(k => k !== 'readOnly');
-      if (nonReadOnlyFields.length > 0) {
-        throw new Error(`Observation #${id} is read-only. Only readOnly flag can be changed.`);
-      }
-    }
 
     const fields: string[] = [];
     const values: (string | number | null)[] = [];
@@ -438,14 +374,6 @@ export class MemoryEngine {
     if (updates.metadata !== undefined) {
       fields.push('metadata = ?');
       values.push(this.serialize(updates.metadata));
-    }
-    if (updates.pinned !== undefined) {
-      fields.push('pinned = ?');
-      values.push(updates.pinned ? 1 : 0);
-    }
-    if (updates.readOnly !== undefined) {
-      fields.push('read_only = ?');
-      values.push(updates.readOnly ? 1 : 0);
     }
 
     if (fields.length === 0) return current;
@@ -486,14 +414,6 @@ export class MemoryEngine {
 
     const updated = await this.getObservationById(id, true);
     if (!updated) throw new Error('Failed to update observation');
-
-    // Regenerate embedding if content-affecting fields changed
-    if (hasFtsUpdate) {
-      this.generateEmbedding(id).catch(() => {
-        // Silently ignore — embedding regeneration failure doesn't affect update
-      });
-    }
-
     return updated;
   }
 
@@ -504,7 +424,6 @@ export class MemoryEngine {
     const obs = await this.getObservationById(id, true);
     if (!obs) throw new Error('Observation not found');
     if (obs.deletedAt) throw new Error('Observation already deleted');
-    if (obs.readOnly) throw new Error(`Observation #${id} is read-only. Cannot delete.`);
 
     const now = Date.now();
 
@@ -603,7 +522,7 @@ export class MemoryEngine {
     const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;
     const total = countResult ? countResult.count : 0;
 
-    sql += ' ORDER BY deleted_at DESC, id DESC LIMIT ?';
+    sql += ' ORDER BY deleted_at DESC LIMIT ?';
     const rows = this.db.prepare(sql).all(...values, limit) as Record<string, unknown>[];
     const observations = rows.map((row) => this.mapObservation(row));
 
@@ -634,7 +553,7 @@ export class MemoryEngine {
       for (const row of rows) {
         const obs = this.db
           .prepare(
-            'SELECT * FROM observations WHERE project_id = ? AND topic_key = ? AND deleted_at IS NULL ORDER BY created_at ASC, id ASC'
+            'SELECT * FROM observations WHERE project_id = ? AND topic_key = ? AND deleted_at IS NULL ORDER BY created_at ASC'
           )
           .all(projectId, row.topic_key) as Record<string, unknown>[];
 
@@ -648,7 +567,7 @@ export class MemoryEngine {
       // by_similarity — compare recent observations pairwise
       const allObs = this.db
         .prepare(
-          'SELECT * FROM observations WHERE project_id = ? AND deleted_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 200'
+          'SELECT * FROM observations WHERE project_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 200'
         )
         .all(projectId) as Record<string, unknown>[];
 
@@ -724,16 +643,6 @@ export class MemoryEngine {
     }
 
     if (groups.length === 0) return [];
-
-    // Read-only protection: reject merge if any source observation is read-only
-    for (const group of groups) {
-      for (const obs of group.observations) {
-        if (obs.readOnly) {
-          throw new Error(`Cannot merge: observation #${obs.id} is read-only.`);
-        }
-      }
-    }
-
     if (dryRun) {
       return groups.map((g) => ({
         mergedObservation: g.observations[0], // placeholder
@@ -878,7 +787,7 @@ export class MemoryEngine {
       values.push(dateTo.getTime());
     }
 
-    sql += ' ORDER BY created_at ASC, id ASC';
+    sql += ' ORDER BY created_at ASC';
 
     const rows = this.db.prepare(sql).all(...values) as Record<string, unknown>[];
     const observations = rows.map((row) => this.mapObservation(row));
@@ -1004,33 +913,11 @@ export class MemoryEngine {
   }
 
   async getObservation(id: number, includeDeleted: boolean = false): Promise<Observation | null> {
+    this.checkHealth();
     return await this.getObservationById(id, includeDeleted);
   }
 
   async search(params: SearchParams): Promise<SearchResult> {
-    const mode = params.mode || 'keyword';
-
-    // Semantic and hybrid modes require a query string
-    if ((mode === 'semantic' || mode === 'hybrid') && !params.query) {
-      // Fall back to keyword mode if no query provided
-      return this.searchKeyword(params);
-    }
-
-    switch (mode) {
-      case 'semantic':
-        return this.searchSemantic(params);
-      case 'hybrid':
-        return this.searchHybrid(params);
-      case 'keyword':
-      default:
-        return this.searchKeyword(params);
-    }
-  }
-
-  /**
-   * Keyword search using existing FTS5 (unchanged behavior).
-   */
-  private async searchKeyword(params: SearchParams): Promise<SearchResult> {
     const {
       query,
       type,
@@ -1099,218 +986,12 @@ export class MemoryEngine {
     const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;
     const total = countResult ? countResult.count : 0;
 
-    sql += ' ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?';
+    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
     values.push(limit, offset);
 
     const rows = this.db.prepare(sql).all(...values);
     const observations = (rows as Record<string, unknown>[]).map((row) => this.mapObservation(row));
     return { observations, total };
-  }
-
-  /**
-   * Semantic search using cosine similarity on embeddings.
-   * Falls back to keyword search if embeddings are unavailable.
-   */
-  private async searchSemantic(params: SearchParams): Promise<SearchResult> {
-    this.checkHealth();
-    const { query, type, projectId, topicKey, limit = 10, scope } = params;
-    if (!query) return { observations: [], total: 0 };
-
-    // Generate query embedding
-    const queryEmbedding = await this.embeddingService.generate(query);
-    if (!queryEmbedding) {
-      // Fall back to keyword search if embedding service unavailable
-      return this.searchKeyword(params);
-    }
-
-    // Build candidate filter
-    let candidateSql = 'SELECT o.* FROM observations o WHERE o.deleted_at IS NULL';
-    const values: (string | number)[] = [];
-
-    if (type) {
-      candidateSql += ' AND o.type = ?';
-      values.push(type);
-    }
-    if (projectId) {
-      candidateSql += ' AND o.project_id = ?';
-      values.push(projectId);
-    }
-    if (topicKey) {
-      candidateSql += ' AND o.topic_key = ?';
-      values.push(topicKey);
-    }
-    if (scope) {
-      candidateSql += ' AND o.scope = ?';
-      values.push(scope);
-    }
-
-    // Only observations that have embeddings
-    candidateSql += ' AND EXISTS (SELECT 1 FROM embeddings e WHERE e.observation_id = o.id)';
-
-    const rows = this.db.prepare(candidateSql).all(...values) as Record<string, unknown>[];
-    const candidates = rows.map((row) => this.mapObservation(row));
-
-    // Score each candidate by cosine similarity
-    const scored: Array<{ observation: Observation; score: number }> = [];
-    for (const obs of candidates) {
-      const embeddingRow = this.db
-        .prepare('SELECT embedding, dimensions FROM embeddings WHERE observation_id = ?')
-        .get(obs.id) as { embedding: Buffer; dimensions: number } | undefined;
-
-      if (!embeddingRow) continue;
-
-      const storedEmbedding = EmbeddingService.deserializeEmbedding(
-        embeddingRow.embedding,
-        embeddingRow.dimensions
-      );
-      const score = EmbeddingService.cosineSimilarity(queryEmbedding.embedding, storedEmbedding);
-
-      scored.push({ observation: obs, score });
-    }
-
-    // Sort by score descending
-    scored.sort((a, b) => b.score - a.score);
-
-    const total = scored.length;
-    const results = scored.slice(0, limit);
-    const scores = new Map(results.map((r) => [r.observation.id, r.score]));
-    const observations = results.map((r) => r.observation);
-
-    return { observations, total, scores };
-  }
-
-  /**
-   * Hybrid search combining FTS5 BM25 + cosine similarity.
-   * Score = 0.4 * bm25_normalized + 0.6 * cosine_similarity
-   */
-  private async searchHybrid(params: SearchParams): Promise<SearchResult> {
-    this.checkHealth();
-    const { query, limit = 10 } = params;
-    if (!query) return { observations: [], total: 0 };
-
-    // Run both searches in parallel
-    const [keywordResult, semanticResult] = await Promise.all([
-      this.searchKeyword({ ...params, limit: limit * 3 }), // Get more candidates for re-ranking
-      this.searchSemantic({ ...params, limit: limit * 3 }),
-    ]);
-
-    // Normalize BM25 scores (use position-based ranking as proxy)
-    const maxBm25Rank = keywordResult.observations.length;
-    const bm25Scores = new Map<number, number>();
-    keywordResult.observations.forEach((obs, index) => {
-      // Higher rank (earlier) = higher score
-      bm25Scores.set(obs.id, maxBm25Rank > 0 ? 1 - index / maxBm25Rank : 0);
-    });
-
-    // Get semantic scores
-    const semanticScores = semanticResult.scores || new Map<number, number>();
-
-    // Combine all unique observation IDs
-    const allIds = new Set([...bm25Scores.keys(), ...semanticScores.keys()]);
-
-    // Calculate hybrid scores
-    const hybridWeight = { bm25: 0.4, cosine: 0.6 };
-    const scored: Array<{ observationId: number; score: number }> = [];
-
-    for (const id of allIds) {
-      const bm25 = bm25Scores.get(id) ?? 0;
-      const cosine = semanticScores.get(id) ?? 0;
-      const hybridScore = hybridWeight.bm25 * bm25 + hybridWeight.cosine * cosine;
-      scored.push({ observationId: id, score: hybridScore });
-    }
-
-    scored.sort((a, b) => b.score - a.score);
-    const topResults = scored.slice(0, limit);
-
-    // Fetch full observations
-    const observations: Observation[] = [];
-    const scores = new Map<number, number>();
-
-    for (const result of topResults) {
-      const obs = await this.getObservation(result.observationId);
-      if (obs) {
-        observations.push(obs);
-        scores.set(obs.id, result.score);
-      }
-    }
-
-    return { observations, total: scored.length, scores };
-  }
-
-  // ─── Embedding Management ──────────────────────────────────
-
-  /**
-   * Generate and store embedding for an observation.
-   * Non-blocking: does not throw on failure.
-   */
-  async generateEmbedding(observationId: number): Promise<boolean> {
-    this.checkHealth();
-
-    const obs = await this.getObservationById(observationId);
-    if (!obs) return false;
-
-    const text = `${obs.title} ${obs.content}`;
-    const result = await this.embeddingService.generate(text);
-    if (!result) return false;
-
-    const blob = EmbeddingService.serializeEmbedding(result.embedding);
-    const now = Date.now();
-
-    await this.withRetry(() => {
-      this.db.prepare(
-        `INSERT OR REPLACE INTO embeddings (observation_id, embedding, model, dimensions, generated_at)
-         VALUES (?, ?, ?, ?, ?)`
-      ).run(observationId, blob, result.model, result.dimensions, now);
-    });
-
-    return true;
-  }
-
-  /**
-   * Delete embedding for an observation.
-   */
-  async deleteEmbedding(observationId: number): Promise<void> {
-    this.checkHealth();
-    this.db.prepare('DELETE FROM embeddings WHERE observation_id = ?').run(observationId);
-  }
-
-  /**
-   * Get embedding status (is the service available?).
-   */
-  async getEmbeddingStatus() {
-    return this.embeddingService.status;
-  }
-
-  /**
-   * Backfill embeddings for observations that don't have them.
-   * Processes in batches. Returns count of embeddings generated.
-   */
-  async backfillEmbeddings(batchSize: number = 50): Promise<{ processed: number; failed: number }> {
-    this.checkHealth();
-
-    const rows = this.db.prepare(
-      `SELECT o.id FROM observations o
-       WHERE o.deleted_at IS NULL
-       AND NOT EXISTS (SELECT 1 FROM embeddings e WHERE e.observation_id = o.id)
-       ORDER BY o.id ASC`
-    ).all() as { id: number }[];
-
-    let processed = 0;
-    let failed = 0;
-
-    for (let i = 0; i < rows.length; i += batchSize) {
-      const batch = rows.slice(i, i + batchSize);
-      for (const row of batch) {
-        const success = await this.generateEmbedding(row.id);
-        if (success) {
-          processed++;
-        } else {
-          failed++;
-        }
-      }
-    }
-
-    return { processed, failed };
   }
 
   // ─── Sessions ──────────────────────────────────────────────
@@ -1319,7 +1000,6 @@ export class MemoryEngine {
     projectId: string;
     endedAt: Date | null;
     metadata: Record<string, unknown>;
-    seedIfEmpty?: boolean;
   }): Promise<Session> {
     const uuid = crypto.randomUUID();
     const startedAt = new Date();
@@ -1337,68 +1017,7 @@ export class MemoryEngine {
         : result.lastInsertRowid;
     const session = await this.getSessionById(id);
     if (!session) throw new Error('Failed to retrieve created session');
-
-    // Seed default observations if requested and this is the first session for the project
-    if (data.seedIfEmpty) {
-      await this.seedIfEmpty(data.projectId, id);
-    }
-
     return session;
-  }
-
-  /**
-   * Seed default observations if project has no observations yet.
-   * Creates 3 seeds: persona (personal scope), human (personal), project (project scope).
-   * Public so that `memento init` can call it directly.
-   */
-  async seedIfEmpty(projectId: string, sessionId: number): Promise<void> {
-    // Check if project already has observations
-    const existing = this.db
-      .prepare('SELECT COUNT(*) as count FROM observations WHERE project_id = ? AND deleted_at IS NULL')
-      .get(projectId) as { count: number } | undefined;
-
-    if (existing && existing.count > 0) return;
-
-    // Seed personal-scope observations (only if no personal observations exist)
-    const personalExisting = this.db
-      .prepare("SELECT COUNT(*) as count FROM observations WHERE scope = 'personal' AND deleted_at IS NULL")
-      .get() as { count: number } | undefined;
-
-    if (!personalExisting || personalExisting.count === 0) {
-      await this.createObservation({
-        sessionId,
-        title: 'Agent Persona',
-        content: 'Instructions for how the agent should behave and respond. Fill this in with your preferred communication style, tone, and approach.',
-        type: 'preference',
-        topicKey: 'persona',
-        projectId,
-        metadata: { seed: true },
-        scope: 'personal',
-      });
-
-      await this.createObservation({
-        sessionId,
-        title: 'User Preferences',
-        content: 'Key details about the user: preferred language, frameworks, communication style, constraints, and habits.',
-        type: 'preference',
-        topicKey: 'human',
-        projectId,
-        metadata: { seed: true },
-        scope: 'personal',
-      });
-    }
-
-    // Seed project-scope observation
-    await this.createObservation({
-      sessionId,
-      title: 'Project Knowledge',
-      content: 'Durable, high-signal information about this codebase: commands, architecture notes, conventions, and gotchas.',
-      type: 'note',
-      topicKey: 'project',
-      projectId,
-      metadata: { seed: true },
-      scope: 'project',
-    });
   }
 
   async endSession(id: number): Promise<Session> {
@@ -1440,148 +1059,6 @@ export class MemoryEngine {
     const prompt = await this.getPromptById(id);
     if (!prompt) throw new Error('Failed to retrieve saved prompt');
     return prompt;
-  }
-
-  // ─── Prompt Injection (OpenCode Plugin) ──────────────────────
-
-  /**
-   * Select observations for prompt injection based on config.
-   * Returns observations sorted deterministically for prompt caching:
-   * 1. Pinned observations (by ID ascending)
-   * 2. Non-pinned observations (by ID ascending)
-   */
-  selectForPrompt(config: PromptInjectionConfig): Observation[] {
-    this.checkHealth();
-
-    const types = config.types.map((t) => `'${t}'`).join(',');
-    const values: (string | number)[] = [];
-
-    let sql = `SELECT * FROM observations WHERE deleted_at IS NULL AND type IN (${types})`;
-
-    if (config.projectId) {
-      sql += ' AND project_id = ?';
-      values.push(config.projectId);
-    }
-
-    if (config.strategy === 'pinned-only') {
-      sql += ' AND pinned = 1';
-    }
-
-    // Deterministic sort: pinned first (by ID ASC), then non-pinned (by ID ASC)
-    sql += ' ORDER BY pinned DESC, id ASC';
-
-    // Fetch more than needed to allow for token budget trimming
-    const rows = this.db.prepare(sql).all(...values) as Record<string, unknown>[];
-    const observations = rows.map((row) => this.mapObservation(row));
-
-    // Apply maxObservations limit
-    const limited = observations.slice(0, config.maxObservations);
-
-    // Apply token budget
-    const maxChars = config.maxTokens * 4; // approximate: chars / 4 = tokens
-    let totalChars = 0;
-    const result: Observation[] = [];
-
-    for (const obs of limited) {
-      const obsChars = this.estimateObservationChars(obs);
-      if (totalChars + obsChars > maxChars && result.length > 0) {
-        break;
-      }
-      totalChars += obsChars;
-      result.push(obs);
-    }
-
-    // Re-sort: pinned first by ID ASC, then non-pinned by ID ASC
-    // (ensures deterministic order even after budget trim)
-    result.sort((a, b) => {
-      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-      return a.id - b.id;
-    });
-
-    return result;
-  }
-
-  /**
-   * Render observations as compact XML for system prompt injection.
-   */
-  renderPromptContext(observations: Observation[], config: PromptInjectionConfig): RenderedPromptContext {
-    if (observations.length === 0) {
-      return { xml: '', observationCount: 0, tokenCount: 0, budgetExceeded: false };
-    }
-
-    const parts: string[] = ['<memento_context>'];
-
-    let totalChars = 0;
-    const maxChars = config.maxTokens * 4;
-    let budgetExceeded = false;
-
-    for (const obs of observations) {
-      const xmlNode = this.renderObservationXml(obs);
-      const nodeChars = xmlNode.length;
-
-      if (totalChars + nodeChars > maxChars && parts.length > 1) {
-        budgetExceeded = true;
-        break;
-      }
-
-      parts.push(xmlNode);
-      totalChars += nodeChars;
-    }
-
-    parts.push('</memento_context>');
-
-    const xml = parts.join('\n');
-    return {
-      xml,
-      observationCount: parts.length - 2, // subtract opening and closing tags
-      tokenCount: Math.ceil(xml.length / 4),
-      budgetExceeded,
-    };
-  }
-
-  private renderObservationXml(obs: Observation): string {
-    const pinnedAttr = obs.pinned ? ' pinned="true"' : '';
-    const projectAttr = obs.projectId ? ` project="${obs.projectId}"` : '';
-    // Compact: title as attribute, content as text (trimmed to first 500 chars for budget)
-    const truncatedContent = obs.content.length > 500
-      ? obs.content.slice(0, 500) + '...'
-      : obs.content;
-    return `<observation id="${obs.id}" type="${obs.type}"${projectAttr}${pinnedAttr}>\n${obs.title}\n${truncatedContent}\n</observation>`;
-  }
-
-  private estimateObservationChars(obs: Observation): number {
-    // Estimate XML overhead: ~100 chars for tags + attributes
-    // Plus title + first 500 chars of content
-    const contentLen = Math.min(obs.content.length, 500);
-    return 100 + obs.title.length + contentLen;
-  }
-
-  /**
-   * Pin an observation (always include in prompt injection).
-   */
-  async pinObservation(id: number): Promise<Observation> {
-    return this.updateObservation(id, { pinned: true });
-  }
-
-  /**
-   * Unpin an observation.
-   */
-  async unpinObservation(id: number): Promise<Observation> {
-    return this.updateObservation(id, { pinned: false });
-  }
-
-  /**
-   * Lock an observation (set read-only). Prevents all modifications.
-   */
-  async lockObservation(id: number): Promise<Observation> {
-    return this.updateObservation(id, { readOnly: true });
-  }
-
-  /**
-   * Unlock an observation (remove read-only protection).
-   */
-  async unlockObservation(id: number): Promise<Observation> {
-    return this.updateObservation(id, { readOnly: false });
   }
 
   // ─── Private helpers ───────────────────────────────────────
@@ -1637,8 +1114,6 @@ export class MemoryEngine {
       deleted_at: number | null;
       metadata: string | null;
       scope: string | null;
-      pinned: number | null;
-      read_only: number | null;
       revision_count: number | null;
     };
     return {
@@ -1654,8 +1129,6 @@ export class MemoryEngine {
       deletedAt: r.deleted_at ? new Date(r.deleted_at) : null,
       metadata: this.deserialize(r.metadata),
       scope: (r.scope as 'project' | 'personal') || 'project',
-      pinned: Boolean(r.pinned),
-      readOnly: Boolean(r.read_only),
       revisionCount: r.revision_count ?? 0,
     };
   }
@@ -1723,7 +1196,7 @@ export class MemoryEngine {
     const countResult = this.db.prepare(countSql).get(...values) as { count: number } | undefined;
     const total = countResult?.count ?? 0;
 
-    sql += ' ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?';
+    sql += ' ORDER BY created_at ASC, id ASC LIMIT ? OFFSET ?';
     const rows = this.db.prepare(sql).all(...values, limit, offset);
     const observations = (rows as Record<string, unknown>[]).map((row) => this.mapObservation(row));
 
@@ -1733,10 +1206,9 @@ export class MemoryEngine {
   async getRecentContext(params: {
     projectId?: string;
     limit?: number;
-    scope?: 'project' | 'personal';
   }): Promise<{ observations: Observation[]; total: number }> {
     this.checkHealth();
-    const { projectId, limit = 20, scope } = params;
+    const { projectId, limit = 20 } = params;
 
     let sql = 'SELECT * FROM observations WHERE deleted_at IS NULL';
     const values: (string | number)[] = [];
@@ -1744,10 +1216,6 @@ export class MemoryEngine {
     if (projectId) {
       sql += ' AND project_id = ?';
       values.push(projectId);
-    }
-    if (scope) {
-      sql += ' AND scope = ?';
-      values.push(scope);
     }
 
     sql += ' ORDER BY created_at DESC, id DESC LIMIT ?';
@@ -2405,7 +1873,7 @@ export class MemoryEngine {
     const total = countResult?.count ?? 0;
 
     // Fetch
-    sql += ' ORDER BY journal.created_at DESC, journal.id DESC LIMIT ? OFFSET ?';
+    sql += ' ORDER BY journal.created_at DESC LIMIT ? OFFSET ?';
     values.push(limit, offset);
 
     const rows = this.db.prepare(sql).all(...values) as Record<string, unknown>[];

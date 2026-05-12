@@ -1,6 +1,6 @@
 {
   "name": "@slorenzot/memento-cli",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "CLI interface for Memento memory system with merge, export, soft-delete, and skill installation",
   "keywords": [
     "memento",
@@ -22,7 +22,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@slorenzot/memento-core": "^1.0.0",
+    "@slorenzot/memento-core": "^1.1.0",
     "commander": "^12.0.0"
   },
   "devDependencies": {

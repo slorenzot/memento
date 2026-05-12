@@ -11,8 +11,6 @@ export interface Observation {
   deletedAt: Date | null;
   metadata: Record<string, unknown>;
   scope: 'project' | 'personal';
-  pinned: boolean;
-  readOnly: boolean;
   revisionCount: number;
   duplicatesCount?: number;
 }
@@ -52,13 +50,11 @@ export interface SearchParams {
   offset?: number;
   includeDeleted?: boolean;
   scope?: 'project' | 'personal';
-  mode?: 'keyword' | 'semantic' | 'hybrid';
 }
 
 export interface SearchResult {
   observations: Observation[];
   total: number;
-  scores?: Map<number, number>; // observation id → relevance score (for semantic/hybrid)
 }
 
 // --- Merge types ---
@@ -254,24 +250,4 @@ export interface JournalSearchParams {
 export interface JournalSearchResult {
   entries: JournalEntry[];
   total: number;
-}
-
-// --- Prompt Injection types (OpenCode Plugin) ---
-
-export type PromptInjectionStrategy = 'recent-pinned' | 'pinned-only';
-
-export interface PromptInjectionConfig {
-  enabled: boolean;
-  maxObservations: number;
-  maxTokens: number;
-  strategy: PromptInjectionStrategy;
-  types: Observation['type'][];
-  projectId?: string;
-}
-
-export interface RenderedPromptContext {
-  xml: string;
-  observationCount: number;
-  tokenCount: number;
-  budgetExceeded: boolean;
 }

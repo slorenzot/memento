@@ -1,0 +1,591 @@
+id,uuid,type,title,project_id,scope,topic_key,created_at_iso,revision_count,source
+1,e5d39b9a-065d-48a1-bc70-bef16682bcac,note,"Created GitHub Issue #1: 209 tests con benchmarks de performance",memento,project,testing/test-pool,,0,original
+2,734c16a4-606c-43e1-a2ad-6bfeb470330a,decision,"Workflow definido para trabajo con GitHub Issues",memento,project,workflow/github-issues,,0,original
+3,75541d39-684f-4fc0-a8b1-79ee9bbff838,decision,"Workflow GitHub Issues v2 — con fases y confirmaciones obligatorias",memento,project,workflow/github-issues-v2,,0,original
+4,a635b178-f6b0-4f15-863a-b4720db9e0c3,decision,"Created TUI Explorer issue #7 for Memento",memento,project,tui-explorer/architecture,,0,original
+5,f062a235-63ab-4f11-99e1-4c9e450fe59c,note,"Test Observation",test-project,project,test/search,,0,original
+6,295b1640-db5c-4d11-8d1e-56fb6ff3e1c6,decision,"CLI Save Test",test-project,project,,,0,original
+7,691ce352-f998-40ba-96df-a21443b7dcde,bug,"Stats Test",test-project,project,,,0,original
+8,9ada61c7-2fca-4143-9799-c2353521f3b5,note,"Delete Me",test-project,project,,,0,original
+9,5d094c67-45ef-4f3b-bb1d-c6c464343efb,decision,"Completed Issue #7: TUI Explorer for Memento (all 3 phases)",memento,project,tui-explorer/implementation,,0,original
+10,038dbb7a-3d2e-4917-9cb9-7fc3cde4d0b5,note,"Test Observation",test-project,project,test/search,,0,original
+11,6c6ba5e4-b4ad-49be-95ad-81f3230188c8,decision,"CLI Save Test",test-project,project,,,0,original
+12,daa59f78-079c-4568-baba-b8e1246484ea,bug,"Stats Test",test-project,project,,,0,original
+13,fa9dce4b-35ae-41e6-b6c1-7bb83484e62d,note,"Delete Me",test-project,project,,,0,original
+14,c6d8d60a-782d-4493-b2a0-36b26f4715bb,decision,"Renamed engram → persistent-memory across OpenCode config",memento,project,config/naming-cleanup-engram-persistent,,0,original
+15,42c7c024-3312-4687-9b5d-f1ceb198dc45,note,"Merged PR #17: bundle OpenCode slash commands with install-skill",memento,project,memento/pr-17-slash-commands,,0,original
+16,cb69fb1e-3284-49ec-becc-7864d6e76688,note,"Merged PR #22: clean text responses for all MCP tools with project context",memento,project,memento/pr-22-clean-responses,,0,original
+17,55ec80b9-4936-4d39-a86e-b9504f6138ea,note,"Merged PR #24: mem_export and mem_import tools (Issue #20 Fase 0+1)",memento,project,memento/pr-24-export-import,,0,original
+18,fefc0e0c-498d-4d92-b250-370c58855e8c,note,"Merged PR #25: mem_reset tool — Issue #20 COMPLETE",memento,project,memento/pr-25-mem-reset,,0,original
+20,36f38962-5d95-4fca-8a4f-82ec31913324,decision,"Memory Protocol: reference-first saving strategy",memento,project,memento/architecture/memory-protocol,,0,original
+21,34bb266e-feba-48d9-a298-669bdbbe952a,discovery,"Project Index: Memento (updated with protocol v2.0)",memento,project,memento/index,,0,original
+22,16872027-3203-4e87-affb-9230d8a6d836,bug,"Gotchas: bun:sqlite, build order, CLI errors",memento,project,memento/gotchas/bun-sqlite-build,,0,original
+23,befb44af-cae4-4787-83e3-59720d5389e6,bug,"Gotchas: Ink TUI, testing, MemoryEngine factory",memento,project,memento/gotchas/ink-tui,,0,original
+24,e54cd30b-c143-487b-9948-a1ccf0446902,bug,"Gotchas: MCP server edits, unused vars, workflow order",memento,project,memento/gotchas/mcp-server-edits,,0,original
+25,0108e913-8081-4ea9-b73e-c11bc314fbe6,discovery,"Pattern: MCP tool response format (clean text + JSON)",memento,project,memento/patterns/mcp-response-format,,0,original
+26,6dfed990-d47d-40af-8c61-01f76b327c91,note,"Session #37: Memory Protocol design + implementation + smoke test",memento,project,memento/changelog/session-37-protocol,,0,original
+27,6434dcd7-d16e-4e76-a722-28de993c5ee6,note,"Test Observation",test-project,project,test/search,,0,original
+28,b98f77b6-4c66-4258-a9c0-9d27f1cfe8a0,decision,"CLI Save Test",test-project,project,,,0,original
+29,e57a3550-d358-44ae-85b0-083a91a06ad8,bug,"Stats Test",test-project,project,,,0,original
+31,9d9f6c40-0cc9-4f93-b125-507efcb34096,note,"Test Observation",test-project,project,test/search,,0,original
+32,e95f7166-60b6-4a37-88b3-6236a2ca6a6b,decision,"CLI Save Test",test-project,project,,,0,original
+33,7cd0ec2e-bee8-4b89-b60a-7b6bc33aa56d,bug,"Stats Test",test-project,project,,,0,original
+35,a39a251d-8e09-4e68-850b-749a87c11125,note,"Test Observation",test-project,project,test/search,,0,original
+36,c87f8fb6-67b4-4891-ad5b-e2fbd904ad77,decision,"CLI Save Test",test-project,project,,,0,original
+37,113bc78c-bbf5-4bf1-a5dc-1d1b382dd9ad,bug,"Stats Test",test-project,project,,,0,original
+39,35e589cf-05c9-4887-ae43-1ea01b27b409,note,"Implemented SKILL.md v2.0 with reference-first memory protocol (issue #26, PR #27)",memento,project,memento/changelog/session-skill-protocol-v2,,0,original
+40,643d2fcb-dbc0-4150-ab41-61e9e890f7a0,note,"Test Observation",test-project,project,test/search,,0,original
+41,5c5100ad-c267-4e41-b784-da56fcd3afed,decision,"CLI Save Test",test-project,project,,,0,original
+42,bbb266ec-9c0e-4b6f-8dfc-e83bc1ed3471,bug,"Stats Test",test-project,project,,,0,original
+44,5213f57a-7df2-41c9-85ae-4ae5d2b9ba5e,note,"Test Observation",test-project,project,test/search,,0,original
+45,a32cc42d-ea19-4061-b169-25bb9bafe078,decision,"CLI Save Test",test-project,project,,,0,original
+46,6231c23b-fc64-4c7c-8f28-8792436aac9c,bug,"Stats Test",test-project,project,,,0,original
+48,77daa5ad-ad28-403d-81ef-748734d85cce,note,"Test Observation",test-project,project,test/search,,0,original
+49,07b5e2f3-4e73-4aed-8b9d-f0a5da76be38,decision,"CLI Save Test",test-project,project,,,0,original
+50,9a4debee-9348-43a6-85df-75f00f894791,bug,"Stats Test",test-project,project,,,0,original
+52,88f7ec9f-8026-416b-8e72-3da65f532cd9,note,"Test Observation",test-project,project,test/search,,0,original
+53,8e19ee6c-67cc-4be1-a975-1fe04d72541e,decision,"CLI Save Test",test-project,project,,,0,original
+54,e04a1f0f-e740-4d53-ace3-2202df2ec386,bug,"Stats Test",test-project,project,,,0,original
+55,9c4acdfd-cc3d-4c92-a225-7a1d18246311,note,"Delete Me",test-project,project,,,0,original
+56,2039bc61-34e6-46e4-a6a6-b85bb7c7841c,note,"Test Observation",test-project,project,test/search,,0,original
+57,80c02b4c-7180-43e2-a214-6f847c1bd498,decision,"CLI Save Test",test-project,project,,,0,original
+58,98900b63-9de2-4c34-83a0-491b873c53e0,bug,"Stats Test",test-project,project,,,0,original
+59,89be883d-540d-4424-92fb-c4385e29e815,note,"Delete Me",test-project,project,,,0,original
+60,7d40aa4e-1866-4652-bf0c-773c3fb1a391,note,"Test Observation",test-project,project,test/search,,0,original
+61,0360e867-cb17-4e42-8019-4c93477f46d2,decision,"CLI Save Test",test-project,project,,,0,original
+62,64d1d855-797b-444e-9c80-7d3844a288ce,bug,"Stats Test",test-project,project,,,0,original
+63,1cf6e8b1-a951-4efc-ac17-a20b297a2105,note,"Delete Me",test-project,project,,,0,original
+64,84bab773-72a3-4208-a386-ede0c7129c4f,note,"Test Observation",test-project,project,test/search,,0,original
+65,d383e648-34f5-48e8-b874-c2ddf009a746,decision,"CLI Save Test",test-project,project,,,0,original
+66,a9c0993f-583a-4d97-9211-16a371ea40db,bug,"Stats Test",test-project,project,,,0,original
+67,aeb34498-ba3e-486e-a968-670e40a90ce7,note,"Delete Me",test-project,project,,,0,original
+68,338d7132-5af2-4c38-a9f8-d257ccd2d454,note,"Test Observation",test-project,project,test/search,,0,original
+69,355041ca-72fe-4065-9920-dde6df0ebb05,decision,"CLI Save Test",test-project,project,,,0,original
+70,f4aade2f-aa47-47ee-b72d-2be5b1b328da,bug,"Stats Test",test-project,project,,,0,original
+71,2a68427d-2250-4bf5-8ee6-7c34a2bfb94f,note,"Delete Me",test-project,project,,,0,original
+72,dbcbdea0-3c27-4660-a348-623025860a9a,note,"Test Observation",test-project,project,test/search,,0,original
+73,8b19bcc3-be7e-42cd-90bd-7fddd72b404b,decision,"CLI Save Test",test-project,project,,,0,original
+74,fb33a456-25f0-4f8d-b43e-ebb1f85b1f1d,bug,"Stats Test",test-project,project,,,0,original
+75,52796a98-8a57-4ee3-a039-41b02a702313,note,"Delete Me",test-project,project,,,0,original
+76,53f92860-0b23-4fc6-9beb-5c958b09d02a,note,"Test Observation",test-project,project,test/search,,0,original
+77,2f660f57-0f5c-4fe3-a1f6-875e5d692cc5,decision,"CLI Save Test",test-project,project,,,0,original
+78,13ea150c-e179-4f48-a842-74f9d66dea02,bug,"Stats Test",test-project,project,,,0,original
+79,0b63a105-507c-491d-9525-d0d1e6462f4c,note,"Delete Me",test-project,project,,,0,original
+80,db587674-20a4-47d7-affb-94c934f2fa30,note,"Test Observation",test-project,project,test/search,,0,original
+81,aa5c4288-c6cf-4b48-b3fd-a4b8f8c51cf3,decision,"CLI Save Test",test-project,project,,,0,original
+82,fdd8d814-ce49-408c-834e-7685cb266255,bug,"Stats Test",test-project,project,,,0,original
+83,27777133-b255-4e8f-82d5-8fb8012c57e1,note,"Delete Me",test-project,project,,,0,original
+84,12e7689a-db1d-48b9-ac95-282b83a66c99,note,"Test Observation",test-project,project,test/search,,0,original
+85,1eac67f5-7bf1-4888-96c0-cb91b66dd1e0,decision,"CLI Save Test",test-project,project,,,0,original
+86,da2fc1f2-dffa-4211-bd72-5f2f4ca464d8,bug,"Stats Test",test-project,project,,,0,original
+87,76c03d9e-6710-45b9-a75c-f6f7391aa9da,note,"Delete Me",test-project,project,,,0,original
+88,2fcc62c7-e281-4ddb-b4f1-8a9fd6fde68d,note,"Test Observation",test-project,project,test/search,,0,original
+89,a926e80d-ec60-4343-b990-81dd99b1ed24,decision,"CLI Save Test",test-project,project,,,0,original
+90,b1ee5832-0e01-4ad8-aec4-fec697e04781,bug,"Stats Test",test-project,project,,,0,original
+91,e8a236c7-5b8e-4e32-9cf0-784f003357d8,note,"Delete Me",test-project,project,,,0,original
+92,9f0a0b37-74d3-4da5-9b83-109f5e41475d,note,"Test Observation",test-project,project,test/search,,0,original
+93,91b04cd2-29f7-47bc-8f9d-c3cb86650f01,decision,"CLI Save Test",test-project,project,,,0,original
+94,ccb7d9c3-d3e4-4c62-9990-83ec2bc0dabc,bug,"Stats Test",test-project,project,,,0,original
+95,fff76135-12ab-4bf0-a866-1ab40fefc1b0,note,"Delete Me",test-project,project,,,0,original
+96,94871f94-30c4-495d-b6dd-fb635e443640,note,"Issue #33 completada y verificada: 5 MCP tools + 3 optimizadas + tipos summary/learning + fix TUI",memento,project,memento/issue-33,,0,original
+97,07bb807e-8137-45f1-9a60-23243fecc561,note,"Sesión: Issue #33 — 5 MCP tools nuevas + 3 optimizadas",memento,project,memento/sessions/2026-05-05-issue-33,,0,original
+98,70abd6a3-3ecb-4ce5-b636-f84f90c42da9,decision,"Chose Zod for schema validation (updated)",memento-comparison-test,project,architecture/validation,,0,original
+99,ee23e152-a691-42aa-8ddd-3b48d62673d6,note,"FTS5 trigger pattern for soft-delete sync",memento-comparison-test,project,pattern/fts5-triggers,,0,original
+100,01d1a30b-1ebf-4780-baa4-70bc4907339d,discovery,"SQLite WAL mode enables concurrent reads",memento-comparison-test,project,discovery/sqlite-wal,,0,original
+101,12a8379e-a88e-4f13-a274-9cc88361ae5d,bug,"FTS5 MATCH crashes with special characters",memento-comparison-test,project,bugfix/fts5-special-chars,,0,original
+102,c9fe881e-fa36-41ba-9163-5ca18c79b227,discovery,"SQLite WAL concurrent reads",memento-comparison-test,project,discovery/sqlite-wal,,0,original
+103,23a8a92a-da41-441b-b698-dc16a7a701f6,note,"Session Summary: Engram vs Memento comparison test",memento-comparison-test,project,session-summary/comparison-test-142,,0,original
+104,648aa676-f214-46ac-b862-d5e5f7ef8ce9,discovery,"Learning: FTS5 sanitization required",memento-comparison-test,project,learning/fts5-sanitization,,0,original
+105,c5d2768d-1117-4d9e-a2ee-63395bd96663,discovery,"Learning: WAL file growth needs checkpoint",memento-comparison-test,project,learning/wal-checkpoint,,0,original
+106,3462a2d4-7192-4649-b07c-e29ff76f252a,discovery,"Comparison test executed: Memento 8.65 vs Engram 7.50",memento,project,discovery/comparison-test-results,,0,original
+107,18509025-473a-4d06-a466-b597a149e99d,note,"Test Observation",test-project,project,test/search,,0,original
+108,1d4349ad-8fec-492f-8aa0-4875dba2248b,decision,"CLI Save Test",test-project,project,,,0,original
+109,84440a2c-3939-4568-a050-df4cccd96c21,bug,"Stats Test",test-project,project,,,0,original
+110,0580a4ad-8f6a-40fa-af2b-ad390ee00af4,note,"Delete Me",test-project,project,,,0,original
+111,c46d6c42-ed3f-457c-8a89-14c5d10251a1,decision,"Workflow: Memento vs Engram comparison test",memento,project,workflow/comparison-test,,0,original
+112,86c8c536-56df-40f6-82d8-23c3998ef838,decision,"Chose Zod for schema validation (updated)",memento-comparison-test,project,architecture/validation,,0,original
+113,10418342-0b61-4cd6-8027-d191a8e1e7d9,note,"FTS5 trigger pattern for soft-delete sync",memento-comparison-test,project,pattern/fts5-triggers,,0,original
+114,2b14f3fc-41df-4d04-a630-a17e2b378b7e,discovery,"SQLite WAL mode enables concurrent reads",memento-comparison-test,project,discovery/sqlite-wal,,0,original
+115,ecb44bb8-8de8-4223-acd2-39924709a1b3,bug,"FTS5 MATCH crashes with special characters",memento-comparison-test,project,bugfix/fts5-special-chars,,0,original
+116,5e84dd74-dc0b-4d42-9de7-4167d95f512f,discovery,"SQLite WAL concurrent reads",memento-comparison-test,project,discovery/sqlite-wal,,0,original
+117,e410e833-1a08-4904-8c56-ae5aea127436,note,"Session Summary: Engram vs Memento comparison test (run 2)",memento-comparison-test,project,session-summary/comparison-test-150,,0,original
+118,a268737b-ffd7-4af5-9f0c-677ce7180e01,discovery,"Learning: WAL auto-checkpoint works",memento-comparison-test,project,learning/wal-auto-checkpoint,,0,original
+119,0ff06cf9-554b-45e7-a637-921e0a03f4bf,discovery,"Learning: topic_key merge groups across sessions",memento-comparison-test,project,learning/merge-cross-session,,0,original
+120,0e63eeb7-28e1-4ee9-95ab-03ca0a3f61df,bug,"Fixed comparison methodology: honest Engram scoring",memento,project,bugfix/comparison-methodology,,0,original
+121,9e2c7856-595c-4c26-a20a-913285b6b925,decision,"Chose Zod for schema validation (updated)",memento-comparison-test,project,architecture/validation,,0,original
+122,8c695718-7bfb-42f6-932f-7080ed261969,note,"FTS5 trigger pattern for soft-delete sync",memento-comparison-test,project,pattern/fts5-triggers,,0,original
+123,802335eb-ce80-4dbf-9846-9ff31e61179a,discovery,"SQLite WAL mode enables concurrent reads",memento-comparison-test,project,discovery/sqlite-wal,,0,original
+124,95dd1872-f2b7-4e44-9f9a-8c67e5747695,bug,"FTS5 MATCH crashes with special characters",memento-comparison-test,project,bugfix/fts5-special-chars,,0,original
+125,b900db6d-bf2c-43c1-b527-32c01d1090c6,discovery,"SQLite WAL concurrent reads",memento-comparison-test,project,discovery/sqlite-wal,,0,original
+126,a2930e04-683d-4552-9a03-7691906552c9,note,"Session Summary: comparison test run 3 (honest methodology)",memento-comparison-test,project,session-summary/comparison-test-152,,0,original
+127,ed96640f-2fec-43b5-b425-f6c35c0185e1,decision,"Created Issue #36: close Engram gaps — types, scope, metadata, retry",memento,project,decision/issue-36-engram-gaps,,0,original
+128,1396a10c-4341-40ee-b30c-b1e7b54346cc,note,"Test Observation",test-project,project,test/search,,0,original
+129,e7418cd1-0c03-4ec5-8557-e0ec3c67f04d,decision,"CLI Save Test",test-project,project,,,0,original
+130,5013d158-511a-4e15-820f-5fe09857786d,bug,"Stats Test",test-project,project,,,0,original
+131,7ca80933-a426-4ba5-bfb6-5ad77deb1234,note,"Delete Me",test-project,project,,,0,original
+132,7d3d8727-41a4-4d1b-9570-8cdec5efcdff,note,"Test Observation",test-project,project,test/search,,0,original
+133,9cb80546-45c4-468c-99e6-27503305299c,decision,"CLI Save Test",test-project,project,,,0,original
+134,aad7fafe-3418-4446-a6a1-cf5e06766c95,bug,"Stats Test",test-project,project,,,0,original
+135,952d8abb-eb2a-41bc-8934-6f336c316754,note,"Delete Me",test-project,project,,,0,original
+136,d4452744-02ad-4cfb-8854-a9398f5fcf1b,decision,"Chose Zod for schema validation (updated)",memento-comparison-test,project,architecture/validation,,0,original
+137,b25d7ff4-6b28-4bed-a001-a51b29aec76f,note,"FTS5 trigger pattern for soft-delete sync",memento-comparison-test,project,pattern/fts5-triggers,,0,original
+138,5745c266-02ec-4f11-b04f-36cf4ece3b33,discovery,"SQLite WAL mode enables concurrent reads",memento-comparison-test,project,discovery/sqlite-wal,,0,original
+139,2a870252-4ed7-4fab-8577-0e3d7bd626c2,bug,"FTS5 MATCH crashes with special characters",memento-comparison-test,project,bugfix/fts5-special-chars,,0,original
+140,f1b1aca2-867d-4750-b311-c58cd5133197,decision,"Updated Issue #36 with refined implementation plan",memento,project,decision/issue-36-engram-gaps,,0,original
+141,e55827cc-ad14-4505-9de5-8a211746d7ed,note,"Test Observation",test-project,project,test/search,,0,original
+142,5529ad0b-17cb-4a49-871c-9734ce963c20,decision,"CLI Save Test",test-project,project,,,0,original
+143,f98ca397-c8fa-48ef-aa37-1946e2c03fdd,bug,"Stats Test",test-project,project,,,0,original
+144,cd4ecfad-36e7-40f4-886c-a1efa1818069,note,"Delete Me",test-project,project,,,0,original
+145,035995da-6be8-4675-8f63-de6238f08bbf,note,"Test Observation",test-project,project,test/search,,0,original
+146,a8bcf84c-3538-4676-8e10-941dbe006fd6,decision,"CLI Save Test",test-project,project,,,0,original
+147,adfabb35-7ab3-421a-92d6-4b99a1b2104a,bug,"Stats Test",test-project,project,,,0,original
+148,450cfa90-8bb9-4b53-a11f-3d5d22f8eb11,note,"Delete Me",test-project,project,,,0,original
+149,def837de-f7e5-4633-a8f9-6944095ac7d7,decision,"Implemented Issue #36 — all 6 phases complete",memento,project,decision/issue-36-engram-gaps,,0,original
+150,e4f196ff-59dd-4e28-a060-d9961ca72051,note,"Test Observation",test-project,project,test/search,,0,original
+151,0071754c-59ec-4110-978f-aa2baacbd2b1,decision,"CLI Save Test",test-project,project,,,0,original
+152,51b7b38c-88af-4704-8d06-14e31dd4536d,bug,"Stats Test",test-project,project,,,0,original
+153,1436dbad-1727-42ad-9886-d895780a50e5,note,"Delete Me",test-project,project,,,0,original
+154,726a75cf-095c-4902-b847-17c0d0d5d121,note,"Test Observation",test-project,project,test/search,,0,original
+155,51a5c3a5-e9c9-4b3d-a247-c6c6d89f80e6,decision,"CLI Save Test",test-project,project,,,0,original
+156,d05e191f-da97-400f-bd78-1bd745a73d3e,bug,"Stats Test",test-project,project,,,0,original
+157,64a2fc0f-d9cf-4b58-b4c1-9c06649b9a55,note,"Delete Me",test-project,project,,,0,original
+158,5e9b649b-fa08-4b30-9908-a9155fec2100,note,"Test Observation",test-project,project,test/search,,0,original
+159,e45c9832-7d5b-441c-9460-7843af5668fa,decision,"CLI Save Test",test-project,project,,,0,original
+160,9feefdd9-06d3-42d0-9c1a-dad14bf3cb5b,bug,"Stats Test",test-project,project,,,0,original
+161,35f0776b-bb8f-4c05-9f2c-5ba59399dd9b,note,"Delete Me",test-project,project,,,0,original
+162,84ff4714-1350-4ed0-9bd3-591863125afb,decision,"Chose Zod for schema validation (run 5)",memento-comparison-test,project,architecture/validation,,1,original
+163,f39e9f7b-ccb1-4d52-8ac8-92f72f1ad465,note,"FTS5 trigger pattern for soft-delete sync",memento-comparison-test,project,pattern/fts5-triggers,,0,original
+164,9f290835-5a65-441c-9e22-ebd955b72266,discovery,"SQLite WAL mode enables concurrent reads",memento-comparison-test,project,discovery/sqlite-wal,,0,original
+165,ed78d6a2-5cb8-40f2-9c2f-c9a10c13de4d,bug,"FTS5 MATCH crashes with special characters",memento-comparison-test,project,bugfix/fts5-special-chars,,0,original
+166,01235da0-bf0e-4174-a886-14ded99979c3,summary,"Session Summary: comparison test run 5",memento-comparison-test,project,session-summary/comparison-test-198,,0,original
+167,4a3735b5-9f14-464d-9803-dddc002b733a,summary,"Session Summary — 2026-05-06",memento-comparison-test,project,,,0,original
+168,c18a5cfb-fb03-40ee-97cf-97c02c40299b,learning,"Memento mem_capture_passive needs FTS5-compatible content parsing",memento-comparison-test,project,learnings/run-6-comparison-test,,0,original
+169,351090b2-61f7-4bef-a71e-2fb0bb433ae2,learning,"Session summary tool should create type 'summary' not 'note'",memento-comparison-test,project,learnings/run-6-comparison-test,,0,original
+170,db95eddb-c165-425f-aebb-1f99ac6253d3,learning,"Deduplication must handle same content across multiple capture_passive calls",memento-comparison-test,project,learnings/run-6-comparison-test,,0,original
+171,84b562b4-c576-4d85-a6af-3a5c885797de,learning,"Memento mem_capture_passive needs FTS5-compatible content parsing",memento-comparison-test,project,learnings/run-6-comparison-test---dedup-check,,0,original
+172,ca66da9a-8933-4e46-b1e4-28fe032da24f,learning,"Session summary tool should create type 'summary' not 'note'",memento-comparison-test,project,learnings/run-6-comparison-test---dedup-check,,0,original
+173,9e887fc3-88b6-4d13-907e-e197bcab2f02,learning,"Deduplication must handle same content across multiple capture_passive calls",memento-comparison-test,project,learnings/run-6-comparison-test---dedup-check,,0,original
+174,0210b252-bb7f-482a-bec2-9732072eda73,decision,"Chose Zod for schema validation (run 7)",memento-comparison-test,project,architecture/validation,,0,original
+175,a13bc2ea-d27d-4958-8775-6601e9a6b816,note,"FTS5 trigger pattern for soft-delete sync",memento-comparison-test,project,pattern/fts5-triggers,,0,original
+176,ba14c641-b62e-4f06-b5d2-72330b71ba6c,discovery,"SQLite WAL mode enables concurrent reads",memento-comparison-test,project,discovery/sqlite-wal,,0,original
+177,6c801ee3-c804-4034-b760-9ea14e9ae5d2,bug,"FTS5 MATCH crashes with special characters",memento-comparison-test,project,bugfix/fts5-special-chars,,0,original
+178,15c64f17-92ed-4c41-aeba-48e90d660d2d,decision,"Chose Zod for schema validation (run 7)",memento-comparison-test,project,architecture/validation,,1,original
+179,667625c8-8e0b-4190-a8c7-d70ca72614e7,note,"FTS5 trigger pattern for soft-delete sync",memento-comparison-test,project,pattern/fts5-triggers,,0,original
+180,94d75d10-e855-4c8c-b5c5-0674907eb848,discovery,"SQLite WAL mode enables concurrent reads",memento-comparison-test,project,discovery/sqlite-wal,,0,original
+181,45138dcd-ff93-4696-b9ab-3e39f9741ae8,bug,"FTS5 MATCH crashes with special characters",memento-comparison-test,project,bugfix/fts5-special-chars,,0,original
+182,92948fd2-1556-432b-8f0c-f731045bbdae,summary,"Session Summary — 2026-05-06",memento-comparison-test,project,,,0,original
+183,54749941-b418-4a70-88db-d641bce4b4a7,learning,"Memento capture_passive dedup now works with PR #43 merged",memento-comparison-test,project,learnings/run-7-comparison-test,,0,original
+184,f5a82cb6-940b-4f1a-80bc-02a3d17f805d,learning,"Session summary tool creates type summary with isSessionSummary metadata",memento-comparison-test,project,learnings/run-7-comparison-test,,0,original
+185,acd20a18-9388-4cff-8ac8-507ff4ba11c7,learning,"Cross-call dedup is the critical test for this run",memento-comparison-test,project,learnings/run-7-comparison-test,,0,original
+186,69e34bb7-d938-46e3-ba2a-36812d3655f2,learning,"Memento capture_passive dedup now works with PR #43 merged",memento-comparison-test,project,learnings/run-7-comparison-test,,0,original
+187,a86538e0-8884-4e80-903f-eb6c9639d66a,learning,"Session summary tool creates type summary with isSessionSummary metadata",memento-comparison-test,project,learnings/run-7-comparison-test,,0,original
+188,afaa2539-f852-4c50-a631-65009dbddf31,learning,"Cross-call dedup is the critical test for this run",memento-comparison-test,project,learnings/run-7-comparison-test,,0,original
+189,669d9b8d-ef9e-480b-8733-d744c306149e,decision,"Chose Zod for schema validation",memento-comparison-test,project,architecture/validation,,1,original
+190,88da1545-e93b-4a9a-b38c-3317b4e1edb3,note,"FTS5 trigger pattern for soft-delete sync",memento-comparison-test,project,pattern/fts5-triggers,,0,original
+191,cbf83ce9-63d5-4402-890f-3a756dd5af18,discovery,"SQLite WAL mode enables concurrent reads",memento-comparison-test,project,discovery/sqlite-wal,,0,original
+192,09c3b621-015b-4d05-a37f-5c01230cd41a,bug,"FTS5 MATCH crashes with special characters",memento-comparison-test,project,bugfix/fts5-special-chars,,0,original
+193,10938501-38f9-46d5-bfbc-eba91e3c7252,summary,"Session Summary — 2026-05-06",memento-comparison-test,project,,,0,original
+194,333982a5-923d-40b3-ae3e-d1afec7a44ce,learning,"Memento capture_passive dedup now works with PR #43 merged",memento-comparison-test,project,learnings/run-8-comparison-test,,0,original
+195,e087d7b9-2d8a-4cf3-9bf3-923363d3e6e0,learning,"Session summary tool creates type summary with isSessionSummary metadata",memento-comparison-test,project,learnings/run-8-comparison-test,,0,original
+196,4c2fa825-b4c4-4cde-936b-deb04b217146,learning,"Cross-call dedup is the critical test for this run",memento-comparison-test,project,learnings/run-8-comparison-test,,0,original
+197,4e2296a9-796b-4436-a346-e0fff8d7558b,summary,"Session Summary — 2026-05-06",memento-comparison-test,project,,,0,original
+198,a1d7e839-6ae4-465a-8d62-4fbbb718251b,learning,"Memento capture_passive dedup now works with PR #43 merged",memento-comparison-test,project,"learnings/run-8-comparison-test-—-dedup-verification",,0,original
+199,1cc9ceb1-00c1-4348-8cf2-21cd1ad7454c,learning,"Session summary tool creates type summary with isSessionSummary metadata",memento-comparison-test,project,"learnings/run-8-comparison-test-—-dedup-verification",,0,original
+200,382e128a-cf7c-40c1-b481-0e5a2c80151b,learning,"Cross-call dedup is the critical test for this run",memento-comparison-test,project,"learnings/run-8-comparison-test-—-dedup-verification",,0,original
+201,ad083ba7-e1d4-436c-8cc2-09dccfea2cd6,note,"Test Observation",test-project,project,test/search,,0,original
+202,33058a1f-6479-40d7-adfc-421bad901650,decision,"CLI Save Test",test-project,project,,,0,original
+203,21022ba2-c34a-4693-845d-16a13c240926,bug,"Stats Test",test-project,project,,,0,original
+204,6de63983-6077-4687-a8b4-8a56865d8a4c,note,"Delete Me",test-project,project,,,0,original
+205,0ea4a43e-a54e-4245-81cc-6049fd094e10,note,"Test Observation",test-project,project,test/search,,0,original
+206,721e1349-c84f-43b1-84e4-121b224e11ce,decision,"CLI Save Test",test-project,project,,,0,original
+207,cbc10089-09df-47ea-9d9f-6d5e6ea50888,bug,"Stats Test",test-project,project,,,0,original
+208,88ca75e1-023e-4784-8ef2-32df88051cdb,note,"Delete Me",test-project,project,,,0,original
+209,615996dd-bcb5-4445-8397-3b1963b9f356,decision,"Chose Zod for schema validation",memento-comparison-test,project,architecture/validation,,1,original
+210,b1865dd3-81aa-4acb-be4e-7be747c8421b,note,"FTS5 trigger pattern for soft-delete sync",memento-comparison-test,project,pattern/fts5-triggers,,0,original
+211,fbb3c384-7167-4758-b5ce-4a6609c485d4,discovery,"SQLite WAL mode enables concurrent reads",memento-comparison-test,project,discovery/sqlite-wal,,0,original
+212,8fc88d41-7979-45d7-8317-e2f665e798e2,bug,"FTS5 MATCH crashes with special characters",memento-comparison-test,project,bugfix/fts5-special-chars,,0,original
+213,02be8ea2-d3e8-4c82-a13b-d91579de112c,learning,"Memento delete/restore cycle works perfectly — bug from Run 4 is FIXED",memento-comparison-test,project,learnings/run-9-comparison-test,,0,original
+214,62f5aa58-7659-4dd7-8b3c-e3f848c8f44e,learning,"Memento now has 23 MCP tools — Issue #33 fully implemented",memento-comparison-test,project,learnings/run-9-comparison-test,,0,original
+215,86103844-2889-4952-a741-7a806bb988ad,learning,"Engram topic_key UPSERT creates 1 record with revisions, Memento creates dupl...",memento-comparison-test,project,learnings/run-9-comparison-test,,0,original
+216,562ed9ec-3c52-42b1-883b-5adf0d01d57b,learning,"Both systems produce identical suggest_topic_key results",memento-comparison-test,project,learnings/run-9-comparison-test,,0,original
+217,d3ddb9e2-e009-43f2-902c-63b6fd93ca9a,learning,"Engram search by type no longer crashes — previous bug appears fixed",memento-comparison-test,project,learnings/run-9-comparison-test,,0,original
+218,2cbef339-11c9-4b80-929e-8bd802d2f9c6,summary,"Session Summary — 2026-05-06",memento-comparison-test,project,,,0,original
+219,079b0780-e106-4531-812f-65245e3b6ccb,note,"Test Observation",test-project,project,test/search,,0,original
+220,013ed95c-9c32-44b9-a32b-0ca527b1eb5e,decision,"CLI Save Test",test-project,project,,,0,original
+221,bd07c7f8-6b78-4967-8ef9-32286b22d4a1,bug,"Stats Test",test-project,project,,,0,original
+223,dc6fdae5-5306-4202-b90f-709ec54a2a9e,summary,"Session Summary — 2026-05-06",memento,project,,,0,original
+224,91542704-894f-4305-882c-4cf8a97367f3,discovery,"Test Observation UPDATED",memento,project,testing/memento-tools-verification-v2,,1,original
+225,02d83dae-a435-4fc4-aaf6-e5c05135ecba,learning,"Memento uses SQLite with FTS5 for full-text search",memento,project,learnings/tool-testing-session,,0,original
+226,821bc150-d335-4c76-ba4b-f1d6d398bdc5,learning,"The mem_save tool creates observations with auto-generated UUIDs",memento,project,learnings/tool-testing-session,,0,original
+227,4b817ba2-4d1e-4541-a6f9-f9048662d4d5,learning,"Soft-delete preserves data for potential recovery",memento,project,learnings/tool-testing-session,,0,original
+228,04288bdc-1df5-4d00-904a-d30f0703526b,learning,"Sessions track conversation context across multiple tool calls",memento,project,learnings/tool-testing-session,,0,original
+229,a6b6920b-6c32-4862-9aea-0cb950ef9cd3,architecture,"Started SDD onboarding for Nespon project",nespon,project,sdd-onboard/nespon,"2026-04-08 17:54:29",1,engram-import
+230,2d0679ac-4c3e-4d35-adf4-68fd26e6af32,discovery,"Prueba adjuntos TS 35380 Azure DevOps completada exitosamente",sura-chile-autos,project,,"2026-04-09 12:25:22",1,engram-import
+231,56e90555-e49b-4f7c-a90f-661f78c51530,note,"Generated cities.json and comunas.json from Excel",sura-chile-autos,project,pattern/prompting-docs-go-to-opencode-prompts,"2026-04-09 13:01:57",2,engram-import
+232,6bf58c4c-4bb7-4dbb-9b67-a44bbadcdb47,note,"Created JSON data files for Chile locations",sura-chile-autos,project,,"2026-04-09 13:09:43",1,engram-import
+233,56d1fe70-b2d0-4140-bc4a-2e634c34d5d9,summary,"Session summary: suratech-salesforce-app",sura-chile-autos,project,,"2026-04-09 13:15:08",1,engram-import
+234,7a882e43-5be3-4243-ba74-2591289f6c56,decision,"API contracts corrected to follow standards",sura-chile-autos,project,,"2026-04-09 13:24:59",1,engram-import
+235,44e07e7e-7f79-4857-af0f-d45fcdc3275a,pattern,"Azure DevOps attachment synchronization limitations",sura-chile-autos,project,,"2026-04-09 13:25:13",1,engram-import
+236,e989a7f6-68b8-4574-adf6-a7ab9b4c0acf,summary,"Session summary: suratech-salesforce-app",sura-chile-autos,project,,"2026-04-09 13:25:44",1,engram-import
+237,1cf75c8d-07f4-4c26-9d3b-1c6ccc8ae4ee,learning,"API contracts must follow /v1/{product}/... pattern accordin...",sura-chile-autos,project,,"2026-04-09 13:25:54",1,engram-import
+238,19e9def4-b0b2-4270-90e1-5a9a8e40f9b9,learning,"Path parameters must use camelCase (quoteId, leadId, policyI...",sura-chile-autos,project,,"2026-04-09 13:25:54",1,engram-import
+239,006fb583-8b09-4359-838d-691e99210c4b,learning,"TS-019 and TS-020 contracts had discrepancies with standard:",sura-chile-autos,project,,"2026-04-09 13:25:54",1,engram-import
+240,b297c0b8-f883-4d66-9a65-4957e0b5fd0d,learning,"Missing /v1/ in paths",sura-chile-autos,project,,"2026-04-09 13:25:54",1,engram-import
+241,2a7d8bd8-a9f6-4cbb-843f-441dc0c7e22e,learning,"Hardcoded /autos instead of dynamic /{product} parameter",sura-chile-autos,project,,"2026-04-09 13:25:54",1,engram-import
+242,15a2a32e-baae-4068-b3a6-32d207538593,learning,"snake_case parameters (quote_id) instead of camelCase (quote...",sura-chile-autos,project,,"2026-04-09 13:25:54",1,engram-import
+243,1d34377e-a753-4fbe-9d4a-ceb98df0e4d8,learning,"Azure DevOps has technical limitations for direct attachment...",sura-chile-autos,project,,"2026-04-09 13:25:54",1,engram-import
+244,40407fe3-95d0-4dfc-9e39-ca44d6b32621,learning,"Alternative strategy: add comments explaining local correcti...",sura-chile-autos,project,,"2026-04-09 13:25:54",1,engram-import
+245,402fdbc4-327f-40d0-804d-c3cdf0623c88,learning,"Local files can be maintained updated even when Azure DevOps...",sura-chile-autos,project,,"2026-04-09 13:25:54",1,engram-import
+246,f94665e8-2724-47aa-a462-55bb86196225,learning,"Standard naming for OpenAPI contracts: openapi-contract-<end...",sura-chile-autos,project,,"2026-04-09 13:25:54",1,engram-import
+247,ad3e5abf-75f5-48f7-89f8-ed52354c5ace,note,"Failed to create TS-031 in Azure DevOps via REST API",sura-chile-autos,project,,"2026-04-09 13:34:55",1,engram-import
+248,648c3b73-b026-4a62-81ed-fd34d9c68c29,decision,"Updated MCP Azure DevOps to v2.4.1",sura-chile-autos,project,,"2026-04-09 13:44:40",1,engram-import
+249,0ee22ff5-cefb-4e72-889b-2c91dad4b965,summary,"Session summary: suratech-salesforce-app",sura-chile-autos,project,,"2026-04-09 13:45:12",1,engram-import
+250,23564fac-2610-471d-8b17-3bb111449d3c,discovery,"MCP Azure DevOps server not configured",sura-chile-autos,project,,"2026-04-09 13:58:51",1,engram-import
+251,910cbbfe-b5c9-4ad1-9d4a-ad36ff047e8d,note,"Removed Claude Code worktrees",sura-chile-autos,project,,"2026-04-09 14:04:56",1,engram-import
+252,97464fdf-25f0-44c6-b5b2-ff5573404529,discovery,"Installed MCP Azure DevOps server but CLI not working",sura-chile-autos,project,,"2026-04-09 14:05:21",1,engram-import
+253,3f7ad91f-6c32-40a6-9705-8f5bbb728227,config,"Configuración MCP Azure DevOps establecida",sura-chile-autos,project,config/mcp-azure-devops,"2026-04-09 15:25:58",1,engram-import
+254,efcef116-0fd6-4448-ad0b-872c36dd96ba,bug,"Fixed missing error handling in MCP tools",mcp-azure,project,,"2026-04-09 15:28:59",1,engram-import
+255,501133c1-481b-4b17-8215-3ec02715ee7d,bug,"Fixed attachment title/name missing in Azure DevOps",mcp-azure,project,bug/azure-attachment-name-missing,"2026-04-09 15:34:36",1,engram-import
+256,b2aedc23-4e28-4527-b528-ccb80c3c31fa,summary,"Session summary: mcp-azure",mcp-azure,project,,"2026-04-09 15:41:29",1,engram-import
+257,3c2f0d69-9e9c-435f-b835-103651ccbd74,decision,"",mcp-azure,project,,"2026-04-09 15:46:52",1,engram-import
+258,1f3c89bb-7cd6-4852-b68e-fe1d5096d041,note,"Published @slorenzot/mcp-azure v2.4.3",mcp-azure,project,,"2026-04-09 16:11:21",1,engram-import
+259,b1165dff-24c7-4a44-be8e-3d056898f48a,decision,"Migrated SDD to SF-ADD for Salesforce FSC/Vlocity",opencode-config,project,,"2026-04-09 16:16:57",1,engram-import
+260,42ab0831-52cf-4976-afa9-dbb64f61aae5,summary,"Session summary: opencode-config",opencode-config,project,,"2026-04-09 16:17:13",1,engram-import
+261,e1794487-6d58-489a-9288-ae76fd090b8a,bug,"Fixed Azure DevOps attachment filename bug",mcp-azure,project,,"2026-04-09 16:34:33",1,engram-import
+262,ada1a79f-aa83-4c3a-997b-98b13089eb01,preference,"Always update mcp-azure to latest version",sura-chile-autos,project,,"2026-04-09 16:35:53",1,engram-import
+263,0abde415-509b-485e-929d-76da3180e6b9,bug,"Fixed environment variable race condition",mcp-azure,project,,"2026-04-09 16:57:41",1,engram-import
+264,d4f8485e-1680-4165-b750-eac09d3c2ebc,pattern,"Estándar de Nomenclaturas SURA Chile",sura-chile-autos,project,architecture/naming-conventions,"2026-04-10 19:26:33",1,engram-import
+265,dab588e3-e3a7-4ef0-b15d-1aa7f9324bba,architecture,"Azure DevOps Workflow States - SURA Chile",sura-chile-autos,project,azure-devops/workflow-states,"2026-04-10 19:56:44",1,engram-import
+266,897f28c8-2a74-4222-b2a4-c4633da16a18,architecture,"Azure DevOps Workflow States v2.0 - SURA Chile",sura-chile-autos,project,azure-devops/workflow-states-v2,"2026-04-10 21:16:47",1,engram-import
+267,715a8211-ee33-4b3b-a9a9-cdf6b6229972,decision,"API Design Standards v3.0 - Temporal naming, null handling, currency en meta",sura-chile-autos,project,architecture/api-design-standards,"2026-04-11 14:14:12",1,engram-import
+268,130e7cc2-a7e4-46e8-b6f7-3fb10f3d72ea,decision,"API Design: _uf reemplazado por _indexed para portabilidad multi-país",sura-chile-autos,project,architecture/api-design-standards,"2026-04-11 14:30:32",1,engram-import
+269,3f5cf29c-3e5d-4d86-9309-4e0dba042478,architecture,"Parrilla de códigos SOL Canal Directo Chile agregada al catálogo de productos",sura-chile-autos,project,products/sol-coverage-codes,"2026-04-11 14:39:32",1,engram-import
+270,b128aa60-1e50-4c66-adcf-41bb1b8561e5,discovery,"Hallazgos parrilla SOL pendientes de validación con negocio",sura-chile-autos,project,products/sol-coverage-codes-pending-validation,"2026-04-11 14:48:10",1,engram-import
+271,7d80be63-a676-4bab-9791-4fa66d690f20,decision,"Pendientes modelo producto Autos - confirmar con negocio",sura-chile-autos,project,product-model/pendientes-negocio,"2026-04-11 15:14:27",1,engram-import
+272,af831f3c-cb43-4970-8435-56e289e97e5e,architecture,"Azure DevOps: adjuntos van en TS, no en HUs",sura-chile-autos,project,product-model/architecture-v3,"2026-04-11 15:14:46",3,engram-import
+273,6aecd375-8fc0-411f-979f-23f9062df73d,architecture,"Memento v1.0.0 — Major release with lifecycle management + skill",memento,project,memento/v1-release,"2026-04-11 21:06:33",1,engram-import
+274,13eee915-8b7d-406d-a5d5-8082ab86d54d,config,"Starship config with Salesforce DX detection",.config,personal,config/starship-toml,"2026-04-12 05:09:54",1,engram-import
+275,1eddbe98-5ce7-4984-a7c7-598814cc7eb6,config,"Switched from Powerlevel10k to Starship prompt",slorenzot,project,,"2026-04-12 05:16:00",1,engram-import
+276,2da918df-5618-4661-8947-d16d399919de,architecture,"Plan tmux improvements for Mac OS + Ghostty",dotfiles,project,,"2026-04-12 15:21:55",1,engram-import
+277,cbeba948-0a34-4129-8318-e610b46621d6,config,"Segmento clock agregado a Sketchybar con formato AM/PM",slorenzot,project,,"2026-04-13 02:49:36",1,engram-import
+278,d904a8fa-ef89-4739-acfe-596074b8f043,preference,"Sketchybar: Reloj alineado a la derecha",dotfiles,project,,"2026-04-13 02:57:12",1,engram-import
+279,7a144b0d-1e84-4f44-855d-838e129ee1ba,discovery,"RAM calculation: starship sysinfo formula on macOS",slorenzot,personal,,"2026-04-13 03:27:11",1,engram-import
+280,af7c361c-e711-44c6-8182-7167ad6d9d26,config,"Starship nodejs module disabled in home directory",dotfiles,project,config/starship-nodejs,"2026-04-13 03:43:12",1,engram-import
+281,afae8563-3bfb-4129-8ee8-c05912b4acf9,decision,"TS-032 GET /v1/{product}/leads/{leadId} - Contract",sura-chile-autos,project,sura/ts-032/contract,"2026-04-13 15:15:20",1,engram-import
+282,78516492-6f4c-4d99-8b44-9f5864be84eb,architecture,"Sketchybar migrado a bundle-id matching (locale-agnostic)",dotfiles,project,sketchybar/icon-map-architecture,"2026-04-13 15:17:19",2,engram-import
+283,10e05a9b-b94a-42bd-a42e-f1250278dd70,architecture,"Contrato OpenAPI GET /leads/{leadId} creado",sura-chile-autos,project,sura/ts-032/openapi-contract,"2026-04-13 15:19:25",1,engram-import
+284,1865d27d-9865-4bd6-ae90-91b42315f89a,bug,"macOS locale rompe app name mapping en Sketchybar",dotfiles,project,sketchybar/locale-app-names,"2026-04-13 15:22:08",1,engram-import
+285,6196498f-ae48-41ac-88fe-105fcdce2f98,pattern,"Sketchybar counter con superíndices Unicode en modo agrupado",dotfiles,project,sketchybar/workspace-render-modes,"2026-04-13 16:11:27",2,engram-import
+286,479d6c5c-1bd0-4be3-9eda-9237ab688dff,pattern,"Sketchybar Now Playing: marquee siempre activo + posición extrema derecha",dotfiles,project,sketchybar/now-playing-widget,"2026-04-13 16:40:30",2,engram-import
+287,fbcab587-ea3d-4081-ac7d-609499cca091,discovery,"Sketchybar: update_freq es integer ≥1 y label.width (no max_chars) para scroll nativo",dotfiles,project,sketchybar/api-gotchas,"2026-04-13 16:48:40",1,engram-import
+288,6851d680-2f62-4bc0-a687-fcf29428c817,summary,"Session summary: sura-chile-autos",sura-chile-autos,project,,"2026-04-13 16:57:21",1,engram-import
+289,a0596316-042b-4cd4-9f88-6744e5b1621c,bug,"Added clock icon and improved marquee",sketchybar-retrowave,project,,"2026-04-13 17:02:52",1,engram-import
+290,fa08eafa-ff00-484e-b017-52a3433270cf,bug,"Fixed clock icon UTF-8 encoding",sketchybar-retrowave,project,,"2026-04-13 17:05:42",1,engram-import
+291,6cf6e3d1-3079-46ee-9e2b-400b094be19b,preference,"Changed clock icon to fa-clock",sketchybar-retrowave,project,,"2026-04-13 17:09:48",1,engram-import
+292,2d659a25-69de-46fe-bc58-2f6245a48db8,summary,"Session summary: sura-chile-autos",sura-chile-autos,project,,"2026-04-13 17:10:07",1,engram-import
+293,7362b72a-b6f2-42cb-beb0-4e67ce43b62f,decision,"Updated naming conventions with NTT DATA v2.1 standards",sura-chile-autos,project,naming-conventions-standard,"2026-04-13 17:22:51",1,engram-import
+294,5caaa260-fd72-44ce-9fb9-72e8408acce0,decision,"",sura-chile-autos,project,naming-conventions-ntt-data-v2.1,"2026-04-13 17:27:09",1,engram-import
+295,c9e6d330-fe6b-4385-a5b3-a6580f5c2a77,summary,"Session summary: sura-chile-autos",sura-chile-autos,project,,"2026-04-13 17:28:43",1,engram-import
+296,0a2abc89-e681-4ec0-ab0d-7a9380d9562c,summary,"Session summary: sura-chile-autos",sura-chile-autos,project,,"2026-04-13 17:30:41",1,engram-import
+297,35c15466-b8b1-4460-b1f8-2be27dfca880,summary,"Session summary: sura-chile-autos",sura-chile-autos,project,,"2026-04-13 17:49:02",1,engram-import
+298,0af14a84-d0a8-4745-9274-d5f8a1921522,architecture,"Estandarización completa de patterns de IDs Salesforce",sura-chile-autos,project,api-contracts/id-patterns-standardization,"2026-04-13 17:51:38",1,engram-import
+299,f0178fe4-f619-4202-866e-fd8bcb8cafe8,discovery,"Mapping TS local ↔ Azure DevOps + gaps detectados",sura-chile-autos,project,sf-add/ts-ado-mapping,"2026-04-13 17:59:08",1,engram-import
+300,75c438f0-2b64-4ec2-a058-8c855f7295dd,architecture,"Sync completa Azure DevOps + YAML locations extraído + TS-032 creada",sura-chile-autos,project,sf-add/azure-sync-2026-04-13,"2026-04-13 18:04:53",1,engram-import
+301,78bc9038-e1d1-47ee-bb35-43489f30a474,architecture,"Creada TS-033 local (mockup GET leads/id)",sura-chile-autos,project,sf-add/ts-033/creation,"2026-04-13 20:25:10",1,engram-import
+302,0c8028e4-3577-4ec2-8412-09ae718b9535,architecture,"TS-033 sincronizada en Azure DevOps (ID 35593)",sura-chile-autos,project,sf-add/ts-033/sync-azure,"2026-04-13 20:34:33",1,engram-import
+303,5ba8bb6e-e8f1-4e87-955a-c9c1e414d68d,discovery,"Modelado HUs descargadas desde Azure DevOps",sura-chile-autos,project,,"2026-04-13 21:20:38",1,engram-import
+304,c60757e1-fb7e-4120-8095-46a5992408a9,config,"Instalado peek.nvim para Mermaid .mmd",nvim-config,project,,"2026-04-13 22:31:25",1,engram-import
+305,0d91af1b-27bf-4c99-be34-65b9681ca976,config,"Configuración filetype .mmd corregida",nvim-config,project,,"2026-04-13 22:35:51",1,engram-import
+306,622764c5-fc9a-47ab-9954-7b1d8b484aa3,config,"Instalación peek.nvim para Mermaid .mmd",nvim-config,project,,"2026-04-13 22:36:25",1,engram-import
+307,6432ca39-978f-469a-a280-191803442fb7,config,"Cambiado a markdown-preview.nvim",nvim-config,project,,"2026-04-13 22:42:06",1,engram-import
+308,70230612-0d42-4ca3-9c3b-7d4bc57772d7,config,"Agregado fantasma suspend en Sketchybar",gentleman.dots,project,,"2026-04-13 23:18:12",1,engram-import
+309,81914ec1-900f-4c94-b72f-6fd05e41db54,config,"Agregado fantasma con animación horizontal en Sketchybar",gentleman.dots,project,,"2026-04-13 23:26:39",1,engram-import
+310,d4e7f150-cef6-489f-8eb5-132bfab10055,config,"Corregido fantasma con scroll horizontal (estrategia label+dots)",gentleman.dots,project,,"2026-04-13 23:38:50",1,engram-import
+311,1a0e9ba6-b7ac-41f5-b159-fb7c2c6fa449,config,"Implementado movimiento lineal fantasma Sketchybar",gentleman.dots,project,,"2026-04-13 23:42:50",1,engram-import
+312,96f69dd1-99bc-4607-8af5-5b32d76aa1a2,config,"Aumentado contenedor fantasma scroll a 13 caracteres",gentleman.dots,project,,"2026-04-13 23:45:08",1,engram-import
+313,f6749171-3e17-40bc-96b5-ea1ad4a043da,config,"Revertido contenedor fantasma scroll a 13 caracteres",gentleman.dots,project,,"2026-04-13 23:50:44",1,engram-import
+314,4fc3d315-0028-4424-8274-c7478e154a90,config,"Movido ghost_scroll al extremo derecho de Sketchybar",gentleman.dots,project,,"2026-04-13 23:52:43",1,engram-import
+315,09abb4c8-a92d-4e9b-995d-1e50673c6127,config,"Ciclo de colores fantasma Pacman en Sketchybar",slorenzot,project,,"2026-04-14 00:20:43",1,engram-import
+316,0ab6f4e7-82e0-4aa2-971b-caa8b9e8e36a,pattern,"Commits semánticos como estándar del proyecto",sura-chile-autos,project,,"2026-04-14 04:16:34",1,engram-import
+317,9c2f56f2-602a-4466-95e2-c7fab91d94a3,architecture,"SF-ADD Init - suratech-salesforce-CL-app",suratech-salesforce-cl-app,project,sf-add-init/suratech-salesforce-cl-app,"2026-04-14 13:33:26",1,engram-import
+318,a879b76a-e652-4d48-a3fc-ee305307e21f,decision,"Architecture Decision - SDD Adapted to SF-ADD",suratech-salesforce-cl-app,project,architecture/sdd-sfadd-mapping,"2026-04-14 13:38:12",2,engram-import
+319,3b6535a4-1862-4e0b-9bc2-89a9dc637a80,config,"Azure DevOps Configuration Verified",suratech-salesforce-cl-app,project,config/azure-devops,"2026-04-14 13:38:12",1,engram-import
+320,21db7912-f315-4260-b35f-f48518adc055,summary,"Session summary: suratech-salesforce-cl-app",suratech-salesforce-cl-app,project,,"2026-04-14 13:39:27",1,engram-import
+321,56784afa-2b15-4678-9d62-d004988f5b36,summary,"Session summary: suratech-salesforce-cl-app",suratech-salesforce-cl-app,project,,"2026-04-14 13:54:39",1,engram-import
+322,066a135f-7b8f-40f0-a6d1-071835652490,decision,"Updated architecture-branch-workflow skill to v3.0.0",suratech-salesforce-masivos-app,project,skills/architecture-branch-workflow,"2026-04-14 17:41:33",1,engram-import
+323,16bce6da-40b8-4d13-aeb5-9b33c341b4b0,decision,"Consolidada spec webhook inspecciones en endpoint-012 v2.0",suratech-salesforce-cl-app,project,sf-add/inspections-webhook/spec-consolidation,"2026-04-14 21:50:38",1,engram-import
+324,f75fabfa-a519-43ae-aa6e-9db4a744e0d6,config,"Agregado soporte git branch en tmux status bar",tmux-config,project,,"2026-04-15 02:21:40",1,engram-import
+325,57d88dfc-9ff9-4ea8-9b65-855598ce5fce,bug,"Depuración git branch tmux status bar",tmux-config,project,,"2026-04-15 02:27:03",1,engram-import
+326,23c114b1-e9d2-4bc2-bf85-275a5bd9ab3e,bug,"Resolución git branch tmux con hooks y variables",tmux-config,project,,"2026-04-15 02:31:22",1,engram-import
+327,a4dffec4-494a-48da-935a-7b21cf59bbb5,bug,"Resolución escaping hooks tmux git branch",tmux-config,project,,"2026-04-15 02:44:26",1,engram-import
+328,7d4a09dc-f416-414c-ad0d-d1c7c27f97b5,config,"Configuración tmux: navegación con Alt+flechas",slorenzot,project,,"2026-04-15 13:33:17",1,engram-import
+329,c254d4fd-2605-4276-97f2-a783dd217fbb,config,"Cambiado Alt por Ctrl en navegación tmux",slorenzot,project,config/configuraci-n-tmux-navegaci-n-con-ctrl-flechas,"2026-04-15 13:37:25",1,engram-import
+330,9914eefc-1eb3-4bc2-93e7-d81c4040de1a,decision,"Creada TS-35647 localmente desde Azure DevOps",sura-chile-autos,project,,"2026-04-15 16:06:30",1,engram-import
+331,adbc768d-802d-4f2e-9d3c-1ef6975f134b,config,"Configuración navegación de texto zsh con Alt+flechas",slorenzot,project,,"2026-04-15 16:07:49",1,engram-import
+332,53229366-243e-40df-8d42-c0256be57f7f,decision,"Creada skill code-syntax-highlighter",suratech-salesforce-CL-app,project,,"2026-04-15 16:28:32",1,engram-import
+333,e35445f8-8053-4bef-9ff5-39636ac8e12f,decision,"Creada skill code-syntax-highlighter",sura-chile-autos,project,,"2026-04-15 16:28:43",1,engram-import
+334,9ae896b1-2de0-427e-b492-9ec1b5c15535,discovery,"PAT de Azure DevOps requiere scope Code para MCP",suratech-salesforce-cl-app,project,,"2026-04-15 17:23:54",1,engram-import
+335,dd52fea4-99b8-4207-8d15-ae7223cb10f1,decision,"Plugin de Resaltado Universal de Sintaxis Implementado",suratech-salesforce-cl-app,project,,"2026-04-15 18:34:30",1,engram-import
+336,e8feb5d4-60e3-4078-a22d-de3052a144ef,decision,"Eliminado skill code-syntax-highlighter",opencode-config,project,skills/deleted/code-syntax-highlighter,"2026-04-15 21:02:30",1,engram-import
+337,778af547-cace-4528-a625-9d9f1006bc5c,architecture,"ADR-012 + 4 TS de webhooks creados (Paso 3)",suratech-salesforce-cl-app,project,sf-add/webhooks-architecture/adr-012-and-ts-034-037,"2026-04-15 22:40:51",1,engram-import
+338,f79c3a1b-a7ff-451f-89a4-59cc5add2d08,architecture,"Normalización de ADRs del proyecto Autos SURA Chile",sura-chile-autos,project,architecture/adr-conventions,"2026-04-15 22:42:53",1,engram-import
+339,209e68f1-64d0-49f6-bb39-e1ece37f5bfe,preference,"Preferencia: siempre usar sub-agents cuando sea posible",suratech-salesforce-cl-app,personal,preferences/delegation-strategy,"2026-04-15 22:42:58",1,engram-import
+340,f17a66a5-bfae-4a8e-a332-62812adc2549,config,"Added global delegation protocol to AGENTS.md",slorenzot,personal,config/agent-delegation-protocol,"2026-04-15 22:56:50",1,engram-import
+341,6d8289ca-1658-4904-a7cd-426f59fdbffa,architecture,"Promoción de 5 ADRs inline a canónicos ADR-013..017",sura-chile-autos,project,architecture/adr-state-machine-decisions,"2026-04-15 23:01:35",1,engram-import
+342,2c74e294-a522-4c47-a9d1-60e01ff9eff4,architecture,"Actualización TS-011, TS-012 y specs v2.1 webhooks con ADR-012","sura chile autos",project,,"2026-04-15 23:04:34",1,engram-import
+343,c3f2f385-836a-4fc2-b4be-3ea04413621d,pattern,"Reorganización commits sesión webhooks (13 commits separados)",sura-chile-autos,project,,"2026-04-15 23:27:30",1,engram-import
+344,4bbb5662-7746-4361-a689-175c1e590834,config,"Configurado Starship para mostrar commits pending en git",suratech-salesforce-cl-app,personal,,"2026-04-15 23:34:30",1,engram-import
+345,b5e6984e-83af-451c-92ec-8b2408383f13,pattern,"Push exitoso commits sesión webhooks (14 commits)",sura-chile-autos,project,,"2026-04-15 23:34:42",1,engram-import
+346,b946a1a1-c89b-47fe-8006-d131c2609a96,config,"Cambiado flechas en Starship por ↑↓",suratech-salesforce-cl-app,personal,config/configurado-starship-para-mostrar-commits-pending-en-git,"2026-04-15 23:40:09",3,engram-import
+347,bccb3eea-d3bf-446a-bb97-d67f5c0c4639,note,"Creado .mcp.json y actualización .gitignore para seguridad",sura-chile-autos,project,,"2026-04-15 23:46:41",1,engram-import
+348,de9d1015-f3a5-4a55-bcdd-5242f2e26c50,config,command-registry,slorenzot,project,command-registry,"2026-04-15 23:53:26",1,engram-import
+349,c7a2d4ad-9424-4f3c-ba34-dd7728cac96f,decision,"Azure DevOps MCP Technical Stories creation status",suratech-salesforce-cl-app,project,,"2026-04-16 00:06:34",1,engram-import
+350,37f9866e-3d7b-4af6-acd8-951f6ed35a4c,summary,"Session summary: suratech-salesforce-cl-app",suratech-salesforce-cl-app,project,,"2026-04-16 00:32:30",1,engram-import
+351,6f479824-7ab9-4707-818e-280a26fc6497,summary,"Session summary: suratech-salesforce-cl-app",suratech-salesforce-cl-app,project,,"2026-04-16 00:41:18",1,engram-import
+352,805c3aa8-9b51-41ea-ac77-7bc3760d8515,summary,"Session summary: mcp-azure",mcp-azure,project,,"2026-04-16 00:43:02",1,engram-import
+353,cc712fed-7799-4762-907d-e31a874ad5ab,architecture,"Implementación MCP Azure DevOps robusta completa",mcp-azure,project,,"2026-04-16 00:43:12",1,engram-import
+354,2a44ab33-ca79-4090-bcb5-5fe9f69984c9,decision,"Publicación MCP Azure DevOps v2.6.0 en NPM",mcp-azure,project,,"2026-04-16 00:45:16",1,engram-import
+355,fb0623ec-b442-48d3-80d6-2ae83c32750f,summary,"Session summary: mcp-azure",mcp-azure,project,,"2026-04-16 00:45:35",1,engram-import
+356,509bbefa-4909-4be2-9880-75a1897d9712,config,"Documentos adjuntados a TS-034/035/036/037 en Azure DevOps",suratech-salesforce-cl-app,project,,"2026-04-16 00:57:58",1,engram-import
+357,a30b1be7-1b30-408c-9d18-aca122a5f612,preference,"Regla: Reportar errores MCP Azure al usuario",suratech-salesforce-cl-app,personal,user-preference/mcp-azure-error-reporting,"2026-04-16 01:00:04",1,engram-import
+358,dd86f196-3247-4f59-94ba-8d8154a24f55,architecture,"GitHub releases creadas y PRD de concurrencia add_attachment",mcp-azure,project,,"2026-04-16 12:39:20",1,engram-import
+359,592d5c85-c507-477f-98fe-a2bb2182d035,summary,"Session summary: mcp-azure",mcp-azure,project,,"2026-04-16 12:39:38",1,engram-import
+360,b64e8a6e-f671-4485-a409-f5943c82806a,architecture,"Implementación concurrencia add_attachment y publicación v2.6.1",mcp-azure,project,,"2026-04-16 12:43:20",1,engram-import
+361,99faa66f-876f-4e8e-9057-c84d15e9e459,summary,"Session summary: mcp-azure",mcp-azure,project,,"2026-04-16 12:43:39",1,engram-import
+362,8d375d86-8bb7-4883-b065-6484de3dd45c,architecture,"Estandarización URLs webhooks inbound - ADR-012 v1.1",sura-autos-chile,project,sf-add/webhook-url-standardization,"2026-04-16 13:20:24",1,engram-import
+363,0e086155-bb1c-4fcf-a39b-7eaefd6d5ca7,architecture,"Commit y Azure DevOps sync - estandarización URLs webhooks",sura-autos-chile,project,sf-add/webhook-url-standardization/commit,"2026-04-16 13:28:35",1,engram-import
+364,70813c8c-83a7-45a8-91e5-34a492b551c7,pattern,"Flujo de trabajo de arquitectura - SDD en branch architecture",sura-autos-chile,project,workflow/architecture-branch,"2026-04-16 13:35:02",1,engram-import
+365,53b38c7e-daa2-4827-b3a6-9ca7cd63f8b2,pattern,"HTML documentation generated from OpenAPI contracts",suratech-salesforce-cl-app,project,,"2026-04-16 16:05:27",1,engram-import
+366,75b9e566-991d-4e4d-a0b6-9501b8b534c4,decision,"Sync Azure DevOps completada - TS-038 creada, TS-013 obsoleta","sura chile autos",project,sf-add/api-contract-sync-progress,"2026-04-16 16:20:30",1,engram-import
+367,030e8f8b-c64c-448d-975c-6a3bfcf89efd,decision,"Archivos adjuntos a TS-038 en Azure DevOps","sura chile autos",project,sf-add/api-contract-attachments,"2026-04-16 16:25:56",1,engram-import
+368,8fa93e83-2fdf-4903-8292-ae2d6262f64e,preference,"Azure DevOps siempre usa formato HTML","sura chile autos",project,azure-devops-formatting-standard,"2026-04-16 16:26:30",1,engram-import
+369,84457d17-b7cc-446b-8863-422c5be0807a,decision,"Corrección completa de descripción HU-35688 en Azure DevOps","sura chile autos",project,sf-add/hu-35688-correction-complete,"2026-04-16 16:43:11",1,engram-import
+370,342d79e4-ed8b-43de-908c-825e341e4dad,decision,"Título TS-038 actualizado con ajuste de negocio","sura chile autos",project,sf-add/ts-038-title-business-adjustment,"2026-04-16 16:47:40",1,engram-import
+371,5a074ad6-50c2-499c-af05-23cb56812153,note,"Prueba de herramientas MCP",suratech-salesforce-cl-app,project,,"2026-04-16 17:04:35",1,engram-import
+372,fcb9419a-dd33-4a75-8956-0c314b3f3106,decision,"Creación y sincronización de TS-039 completada","sura chile autos",project,sf-add/ts-039-creation-complete,"2026-04-16 17:06:36",1,engram-import
+373,74d3a12d-d7ad-4d43-ba28-f4e86d058ae0,decision,"Convención de Documentación SF-ADD: Estructura SDD/SSD",suratech-salesforce-CL-app,project,,"2026-04-16 19:59:53",1,engram-import
+374,7c86ecb2-0c58-435b-8509-f0109f643a11,decision,"Convención de Documentación SF-ADD: Estructura SDD/SSD","sura chile autos",project,decision/sf-add-documentation-convention-sdd-structure,"2026-04-16 20:00:07",1,engram-import
+375,8c3b64e8-5af7-482b-b63b-09ce301f22c9,bug,"Fixed email validation regex in Validator.isEmailValid",saas-platform,project,,"2026-04-16 21:51:50",1,engram-import
+376,fed1b91a-2750-45e8-8a3e-ca2d5ea5c29c,bug,"Fixed render loop in Checker component useEffect",saas-platform,project,,"2026-04-16 21:52:34",1,engram-import
+377,c70810c3-d183-4537-941b-cbb221f29e79,bug,"Fixed PrismaClientInitializationError in create-admin script",saas-platform,project,,"2026-04-16 22:51:19",1,engram-import
+378,1cacf4bb-726c-40ce-b8cc-24e7ee37a2dc,architecture,"Sprint 2 — Layered Architecture TS (TS-040 a TS-057) + ADR-018",sura-autos-chile,project,sf-add/sprint2-implementation/architecture,"2026-04-17 14:45:49",1,engram-import
+379,242b43e0-64a4-44d6-82b2-547dadd647f8,architecture,"Propuesta 24-Month Policies complementada con análisis de ciclo de vida",sura-chile-autos,project,sf-add/24-month-policies/proposal,"2026-04-17 18:03:24",1,engram-import
+380,749f571e-fc6d-43de-9e0b-368845835e2d,decision,"ADR-019: {product} segment mandatory in all URL paths",sura-autos-chile,project,architecture/url-product-segment,"2026-04-17 18:03:55",1,engram-import
+381,cd480e24-24be-4300-ac24-be839e2791cd,note,"Added CustomApp seed to installer script (step 13)",saas-platform,project,,"2026-04-17 19:20:39",1,engram-import
+382,a9056da2-bd73-4cf1-96f1-0bac5617da42,bug,"Fixed critical LSP issues in Neovim config",saas-platform,project,,"2026-04-18 01:13:13",1,engram-import
+383,d490dc8a-4ff3-4e1f-9739-93445f6dc95c,bug,"Disabled inlay hints - tsgo incompatibility",saas-platform,project,,"2026-04-18 01:14:30",1,engram-import
+384,ac9d0796-4cc1-4dd6-ab67-9599ff8443b4,config,"Created backup of Neovim config",saas-platform,project,,"2026-04-18 01:17:15",1,engram-import
+385,5c7de036-4aec-4382-93dc-d168ea2fb1b1,bug,"Fixed FilteredInput state sync and duplicate onChange issues",saas-platform,project,,"2026-04-18 01:25:16",1,engram-import
+386,5bafc1ab-f622-4638-9008-e492a82a87fb,bug,"Fixed import paths in sureties module",saas-platform,project,,"2026-04-18 15:46:07",1,engram-import
+387,bcf73f16-947a-4a7e-8b6a-569d318b1b5b,note,"Created comprehensive tech stack documentation",saas-platform,project,,"2026-04-19 12:53:42",1,engram-import
+388,807b5f87-28ac-4164-8089-d872d852bd3a,decision,"Updated GLM model assignments for planning and critical agents",saas-platform,project,,"2026-04-19 12:56:38",1,engram-import
+389,a0e3e8f8-05a8-4152-a01d-38d1e31c622e,decision,"Unificado modal componentes Add/Edit Custom App",saas-platform,project,,"2026-04-19 15:06:22",1,engram-import
+390,3297b809-db69-4a69-8f34-c83811c225f1,preference,"Política de uso de componentes custom",saas-platform,project,,"2026-04-19 15:12:54",1,engram-import
+391,b4a3f313-b36b-4f8d-a4b4-9461f881aa05,decision,"Implementado botón Guardar en CustomAppForm con ActivityButton",saas-platform,project,,"2026-04-19 15:21:22",1,engram-import
+392,a5241a38-a068-4c93-93d7-201c59efd304,decision,"Corregida firma validateTransition en spec StateRuleService v3.1",suratech-salesforce-autos,project,sf-add/state-rules/spec-correction,"2026-04-19 15:29:46",1,engram-import
+393,29208e44-940d-483f-a193-679b8394abc9,discovery,"Validación exitosa de 13 subagentes con modelos GLM",saas-platform,project,validation/subagent-models-glm,"2026-04-19 15:33:59",1,engram-import
+394,1820f029-4cbd-4581-ac25-449d6defbfe1,summary,"Session summary: marian-services",saas-platform,project,,"2026-04-19 15:34:22",1,engram-import
+395,8b21f30c-a2f0-4b79-a32a-084bc2c78297,bug,"Fixed architect-plan agent: enabled edit+write tools",sura-chile-autos,project,agents/architect-plan,"2026-04-19 16:15:14",2,engram-import
+396,a06eb505-ebff-4a04-8d83-148868b26310,decision,"Refactorizado custom-apps page.tsx con GenericTable",saas-platform,project,,"2026-04-19 16:21:22",1,engram-import
+397,39fa5f73-cca4-48a9-8ffa-6e4f50597e47,architecture,"ADR-022: Unificación StateRuleService para todos los objetos",suratech-salesforce-autos,project,sf-add/state-rules/adr-022-unificacion,"2026-04-19 16:32:57",1,engram-import
+398,301bd0fd-8883-490f-98c7-4e24b85de129,decision,"Aplicado PanelGroup + FormGroup + device + ref a custom-apps/page.tsx",saas-platform,project,,"2026-04-19 16:33:15",1,engram-import
+399,bb01a89b-57cc-4a74-9afe-fab16bf5faf6,decision,"Git access added to solution-architect-planner skill",sura-autos,project,skills/solution-architect-planner-git,"2026-04-19 16:46:20",1,engram-import
+400,d9130cd9-5485-4921-8598-8679f6c033df,decision,"Alineada custom-apps con organizations - build TypeScript exitoso",saas-platform,project,,"2026-04-19 16:59:18",1,engram-import
+401,d74af608-37d9-467f-8826-24cd2d6ddd01,pattern,"",saas-platform,project,architecture/listing-page-standard,"2026-04-19 21:11:09",3,engram-import
+402,68643b6f-662f-4d48-9188-559ae66e6df0,pattern,"Actualizada sección 6.3 de estándares UI para páginas de listado",saas-platform,project,,"2026-04-20 02:45:27",1,engram-import
+403,7487bc2e-b8ab-44b6-a7e3-0f6575303b81,note,"Agregada sección 7: Estándares de Traducción en UI patterns",saas-platform,project,,"2026-04-20 03:16:56",1,engram-import
+404,5e77c93c-a9e8-4079-a7f7-65681357806c,pattern,"",saas-platform,project,architecture/listing-page-standard,"2026-04-20 03:18:09",1,engram-import
+405,66a1fb58-febd-42eb-9d8c-d19ad93b6a7a,architecture,"SPEC cabeceras HTTP endpoints expuestos creada",sura-autos-chile,project,spec/http-headers-endpoints,"2026-04-20 12:48:08",1,engram-import
+406,5b154a8f-5bf0-46b3-858a-176e653e0c9e,architecture,"Actualización endpoints legacy en documentos State Rules",sura-chile-autos,project,architecture/state-rules-endpoint-update,"2026-04-20 12:49:10",1,engram-import
+407,b7f9b247-df5d-42cd-a22a-966f232ec19c,architecture,"TS-043 actualizada a v1.1 — 7 correcciones de sincronización con contrato",sura-chile-autos,project,sf-add/ts-043-impl-post-leads/sync,"2026-04-20 13:01:35",1,engram-import
+408,c09f9d64-a2f4-4c8a-955c-4995d92e063c,architecture,"Sincronización completa TS-038/039/043 + YAML v1.4.0",sura-chile-autos,project,sf-add/post-leads-contract-sync/v1.4,"2026-04-20 13:07:20",1,engram-import
+409,163dc216-81f8-4d5a-a80a-dadfbdf423db,decision,"Sincronizada TS-038 local con Azure DevOps #35688",sura-autos-chile,project,sync/ts-038-azure-devops,"2026-04-20 13:59:31",1,engram-import
+410,b77da79d-cdaf-4ff5-b3bb-9661de3e9e2d,decision,"Sincronizadas TS-034, TS-035, TS-037 con Azure DevOps",sura-autos-chile,project,sync/ts-webhooks-contracts-azure-devops,"2026-04-20 14:03:33",1,engram-import
+411,ae13d637-7299-4649-b16f-552a7854ba2f,decision,"Creado WI #35792 para TS-012 Mockup inspections/{id}",sura-autos-chile,project,sync/ts-012-azure-devops,"2026-04-20 14:11:13",1,engram-import
+412,69856976-ff35-450f-9740-4d86464d41a0,preference,"Regla: confirmar adjuntos de archivos referenciados al subir TS a Azure DevOps",sura-chile-autos,personal,preferences/ts-upload-attachments,"2026-04-20 14:16:36",1,engram-import
+413,8358a4c5-51b3-4a3d-9a3c-a7a8ce6beac4,architecture,"Sincronización TS-040 con Azure DevOps",suratech-autos,project,azure-devops/synchronization/ts-040,"2026-04-20 15:49:41",3,engram-import
+414,67607aea-6994-4ab4-aad8-7ae111e7e7f4,discovery,"Azure DevOps MCP - Uso correcto de ado_add_attachment con parámetro name",suratech-salesforce-cl-app,personal,azure-devops/mcp/attachments-best-practices,"2026-04-20 15:57:15",1,engram-import
+415,55dc4cd6-5acc-446c-9aa5-2b06e1e04044,discovery,"Azure DevOps MCP - Mejores prácticas y errores comunes",suratech-salesforce-cl-app,personal,azure-devops/mcp/best-practices,"2026-04-20 15:57:33",1,engram-import
+416,97047412-e4e1-4492-9faa-555d814fb71f,decision,"Strategy Pattern elegido para validaciones por producto en TS-041",suratech-salesforce-cl-app,project,,"2026-04-20 16:12:48",1,engram-import
+417,6d510803-74e7-4314-97a6-0af2baa77b32,decision,"TS-041 creada en Azure DevOps con Strategy Pattern",suratech-salesforce-cl-app,project,,"2026-04-20 16:23:27",1,engram-import
+418,1108729d-f944-4b48-a0e0-da3389bd8f45,decision,"TS-042 creada en Azure DevOps con IP Invocation Helper",suratech-salesforce-cl-app,project,,"2026-04-20 16:28:39",1,engram-import
+419,a409d3c2-d77e-47fa-ac4f-66a4b523a2f2,pattern,"Proceso de revisión previa antes de subir historias a Azure DevOps",suratech-salesforce-CL-app,project,,"2026-04-20 16:30:59",1,engram-import
+420,6fe21544-bf9f-40d9-8c67-b75b0fa0ccdd,pattern,"Proceso de revisión previa antes de subir historias a Azure DevOps","sura chile autos",project,,"2026-04-20 16:31:06",1,engram-import
+421,62415e8e-6ade-4cab-8e14-1a6983cb5c7a,decision,"TS-042 actualizada v1.1 con 5 correcciones críticas y subida a Azure DevOps","sura chile autos",project,,"2026-04-20 16:44:05",1,engram-import
+422,56763f71-60e8-467a-a242-38855e03452f,decision,"TS-043 v1.2 creada y subida a Azure DevOps con 4 correcciones","sura chile autos",project,,"2026-04-20 19:00:46",1,engram-import
+423,baa47aa8-cdab-4ace-989c-0ae197a41bf1,bug,"Fixed filtro 'todos los registros' en importaciones",intendeapp,project,,"2026-04-20 20:11:23",1,engram-import
+424,3a3f482e-5d0f-4744-a656-4a18d93abc08,decision,"TS-044 actualizada v1.1 con 4 correcciones (NO subida a Azure DevOps)","sura chile autos",project,,"2026-04-20 20:14:37",1,engram-import
+425,a21679c1-bbb6-4206-a6f9-82b3c137c6d6,bug,"Reaplicado fix filtro 'todos los registros' en importaciones",intendeapp,project,,"2026-04-20 20:19:31",1,engram-import
+426,ac82bc55-4b89-42fa-8ba7-c444e02d4f14,bug,"Corregido filtro 'todos los registros' y eliminado duplicado",intendeapp,project,,"2026-04-20 20:43:53",1,engram-import
+427,3623566c-eaf7-40b9-b0a8-89582ea183f0,note,"",intendeapp,project,,"2026-04-20 20:49:59",1,engram-import
+428,3fe0b63f-ad41-48ea-9351-fbfdbe3ade3f,decision,"TS-044 v1.1 creada con 4 correcciones + 5 adjuntos de dependencias","sura chile autos",project,,"2026-04-20 20:56:10",1,engram-import
+429,07aa498e-f6f2-40e6-ba6d-b7929b1a1579,preference,"Usuario solicitó hacer commit de todos los avances al Git","sura chile autos",project,,"2026-04-20 20:57:12",1,engram-import
+430,4a69dd90-b982-46a3-83cc-459282d8b138,decision,"Documentación de modelo de productos actualizada de v1.0 a v2.0",sura-autos-chile,project,product-model/documentation-alignment,"2026-04-20 21:06:08",1,engram-import
+431,7d7753b4-5ad1-4602-bac3-c975c6afe27a,decision,"Banners de deprecación agregados a 6 docs de prioridad alta",sura-autos-chile,project,product-model/documentation-deprecation-banners,"2026-04-20 21:13:25",1,engram-import
+432,71013b91-6f1d-45e5-b78d-3b2178405015,architecture,"Migración completa de PlanModelado 1.md a documentos definitivos",sura-autos-chile,project,product-model/documentation-migration,"2026-04-20 21:23:23",1,engram-import
+433,e0964a0b-fb6f-4d63-a37e-d46acbc210e8,discovery,"Filtro de fondo duplicado - URL con f=1995&f=1995",intendeapp,project,,"2026-04-21 02:53:18",1,engram-import
+434,64417e9c-9900-44a2-bf9b-add2cc2cf68a,bug,"Fixed error message for paid credits CSV import",intendeapp,project,bugfix/csv-import-error-messages,"2026-04-21 03:34:18",1,engram-import
+435,376442e8-c383-4c19-8fe9-9e1629698733,decision,"Cherry-pick successful: error messages fix from main to develop",intendeapp,project,cherry-pick/error-messages-fix,"2026-04-21 03:48:22",1,engram-import
+436,c3aec757-bd08-46f9-85b9-4815f914fe2f,bug,"Fixed fund filter parameter in movements list",intendeapp,project,,"2026-04-21 04:04:02",1,engram-import
+437,b7e4f7ae-3982-473b-8d9b-76e1d0b0bc46,bug,"Fixed date filter parameters in movements API",intendeapp,project,,"2026-04-21 04:15:22",1,engram-import
+438,4b09080b-2e78-4a15-ab3d-799c2bd8dccf,note,"Ocultar date-filters cuando no hay start_at en importaciones",intendeapp,project,,"2026-04-21 04:24:24",1,engram-import
+439,0be87a4c-440b-4dba-96e1-57cf20d23166,note,"Completado flujo Git - PR cascade #106 a main",intendeapp,project,,"2026-04-21 04:29:34",1,engram-import
+440,a41aa0c2-9fd6-4056-9176-81262b0fcc07,summary,"Session summary: intendeapp",intendeapp,project,,"2026-04-21 04:29:42",1,engram-import
+441,ac46dcd6-fca1-431d-b6ce-867f26b8786e,bug,"Corregido bug de preselección de límite en selector uploads",intendeapp,project,,"2026-04-21 04:35:58",1,engram-import
+442,d84fc6c6-337c-4688-aedc-fa3fef1f2e6d,note,"Ocultar date-filters y corregir selector de límites en uploads",intendeapp,project,,"2026-04-21 04:38:29",1,engram-import
+443,c4753691-7b94-4a50-a1c6-c6a3ce2b7708,note,"Completado: Ocultar date-filters y corregir selector de límites",intendeapp,project,,"2026-04-21 04:39:37",1,engram-import
+444,ce04e826-8849-48b1-9602-389baa6680f3,summary,"Session summary: intendeapp",intendeapp,project,,"2026-04-21 04:39:51",1,engram-import
+445,40f32f6a-070d-43d0-bc52-97130f479a3a,bug,"Fixed date filter not applying on page load with URL parameters",intendeapp,project,,"2026-04-21 12:25:26",1,engram-import
+446,422a66a1-6d12-4b0c-82d3-6d5329518448,bug,"Filtros de fecha uploads.js usan parámetros de navegación",intendeapp,project,,"2026-04-21 13:07:18",1,engram-import
+447,c38df8ea-ec59-40f1-afa9-7c64896059f4,decision,"Configurado Git commits en Architect-Plan agent",suratech-salesforce-cl-app,project,,"2026-04-21 13:13:51",1,engram-import
+448,768c8659-c166-4d27-aec2-7f64b64fde36,bug,"Eliminado StorageManager y corregido parámetros start/end",intendeapp,project,,"2026-04-21 13:14:56",1,engram-import
+449,b2f90a52-f820-4144-a5c9-7313c75a8669,decision,"Aclarado protocolo de commits en Architect-Plan - rechaza código, acepta docs con confirmación",suratech-salesforce-cl-app,project,,"2026-04-21 13:22:38",1,engram-import
+450,244783de-ac29-448b-bbdf-bd9000d41c5f,decision,"Agregado workflow masivo de commits para documentación pendiente",suratech-salesforce-CL-app,project,,"2026-04-21 13:31:48",1,engram-import
+451,d8eebf10-66d0-4627-a704-91581ed834a9,decision,"Agregado workflow masivo de commits para documentación pendiente","sura chile autos",project,,"2026-04-21 13:31:59",1,engram-import
+452,de058fbf-d49b-4fad-b533-9166ba0a708f,decision,"Creada TS-058 - Agrupación de coberturas configurable",suratech-salesforce-CL-app,project,,"2026-04-21 15:15:54",1,engram-import
+453,037c6437-2e13-4c07-af54-0f2b771a445a,decision,"Creada TS-058 - Agrupación de coberturas configurable","sura chile autos",project,,"2026-04-21 15:16:19",1,engram-import
+454,b8beb607-39da-4c7a-a199-4e67f5356765,discovery,"Diagrama arquitectura integraciones creado y publicado",sura-chile-autos,project,,"2026-04-21 17:19:20",1,engram-import
+455,07a7c76a-1ff2-4dbd-a2b2-523c6370b6cb,architecture,"Diagrama de Secuencia Webhook MOK creado",autos-sura-chile,project,architecture/diagrams/mok-inspection-webhook,"2026-04-21 17:20:13",1,engram-import
+456,0d740bc2-8b46-4f5e-a6af-f029a9a8e59f,discovery,"Creado diagrama arquitectura integraciones",sura-chile-autos,project,,"2026-04-21 17:20:50",1,engram-import
+457,697c58c2-77b9-4d28-8bd2-25ecf556cfb1,architecture,"Diagrama simplificado Salesforce-MOK creado",autos-sura-chile,project,architecture/diagrams/salesforce-mok-direct-interactions,"2026-04-21 20:18:58",1,engram-import
+458,03fb83f7-0eaf-451f-9bdc-67f6e8117987,summary,"Session summary: autos-sura-chile",autos-sura-chile,project,,"2026-04-21 20:47:24",1,engram-import
+459,c2209995-87fe-4601-b5b2-806544b49b65,architecture,"Diagrama de clases modelo productos SURA Chile v2.0 creado",autos-sura-chile,project,architecture/diagrams/product-model-classes,"2026-04-21 20:52:30",1,engram-import
+460,84dcfccb-0217-4d34-bc12-863c809d8b3b,architecture,"Diagrama coberturas y grupos configurables v2.0 creado",autos-sura-chile,project,architecture/diagrams/coverages-configurable-groups,"2026-04-21 21:13:25",1,engram-import
+461,b9e3a894-91c8-41b0-ae43-55f441341a27,decision,"Implementado componente z.ai en vista de garantías",intendeapp,project,,"2026-04-21 21:40:15",1,engram-import
+462,3138d1ac-fc6f-4d9c-865f-ef0276a81f63,bug,"Corregido error estructura HTML al agregar componente z.ai",intendeapp,project,,"2026-04-21 21:43:47",1,engram-import
+463,3ecc94aa-2009-4a06-9a61-22249cfa3c26,decision,"ADR-023: Campos nombres separados en Insured Parties creado",autos-sura-chile,project,architecture/adr/insured-parties-name-fields,"2026-04-21 21:57:58",1,engram-import
+464,6f4bba54-b853-43d2-a220-93e2d4e4dc9e,decision,"Prioridad de Custom Hooks y Context Components en decisiones de diseño",saas-platform,project,architecture/custom-hooks-and-contexts-priority,"2026-04-22 13:04:28",2,engram-import
+465,a50c9dd3-29d4-44fc-9078-588be6ce222a,architecture,"PRD AI Provider Strategy Pattern - Issue #22",saas-platform,project,architecture/ai-provider-strategy,"2026-04-22 13:36:12",1,engram-import
+466,6dee7c56-93cb-4d43-a5cd-6d9faa58167a,decision,"Sincronizada TS-045 con Azure DevOps",suratech-salesforce-CL-app,project,ts-synchronization/azure-devops,"2026-04-22 14:32:47",1,engram-import
+467,9f998dd1-2668-4998-b3ff-ed4ac378912b,note,"Push commit f013bf6 to architecture branch",suratech-salesforce-cl-app,project,,"2026-04-22 15:17:22",1,engram-import
+468,16907616-efa0-4fed-9b77-71172a67616b,discovery,"Análisis problema delegación @Architect-Plan",slorenzot,project,,"2026-04-22 20:56:52",1,engram-import
+469,21db4004-089a-4e34-bc0c-23997a9adcc0,discovery,"Diagnosticado problema agente Architect-Plan",slorenzot,project,,"2026-04-22 20:58:41",1,engram-import
+470,766f836e-d5dc-4899-b6a8-7af3ba63c349,architecture,"Propuesta solución delegación agentes con retroalimentación visual",slorenzot,project,,"2026-04-22 20:59:52",1,engram-import
+471,e2453cd6-312d-4619-a789-0ff929cbb353,architecture,"Agente Architect-Plan registrado con retroalimentación visual",slorenzot,project,,"2026-04-22 21:03:47",1,engram-import
+472,0455d8c4-ea6d-49e9-9131-2453717def5a,preference,"Eliminada interfaz visual no deseada para Architect-Plan",slorenzot,project,,"2026-04-22 21:07:21",1,engram-import
+473,60b4d2b1-eb4a-458e-a21b-235681276c4c,preference,"Delegar análisis a especialistas ANTES de proponer soluciones",suratech-salesforce-cl-app,personal,workflow/analisis-antes-de-proponer,"2026-04-23 16:24:45",1,engram-import
+474,138e6219-821c-4e50-9a02-2ecaea45e50d,preference,"Preferencia de notificaciones de delegación",suratech-salesforce-cl-app,project,,"2026-04-23 16:46:19",1,engram-import
+475,463ac425-8da6-4f7f-be52-1f148dc30557,architecture,"Análisis arquitectónico flujo headless FSC Insurance SURA Chile",sura-chile-autos,project,architecture/headless-flow-analysis,"2026-04-23 16:46:52",1,engram-import
+476,43e722f0-6980-47bc-a2a7-3b332b81a1c5,config,"Archivo de configuración para notificaciones de delegación",suratech-salesforce-cl-app,project,,"2026-04-23 16:48:24",1,engram-import
+477,87a9255f-31cb-4348-915b-44109bcee176,pattern,"Template Technical Story Azure DevOps (HTML)",suratech-salesforce-masivos-app,project,azure-devops/ts-template-html,"2026-04-23 17:44:33",1,engram-import
+478,d5a0e671-48de-4917-b0dc-04da0e2d201e,config,"Modificado título del sidebar",opencode-quota-main,project,,"2026-04-23 18:07:55",1,engram-import
+479,2161ebab-dbae-4c4a-9af5-b92242c8212e,discovery,"Plugin compilado y pruebas exitosas",opencode-quota-main,project,,"2026-04-23 18:12:52",1,engram-import
+480,d3012f21-fe18-4bd5-b9ae-13d46f3cec45,decision,"Modificado agente Architect-Plan para ejecutar comandos ls",suratech-salesforce-cl-app,project,,"2026-04-23 19:54:00",1,engram-import
+481,9e6e1f1d-ee49-4163-a0ab-0ebb5e871cd0,summary,"Session summary: suratech-salesforce-cl-app",suratech-salesforce-cl-app,project,,"2026-04-23 20:00:47",1,engram-import
+482,026f7034-cda9-47e7-acfb-e2aa82c8d202,bug,"Bug recurrente: adjuntos Azure DevOps con nombre erróneo ""Archivo adjunto""",suratech-chile-autos,project,azure-devops/attachment-naming-bug,"2026-04-23 21:10:20",1,engram-import
+483,c0a9391f-25da-41f4-a772-ee0691d0f0ac,bug,"Azure DevOps MCP adjuntos pierden nombre con attachmentUrl",sura-chile-autos,project,,"2026-04-23 21:25:57",1,engram-import
+484,06e1b7db-f96c-4d11-a04c-b2ce6eb40feb,decision,"TS-046 review: objetos custom eliminados por OOTB DocumentChecklistItem",suratech-salesforce-masivos-app,project,sf-add/ts-046/document-checklist-ootb,"2026-04-23 22:18:07",1,engram-import
+485,10dd0480-2634-4891-9959-d2fd84af9eb4,pattern,"Azure DevOps Sync Protocol v2.0 — Architect-Plan",suratech-chile-autos,project,conventions/azure-devops-sync-protocol,"2026-04-23 22:30:57",1,engram-import
+486,e8916c4c-c7fc-498c-ac4d-e7169163415d,decision,"ADR-027: Renombre CoRelationId__c → XCorrelationId__c + checklist ajustes Sprint 2",suratech-salesforce-masivos-app,project,sf-add/headers-field-rename/adr-027,"2026-04-23 22:53:01",1,engram-import
+487,96faf444-89f5-45e7-948a-269741245917,architecture,"TS-047 descompuesta en 3 sub-historias técnicas",suratech-salesforce-masivos-app,project,sf-add/ts-047/decomposition,"2026-04-24 13:23:16",1,engram-import
+488,1c58e6e6-e704-4430-b259-b9d66fd6c720,pattern,"Tag obligatorio ""Salesforce"" en Technical Stories de Azure DevOps",suratech-salesforce-masivos-app,project,azure-devops/mandatory-tags,"2026-04-24 15:26:08",1,engram-import
+489,555dbca4-668f-4abe-ac40-3732cd11cdd6,decision,"Created AIService Singleton following PRD requirements",saas-platform,project,,"2026-04-25 16:15:14",1,engram-import
+490,1e2edfc4-65e3-41d0-ad53-ec8893dc8565,decision,"AI Provider Strategy Pattern implementado",saas-platform,project,,"2026-04-25 17:05:47",1,engram-import
+491,54367a28-75d4-432b-a314-3726f360b6df,architecture,"Framework SDD (Specification-Driven Development) diseñado y documentado",saas-platform,project,architecture/sdd-framework,"2026-04-25 17:17:02",1,engram-import
+492,36680430-d574-41dc-8122-e14e07e6f9c0,summary,"Session summary: marian-services",saas-platform,project,,"2026-04-25 17:17:24",1,engram-import
+493,58c2ced7-02f4-4abd-9257-a5ca33e16e73,summary,"Session summary: marian-services",saas-platform,project,,"2026-04-25 18:23:52",1,engram-import
+494,3e7407de-e4d3-4268-ae57-bbb15483b095,bug,"Fixed instanceof check in AI provider mapHttpError",saas-platform,project,,"2026-04-26 00:29:27",1,engram-import
+495,b152e1e5-4af3-4c55-a58f-5df9f22f51a4,bug,"Z.ai API: base URL y modelo actualizados",saas-platform,project,,"2026-04-26 00:58:54",1,engram-import
+496,e79b7a84-31dc-4889-859e-39e528d3cae7,bug,"Corregido modelo Z.ai y agregado logging de debug",saas-platform,project,,"2026-04-26 01:09:47",1,engram-import
+497,b63cd5c0-7263-4a95-a788-b68604e3dcd1,config,"Cambiado modelo Z.ai a glm-4.7-flash",saas-platform,project,,"2026-04-26 01:21:25",1,engram-import
+498,7cd77671-932f-4585-bcbd-fa0386d9a106,decision,"",saas-platform,project,architecture/ai-provider-zai-endpoint-config,"2026-04-26 01:23:04",1,engram-import
+499,a27699a4-6ed6-4d72-affc-3b89501b73bd,note,"",saas-platform,project,ux/ai-button-input-validation,"2026-04-26 01:35:46",1,engram-import
+500,42713c6f-910a-4846-acd6-86a1022ce38a,decision,"Eliminado streaming AI module - Server Actions only",saas-platform,project,,"2026-04-26 02:08:01",1,engram-import
+501,836a2a1d-70f0-47e6-bcdb-de61d517d4bc,preference,"Tag ""Salesforce"" obligatorio en todas las TS en Azure DevOps",suratech-salesforce-masivos-app,project,,"2026-04-26 16:37:18",1,engram-import
+502,d80e034a-544f-4a28-a21a-b409d1be04d7,architecture,"Multi-agent delegation model implementado en autos",sura-chile-autos,project,architecture/multi-agent-delegation,"2026-04-26 17:10:53",1,engram-import
+503,de25ee5e-5600-4334-9066-69ccc71adaeb,summary,"Session summary: sura chile autos","sura chile autos",project,,"2026-04-27 12:26:27",1,engram-import
+504,1fce278f-857d-447c-91eb-83e7f701e615,decision,"ADR: Modelo geográfico agnóstico en SURA_InsurableItem__c — FK lógica a CMTs existentes",suratech-salesforce-masivos-app,project,architecture/geo-location-model-insurable-item,"2026-04-27 13:37:27",1,engram-import
+505,a85ba819-68db-4ee3-9d1b-66502cff9eb2,decision,"Actualizada config de modelos GLM según Z.ai FAQ oficial",sura-chile-autos,project,,"2026-04-27 15:08:10",1,engram-import
+506,a86f7bc8-2269-48af-82bb-a6f45800c037,decision,"Alineación nomenclatura MDTs geográficos a convención SURA_",sura-chile-autos,project,architecture/location-mdt-naming,"2026-04-27 16:01:04",1,engram-import
+507,a1d92cf6-b378-4bac-b2a6-dbb8c253afd4,decision,"Updated SURA Chile geographic model JSON files",suratech-salesforce-cl-app,project,,"2026-04-27 17:08:12",1,engram-import
+508,76114a27-b5cb-4736-b10a-86cd335b7b31,architecture,"Extracción reglas de negocio flujo prospectos",sura-chile-autos,project,,"2026-04-28 12:49:14",1,engram-import
+509,8b3bc6e5-01c7-41a1-8eaf-04b22d236dfe,architecture,"PRD-002 Modelo de Estados de Prospecto creado",suratech-salesforce-masivos-app,project,,"2026-04-28 13:03:15",1,engram-import
+510,94b48e0e-bbb5-4e9a-b29f-bb01e78343ed,decision,"PRD-002 v1.6 - Convenciones ADR-028 y SURA_InsurableItem__c",suratech-salesforce-cl-app,project,,"2026-04-28 15:11:33",1,engram-import
+511,89c742f1-1bc9-4e9c-8a70-f91f62188b79,discovery,"Estado actual State Rule Model SURA Chile Autos - Inexistente",suratech-salesforce-cl-app,project,,"2026-04-28 17:19:51",1,engram-import
+512,c6411b4f-a4a0-40f4-a600-437757891a58,summary,"Session summary: suratech-salesforce-cl-app",suratech-salesforce-cl-app,project,,"2026-04-28 17:51:08",1,engram-import
+513,f0b10cfa-b67d-4cd9-a760-2b94ff84509a,pattern,"Vlocity State Model LeadStateModel creado en AUTOS",suratech-salesforce-cl-app,project,vlocity-state-model/lead-autos,"2026-04-28 18:03:49",1,engram-import
+514,b46bcf06-12cf-4e43-8140-d737bb63ddbb,summary,"Session summary: suratech-salesforce-cl-app",suratech-salesforce-cl-app,project,,"2026-04-28 18:50:35",1,engram-import
+515,4e933515-7c6b-48fb-8435-a474079c0a8c,architecture,"SPEC reglas de validación transiciones Lead State Model AUTOS",suratech-salesforce-cl-app,project,sf-add/lead-state-model/transition-validation-rules,"2026-04-28 19:34:58",1,engram-import
+516,a1512f09-90e6-4311-9bdc-3ab20371cfc5,bug,"GAP crítico: transición INSPECTION_APPROVED → POLICY_ISSUED faltante en State Model",suratech-salesforce-cl-app,project,,"2026-04-28 19:34:58",1,engram-import
+517,51e6e67a-c2e5-4b17-8dae-0167e7fac114,pattern,"Transición T29 agregada al Lead State Model AUTOS en org",suratech-salesforce-cl-app,project,sf-add/lead-state-model/t29-transition,"2026-04-28 20:07:26",1,engram-import
+518,03a9c7d8-3e44-4136-9e61-0380aa1de3aa,pattern,"Convención: Tag Salesforce en todas las TS de Azure DevOps SURA Chile",suratech-salesforce-cl-app,project,conventions/azure-devops-tags-sura-chile,"2026-04-28 21:11:53",1,engram-import
+519,ab76fa12-9193-4695-afb0-c674169611c7,pattern,"Workflow Azure DevOps obligatorio - SURA Chile",suratech-salesforce-cl-app,project,workflows/azure-devops-sura-chile,"2026-04-28 21:18:53",1,engram-import
+520,5d107bdd-5d8d-4db2-8fa9-b20e4971524d,pattern,"Regla obligatoria - Cargar skills antes de cada tarea",suratech-salesforce-cl-app,personal,workflows/skill-loading-mandatory,"2026-04-28 21:25:07",1,engram-import
+521,508fa577-c4fe-45cc-a06b-a646a5b4b167,pattern,"Regla - Commit siempre sobre cambios de sesión actual",suratech-salesforce-cl-app,personal,workflows/commit-session-only,"2026-04-28 21:27:58",1,engram-import
+522,0fc66023-f231-4ef2-aa9a-c5190cd42401,architecture,"SFMC Integration Architecture - Banca Salud",dev-banca-salud,project,architecture/sfmc-integration,"2026-04-29 16:12:41",1,engram-import
+523,dd89b423-77ae-466b-b3af-e05f4ad88245,decision,"PRD SFMC Welcome Email v1.1 corregido",suratech-salesforce-masivos-app,project,sfmc/prd-correo-bienvenida,"2026-04-29 17:17:52",1,engram-import
+524,33517702-3f9a-4c2b-87c9-6c84c6852ff6,architecture,"TS Flow Enrolamiento creadas (TS-064 a TS-071)",sura-chile-autos,project,sf-add/flow-enrollment/technical-stories,"2026-04-29 18:23:16",1,engram-import
+525,4da9bab3-15b2-4f57-9101-8f47e37d8d06,pattern,"Prompting docs go to .agent/prompts not ADRs","sura chile autos",project,,"2026-04-30 15:45:39",1,engram-import
+526,30724fc4-65fa-4fd1-934a-26b8085b80e2,pattern,"","sura chile autos",project,pattern/prompting-docs-go-to-opencode-prompts,"2026-04-30 15:48:57",1,engram-import
+527,bfa25085-f59b-4823-9297-8b5ccdfa783d,config,"Migración de archivos IA de docs/ a .opencode/",sura-chile-autos,project,architecture/docs-to-opencode-migration,"2026-04-30 16:02:49",1,engram-import
+528,02b48467-707d-46ba-b1e7-99ad17a06b42,bug,"Bug: Login notification email never sent due to nested conditions",saas-platform,project,,"2026-05-01 16:07:44",1,engram-import
+529,c3594057-f7f5-42d0-9c8b-48b62e3d1cb2,decision,"Implemented login notification with email link",saas-platform,project,bug/login-notification-email-never-sent-due-to-nested-conditions,"2026-05-01 16:26:42",1,engram-import
+530,fe40cd64-78b8-4a74-85fc-ebb4bd2cd58a,architecture,"Landing Vercel-style scroll-based transitions",saas-platform,project,marian-services/landing/scroll-showcase,"2026-05-01 16:32:50",1,engram-import
+531,4e0d51a9-c14c-47e9-9a98-5eace0d418c9,architecture,"Refactorización Email Templates + Login Notice",saas-platform,project,architecture/email-templates,"2026-05-02 00:29:08",1,engram-import
+532,a3a88b49-7a7b-4c58-803a-bea810c0bb51,bug,"Verificación de build post-refactorización email templates",saas-platform,project,,"2026-05-02 00:37:16",1,engram-import
+533,9632abbb-c208-42a3-8caf-4dbd25807a75,bug,"Fix login notification visibility + email language",saas-platform,project,,"2026-05-02 00:44:15",1,engram-import
+534,c3f2d71d-c2af-4812-8adf-237b0e2c0843,config,"Updated GLM Model Catalog with official ZhipuAI data",saas-platform,project,,"2026-05-02 01:42:25",1,engram-import
+535,1fd3952d-072c-4ddc-bf3f-a9ff465c49d9,config,"Added model delegation test to glm-model-sync skill",saas-platform,project,,"2026-05-02 02:03:04",1,engram-import
+536,2b9bae82-0038-4ee8-8ac5-dd53c7fece26,bug,"Fixed GLM-4.6 not available - migrated to GLM-4.7/GLM-4.5",saas-platform,project,sf-add/glm-model-sync,"2026-05-02 02:11:02",2,engram-import
+537,1c5473b1-676c-4509-9838-4e4d6088ee42,summary,"Session summary: marian-services",saas-platform,project,,"2026-05-02 15:41:47",1,engram-import
+538,46c90af4-bf69-421e-a50b-7ea0fbbf6d70,decision,"Convención: Directorios de módulos en plural, hrefs deben coincidir",saas-platform,project,architecture/module-directory-naming,"2026-05-02 15:55:45",1,engram-import
+539,a99c9269-734a-4ddc-a045-78e1d372cf83,pattern,"Regla: Nombres de directorios de módulos siempre en plural",saas-platform,project,patterns/directory-naming-convention,"2026-05-02 15:55:57",1,engram-import
+540,9de74ecd-457b-49cf-8fc8-94cdd5212523,decision,"Created GitHub issues for page block refactoring",saas-platform,project,page-blocks/github-issues,"2026-05-02 16:22:54",1,engram-import
+541,49b2247e-65eb-49d9-9293-c62190a8fa99,decision,"Formalized Git conventions document and updated git-expert agent",saas-platform,project,architecture/git-conventions,"2026-05-02 16:23:48",2,engram-import
+542,65273418-ffdc-4953-82f2-e7408ebec096,decision,"Documentado workflow de resolución de issues",saas-platform,project,docs/issue-resolution-workflow,"2026-05-02 17:08:47",1,engram-import
+543,9a2d8420-b6c3-42ad-975a-d46e8188b605,architecture,"SURA Foundation - Análisis completo de funcionalidades",foundation,project,foundation/functional-analysis,"2026-05-04 12:44:23",1,engram-import
+544,f8308cec-c447-40cd-8aab-b5321c6a1dcb,architecture,"Analisis completo proyecto SURA Banca Colombia",suratech-salesforce-app,project,architecture/project-analysis,"2026-05-04 14:00:41",1,engram-import
+545,24327579-4f74-44fb-ac66-372c584e1634,architecture,"PRD: Gestión CRUD de Integraciones desde Panel Foundation",foundation,project,foundation/prd-integration-crud,"2026-05-04 14:27:55",1,engram-import
+546,0ffc5425-01af-4b84-bccf-ac62b24a5b0b,pattern,"Downloaded 218 Banca bugs from Azure DevOps to local files",suratech-salesforce-app,project,,"2026-05-04 14:33:03",1,engram-import
+547,b8aa0556-ee97-4cc6-8f8c-271100adf849,summary,"Session summary: foundation salesforce - suratech","foundation salesforce - suratech",project,,"2026-05-04 15:57:12",1,engram-import
+548,09e20b63-7591-4abf-9615-2c8db6560f77,discovery,"Validación de nomenclatura TS-044 v1.3 completa",suratech-salesforce-masivos-app,project,,"2026-05-05 16:02:19",1,engram-import
+549,5094877a-7ee7-4ff6-9bb5-94a7ad4778c0,preference,"Project type: Salesforce (SFDX) — user prefers iterative guidance",prueba_juanse,project,project/prueba_juanse/overview,"2026-05-05 20:50:53",1,engram-import
+550,044f28aa-bb1d-4326-8533-fc4d5dfd9b25,config,"Installed Atlassian Remote MCP at user scope",prueba_juanse,personal,mcp/atlassian,"2026-05-05 20:54:57",1,engram-import
+551,4928b69d-6d29-441d-b4a1-a58186a976d0,decision,"[DEPRECADO] Estados TS - ver archivo de convención del agente",suratech-salesforce-masivos-app,project,conventions/ts-status-states,"2026-05-05 22:02:38",2,engram-import
+552,0420be81-3277-4661-a849-3e8cb94a3901,decision,"Reescritura TS-062 con estrategia de implementación progresiva",suratech-salesforce-cl-app,project,architecture/state-rules-implementation-strategy,"2026-05-05 22:33:00",1,engram-import
+553,f83d3509-06db-443f-819e-acf986bc570a,architecture,"PRD Web UI: Next.js 15 App Router con API Routes integradas",memento,project,architecture/web-ui-nextjs,"2026-05-05 23:10:46",1,engram-import
+554,f7e9b3d1-c208-40e4-b9cb-23dd1d2d0d62,discovery,"Sprint 2 - 21 TS Salesforce con asignados completos",suratech-salesforce-cl-app,project,sprint2/ts-salesforce-asignados,"2026-05-06 12:37:30",1,engram-import
+555,bc2307a0-78d1-4e8e-9540-3c99dfb3ba73,decision,"Consolidada TS-044 duplicada (#36362 → #35821)",suratech-salesforce-cl-app,project,sprint2/ts-044-consolidacion-duplicada,"2026-05-06 12:49:06",1,engram-import
+556,0acb4603-2c23-4ff6-ba65-f7178e7da8b7,decision,"Cambio formatting-preferences: Markdown nativo para tablas",suratech-salesforce-cl-app,project,formatting/table-format,"2026-05-06 13:29:38",1,engram-import
+557,5ba927ff-f5a4-4e7f-b444-1e62b47bfeb2,pattern,"FTS5 trigger pattern for soft-delete sync",memento-comparison-test,project,pattern/fts5-triggers,"2026-05-06 13:50:18",6,engram-import
+558,431de9c4-825f-42e6-952a-5a695692e631,decision,"Chose Zod for schema validation",memento-comparison-test,project,architecture/validation,"2026-05-06 13:50:31",12,engram-import
+559,a6bce2a7-162d-430a-b8b4-f19a27f23eea,discovery,"SQLite WAL mode enables concurrent reads",memento-comparison-test,project,discovery/sqlite-wal,"2026-05-06 13:50:44",6,engram-import
+560,fd4e2f4e-d9f4-41f6-95e1-415f627be915,bug,"FTS5 MATCH crashes with special characters",memento-comparison-test,project,bugfix/fts5-special-chars,"2026-05-06 13:50:55",6,engram-import
+561,fc62ee2c-cf9b-4532-8f75-cabd724b1994,summary,"Session summary: memento-comparison-test",memento-comparison-test,project,,"2026-05-06 13:52:36",1,engram-import
+562,917d2816-8ac6-4ef6-b61c-bb9982253d56,learning,"SQLITE_BUSY errors when writing in parallel — Engram needs...",memento-comparison-test,project,,"2026-05-06 13:52:48",1,engram-import
+563,8af68a60-a14c-4884-8dbb-0e9a342e8b15,learning,"FTS5 type filter crashes with empty string — input sanitiz...",memento-comparison-test,project,,"2026-05-06 13:52:48",1,engram-import
+564,be9849ab-fc28-40c7-9576-c97c927e5941,learning,"Multi-word search doesn't work — FTS5 tokenization not han...",memento-comparison-test,project,,"2026-05-06 13:52:48",1,engram-import
+565,38b857cd-8c91-4ef8-b5b6-fd462c648546,learning,"Both Engram and Memento share the same SQLite DB — WAL mod...",memento-comparison-test,project,,"2026-05-06 13:52:48",1,engram-import
+566,e0e4d9f4-6292-4075-ac7e-81c77a7b0e1f,learning,"get_observation metadata (duplicates, revisions) is richer t...",memento-comparison-test,project,,"2026-05-06 13:52:48",1,engram-import
+567,d3c97fd8-d370-495f-9de6-5cbf2ecef93d,summary,"Session summary: memento",memento,project,,"2026-05-06 14:22:44",1,engram-import
+568,2c04da64-3375-41d9-84c7-469550c5a7ea,discovery,"Run 4 comparison completed: Memento 8.55 vs Engram 8.09",memento,project,comparison/run-4-results,"2026-05-06 14:27:33",1,engram-import
+569,bbcdc897-74e8-40a3-92fc-6984c4c814ce,decision,"Decisión: SFDC envía JSON flat directamente a MPRO para inspecciones",suratech-salesforce-masivos-app,project,architecture/inspection-outbound-payload,"2026-05-06 14:34:00",1,engram-import
+570,4b9825d1-493b-4ed2-b511-1ff76f6900ac,discovery,"Corrected: mem_restore bug was false positive from parallel test",memento,project,comparison/run-4-correction,"2026-05-06 14:37:45",1,engram-import
+571,d1164be6-983d-44c5-956f-10d7be72af23,architecture,"PRD-008 creado: Actualización Integraciones Salesforce-MPRO",suratech-salesforce-masivos-app,project,architecture/prd-008-integracion-mpro,"2026-05-06 14:53:23",1,engram-import
+572,bc8e361f-643b-49a5-812e-acd8c8524522,architecture,"Issue #40: Markdown response format for LLM token optimization",memento,project,architecture/markdown-response-format,"2026-05-06 15:18:26",1,engram-import
+573,88f87aee-95a1-42a7-aef4-66b3856ff740,bug,"GitHub API 504 creates duplicate issues on retry",memento,project,bugfix/github-504-duplicate,"2026-05-06 15:20:06",1,engram-import
+574,923bb850-9de9-4d09-870e-7c8b9b81dc7d,config,"Ghostty + tmux URL click fix",slorenzot,project,config/ghostty-tmux-url-click,"2026-05-06 16:03:35",1,engram-import
+575,33c0d6b2-e679-43e7-a9ce-b1366520dc1a,summary,"Session summary: memento-comparison-test",memento-comparison-test,project,,"2026-05-06 16:11:48",1,engram-import
+576,772024e4-29b4-408c-8ce8-c23c8c9c23c2,learning,"Memento delete/restore cycle works perfectly when called seq...",memento-comparison-test,project,,"2026-05-06 16:11:58",1,engram-import
+577,9629e0f0-b201-4213-90c8-fd6958a471cd,learning,"Both systems share the same SQLite DB — no SQLITE_BUSY iss...",memento-comparison-test,project,,"2026-05-06 16:11:58",1,engram-import
+578,a600b5d6-cb8f-4cb4-97d0-14985e1755bd,learning,"Engram search by type still needs verification with wildcard...",memento-comparison-test,project,,"2026-05-06 16:11:58",1,engram-import
+579,480c3371-e3ae-490e-be42-bf3035331638,learning,"Export accumulates all 30 records from 5 test runs — cross...",memento-comparison-test,project,,"2026-05-06 16:11:58",1,engram-import
+580,e79c9b78-9b01-4be0-bf4d-33fcbb8c87cc,summary,"Session summary: memento-comparison-test",memento-comparison-test,project,,"2026-05-06 16:25:10",1,engram-import
+581,2e55e38f-215d-4609-bec0-5a4b38c85020,learning,"Memento mem_capture_passive needs FTS5-compatible content pa...",memento-comparison-test,project,,"2026-05-06 16:25:18",1,engram-import
+582,5495bdfa-67a9-4df1-9317-7b21b2337624,learning,"Session summary tool should create type 'summary' not 'note'",memento-comparison-test,project,,"2026-05-06 16:25:18",1,engram-import
+583,5730f835-4ec6-4d1f-87aa-28c92351ca28,learning,"Deduplication must handle same content across multiple captu...",memento-comparison-test,project,,"2026-05-06 16:25:18",1,engram-import
+584,567f99a1-9643-4e3b-b6e8-f559a50149c5,bug,"Fixed mem_capture_passive cross-call dedup bug",memento,project,bugfix/capture-passive-dedup,"2026-05-06 16:32:28",2,engram-import
+585,7afedc6a-bd90-4975-9183-ae4828ce57a4,summary,"Session summary: memento-comparison-test",memento-comparison-test,project,,"2026-05-06 16:54:31",1,engram-import
+586,644821d2-c814-4121-a882-10667be9b818,learning,"Memento capture_passive dedup now works with PR #43 merged",memento-comparison-test,project,,"2026-05-06 16:54:44",1,engram-import
+587,5c67dffe-2e41-42c7-9659-a81e5eeea4e3,learning,"Session summary tool creates type summary with isSessionSumm...",memento-comparison-test,project,,"2026-05-06 16:54:44",1,engram-import
+588,689c219a-df92-4122-b9c3-4e53873fc2b2,learning,"Cross-call dedup is the critical test for this run",memento-comparison-test,project,,"2026-05-06 16:54:44",1,engram-import
+589,a4c69534-d8e1-4247-97c7-51984c87631f,summary,"Session summary: memento-comparison-test",memento-comparison-test,project,,"2026-05-06 17:03:17",1,engram-import
+590,9c06347e-403f-42a9-95f6-e215dce0cae7,summary,"Session summary: memento-comparison-test",memento-comparison-test,project,,"2026-05-06 17:05:44",1,engram-import
+591,b4bf0ec9-2fd5-4b8f-897a-3c8c26ce6174,discovery,"Run 8 comparison: Memento 8.89 vs Engram 8.30",memento,project,comparison/run-8,"2026-05-06 17:11:52",1,engram-import
+592,4bb0531e-4c39-4421-ac1a-4b2e1d7ff54e,preference,"Comparison tests must run on develop branch",memento,project,preference/comparison-test-branch,"2026-05-06 17:12:32",1,engram-import
+593,f7a04e77-0bb8-4f8c-a110-bc1640b5d94f,learning,"Memento delete/restore cycle works perfectly — bug from Ru...",memento-comparison-test,project,,"2026-05-06 17:45:08",1,engram-import
+594,9262a279-350c-4f98-b089-2f8a8412cc0a,learning,"Memento now has 23 MCP tools — Issue #33 fully implemented",memento-comparison-test,project,,"2026-05-06 17:45:08",1,engram-import
+595,f44c95b3-e679-4f62-9d53-923bd3fa5f7c,learning,"Engram topic_key UPSERT creates 1 record with revisions, Mem...",memento-comparison-test,project,,"2026-05-06 17:45:08",1,engram-import
+596,fa21d298-fce8-4c98-be77-a5167df00515,learning,"Both systems produce identical suggest_topic_key results",memento-comparison-test,project,,"2026-05-06 17:45:08",1,engram-import
+597,39d3ad5c-c5de-4f54-97b1-b6e1308ef448,learning,"Engram search by type no longer crashes — previous bug app...",memento-comparison-test,project,,"2026-05-06 17:45:08",1,engram-import
+598,d53c4299-7abc-45d8-b2c2-e4320a9abb36,summary,"Session summary: memento-comparison-test",memento-comparison-test,project,,"2026-05-06 17:45:55",1,engram-import
