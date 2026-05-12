@@ -1,21 +1,22 @@
 'use client';
 
-import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale/es';
+import { formatDistanceToNow, Locale } from 'date-fns';
 import { enUS } from 'date-fns/locale/en-US';
-import { useUIStore } from '@/stores/ui-store';
+import { es } from 'date-fns/locale/es';
+import { useParams } from 'next/navigation';
 
 interface RelativeTimeProps {
   date: Date | string | number | null | undefined;
 }
 
-const dateFnsLocales = {
+const dateFnsLocales: Record<string, Locale> = {
   en: enUS,
   es: es,
 };
 
 export function RelativeTime({ date }: RelativeTimeProps) {
-  const locale = useUIStore((s) => s.locale);
+  const params = useParams<{ lang?: string }>();
+  const locale = params.lang ?? 'en';
 
   // Coerce to Date — handle string, number, null, undefined, Date
   let d: Date;
