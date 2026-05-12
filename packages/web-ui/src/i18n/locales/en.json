@@ -65,7 +65,12 @@
     "results": "{total} result for \"{query}\" | {total} results for \"{query}\"",
     "showing": "— showing {shown} of {total}",
     "noResults": "No observations found.",
-    "loadEarlier": "Load earlier"
+    "loadEarlier": "Load earlier",
+    "hintTitle": "Search observations",
+    "hintDescription": "Type terms to search across all your observations",
+    "filterByType": "Filter by type",
+    "filterByScope": "Scope",
+    "filterByProject": "Project"
   },
   "settings": {
     "title": "Settings",
