@@ -54,8 +54,9 @@ export function SearchPage() {
       try {
         const res = await fetch('/api/projects');
         const data = await res.json();
-        const names = (data.data ?? data).map((p: { project_id: string } | string) =>
-          typeof p === 'string' ? p : p.project_id
+        // API returns array of { name, activeCount, ... } directly (not wrapped in data)
+        const names = (Array.isArray(data) ? data : data.data ?? []).map(
+          (p: { name: string } | string) => typeof p === 'string' ? p : p.name
         );
         setProjects(names);
       } catch {
