@@ -101,10 +101,9 @@ Dependency flow: `core → mcp-server → cli / api / tui → web-ui`
    - docs/{issue}-{description}  (docs)
 3. Implementar cambio + tests en el branch
 4. Ejecutar tests: bun test
-5. Crear PR contra develop con formato:
-   - Título: tipo(scope): descripción
-   - Body: descripción del cambio + "Fixes #{issue}" o "Closes #{issue}"
-6. PR merge → cierra Issue automáticamente
+5. Commit → Push → PR → Merge — ejecutar todo en secuencia SIN pausar a preguntar:
+   git add + git commit → git push -u → gh pr create → gh pr merge --squash --delete-branch
+6. Verificar cierre del Issue
 ```
 
 **Reglas**:
@@ -115,6 +114,7 @@ Dependency flow: `core → mcp-server → cli / api / tui → web-ui`
 - Los tests (`bun test`) DEBEN pasar antes de crear el PR
 
 **Merge rules**:
+- Commit + Push + PR + Merge en UNA secuencia continua, SIN preguntar al usuario entre pasos
 - SIEMPRE `gh pr merge --squash --delete-branch` SIN `--subject`/`--body` para que GitHub use el body original del PR
 - El body del PR DEBE incluir `Closes #{issue}` o `Fixes #{issue}` para cierre automático
 - DESPUÉS del merge, verificar con `gh issue view {N} --json state` que el Issue se cerró
