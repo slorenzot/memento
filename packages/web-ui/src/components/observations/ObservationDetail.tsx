@@ -7,7 +7,7 @@ import { RelativeTime } from '@/components/shared/RelativeTime';
 import { useT } from '@/i18n/translation-context';
 import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 import type { Observation } from '@slorenzot/memento-core';
-import { CalendarClockIcon, EyeIcon, FolderIcon, TagsIcon } from 'lucide-react';
+import { ClockIcon, EyeIcon, FolderIcon, PinIcon, TagsIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -28,7 +28,11 @@ export default function ObservationDetailPage({ observation }: ObservationDetail
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            {observation.pinned && <span title="Pinned">📌</span>}
+            {observation.pinned && (
+              <span className="text-[var(--color-tertiary)]" title="Pinned">
+                <PinIcon className="size-4" />
+              </span>
+            )}
             <h1 className="text-[20px] font-medium text-[var(--color-text-primary)]">
               {observation.title}
             </h1>
@@ -50,7 +54,7 @@ export default function ObservationDetailPage({ observation }: ObservationDetail
               {observation.scope}
             </span>
             <div className="flex items-center gap-2">
-              <CalendarClockIcon className="size-4 ml-2" />
+              <ClockIcon className="size-4" />
               <RelativeTime date={observation.createdAt} />
               {observation.revisionCount > 0 && (
                 <span>
