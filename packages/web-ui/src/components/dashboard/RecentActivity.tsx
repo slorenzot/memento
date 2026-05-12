@@ -6,6 +6,7 @@ import { Badge } from '@/components/shared/Badge';
 import { RelativeTime } from '@/components/shared/RelativeTime';
 import { useT } from '@/i18n/translation-context';
 import { useLocalePrefix } from '@/i18n/use-locale-prefix';
+import { ClockIcon, FolderIcon, PinIcon } from 'lucide-react';
 
 interface RecentActivityProps {
   observations: Observation[];
@@ -48,10 +49,14 @@ export function RecentActivity({ observations }: RecentActivityProps) {
                 <div className="mt-1.5 flex items-center gap-2">
                   <Badge type={obs.type} />
                   {obs.projectId && (
-                    <span className="text-[12px] text-[var(--color-tertiary)]">{obs.projectId}</span>
+                    <span className="flex items-center gap-1 text-[12px] text-[var(--color-tertiary)]">
+                      <FolderIcon className="size-3.5" /> {obs.projectId}
+                    </span>
                   )}
                   {obs.pinned && (
-                    <span className="text-[12px] text-[var(--color-tertiary)]">{t.common.pinned}</span>
+                    <span className="text-[var(--color-tertiary)]" title={t.common.pinned}>
+                      <PinIcon className="size-3.5" />
+                    </span>
                   )}
                 </div>
                 {obs.content && (
@@ -60,7 +65,8 @@ export function RecentActivity({ observations }: RecentActivityProps) {
                   </p>
                 )}
               </div>
-              <div className="shrink-0 pt-0.5">
+              <div className="flex shrink-0 items-center gap-1.5 pt-0.5 text-[12px] text-[var(--color-tertiary)]">
+                <ClockIcon className="size-3.5" />
                 <RelativeTime date={obs.createdAt} />
               </div>
             </div>

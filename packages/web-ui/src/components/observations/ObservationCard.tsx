@@ -4,6 +4,7 @@ import { Badge } from '@/components/shared/Badge';
 import { RelativeTime } from '@/components/shared/RelativeTime';
 import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 import type { Observation } from '@slorenzot/memento-core';
+import { ClockIcon, EyeIcon, FolderIcon, PinIcon, TagsIcon } from 'lucide-react';
 import Link from 'next/link';
 
 interface ObservationCardProps {
@@ -23,7 +24,7 @@ export function ObservationCard({ observation }: ObservationCardProps) {
           <div className="flex items-center gap-2">
             {observation.pinned && (
               <span className="text-[var(--color-tertiary)]" title="Pinned">
-                📌
+                <PinIcon className="size-4" />
               </span>
             )}
             <h3 className="truncate text-[14px] font-medium text-[var(--color-text-primary)]">
@@ -31,17 +32,28 @@ export function ObservationCard({ observation }: ObservationCardProps) {
             </h3>
           </div>
           {observation.topicKey && (
-            <p className="mt-0.5 truncate text-[12px] text-[var(--color-tertiary)]">
-              {observation.topicKey}
+            <p className="flex items-center gap-2 mt-0.5 truncate text-[12px] text-[var(--color-tertiary)]">
+              <TagsIcon className="size-4" /> {observation.topicKey}
             </p>
           )}
         </div>
         <Badge type={observation.type} />
       </div>
       <div className="mt-2 flex items-center gap-3 text-[12px] text-[var(--color-tertiary)]">
-        {observation.projectId && <span>{observation.projectId}</span>}
-        <span>{observation.scope}</span>
-        <RelativeTime date={observation.createdAt} />
+        {observation.projectId && (
+          <div className="flex items-center gap-2">
+            <FolderIcon className="size-4" />
+            <span>{observation.projectId}</span>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <EyeIcon className="size-4" />
+          <span>{observation.scope}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <ClockIcon className="size-4" />
+          <RelativeTime date={observation.createdAt} />
+        </div>
       </div>
     </Link>
   );
