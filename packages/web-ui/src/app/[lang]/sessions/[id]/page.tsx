@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { RelativeTime } from '@/components/shared/RelativeTime';
 import { ObservationCard } from '@/components/observations/ObservationCard';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { getDictionary } from '@/i18n/get-dictionary';
+import type { Locale } from '@/i18n/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,8 +13,9 @@ export default async function LangSessionDetailPage({
 }: {
   params: Promise<{ id: string; lang: string }>;
 }) {
-  const { id } = await params;
+  const { id, lang } = await params;
   const engine = getEngine();
+  const t = getDictionary(lang as Locale);
   const session = await engine.getSession(Number(id));
 
   if (!session) {
@@ -33,16 +36,16 @@ export default async function LangSessionDetailPage({
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-[20px] font-medium text-[var(--color-text-primary)]">
-              Session #{session.id}
+              {t.sessionDetail.session.replace('{id}', String(session.id))}
             </h1>
             <span className={`rounded-full px-2 py-0.5 text-[12px] font-medium ${isActive ? 'bg-green-100 text-green-700' : 'bg-[var(--color-surface-hover)] text-[var(--color-secondary)]'}`}>
-              {isActive ? 'Active' : 'Ended'}
+              {isActive ? t.common.active : t.common.ended}
             </span>
           </div>
           <div className="mt-2 flex items-center gap-3 text-[13px] text-[var(--color-tertiary)]">
-            <span>Project: {session.projectId}</span>
-            <span>Started: <RelativeTime date={session.startedAt} /></span>
-            {session.endedAt && <span>Ended: <RelativeTime date={session.endedAt} /></span>}
+            <span>{t.sessionDetail.project}: {session.projectId}</span>
+            <span>{t.sessionDetail.started}: <RelativeTime date={session.startedAt} /></span>
+            {session.endedAt && <span>{t.sessionDetail.endedAt}: <RelativeTime date={session.endedAt} /></span>}
           </div>
         </div>
 
@@ -56,7 +59,7 @@ export default async function LangSessionDetailPage({
               type="submit"
               className="rounded-full border border-[var(--color-border)] px-4 py-1.5 text-[13px] text-[var(--color-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
             >
-              End session
+              {t.sessionDetail.endSession}
             </button>
           </form>
         )}
@@ -65,7 +68,7 @@ export default async function LangSessionDetailPage({
       {session.metadata && Object.keys(session.metadata).length > 0 && (
         <details className="rounded-lg border border-[var(--color-border)] p-4">
           <summary className="cursor-pointer text-[13px] font-medium text-[var(--color-secondary)]">
-            Metadata
+            {t.common.metadata}
           </summary>
           <pre className="mt-2 text-[12px] text-[var(--color-tertiary)]">
             {JSON.stringify(session.metadata, null, 2)}
@@ -75,10 +78,10 @@ export default async function LangSessionDetailPage({
 
       <div>
         <h2 className="mb-3 text-[14px] font-medium text-[var(--color-secondary)]">
-          Observations ({sessionObs.length})
+          {t.sessionDetail.observations.replace('{count}', String(sessionObs.length))}
         </h2>
         {sessionObs.length === 0 ? (
-          <p className="py-4 text-[13px] text-[var(--color-tertiary)]">No observations in this session.</p>
+          <p className="py-4 text-[13px] text-[var(--color-tertiary)]">{t.sessionDetail.noObservations}</p>
         ) : (
           <div className="grid gap-3">
             {sessionObs.map((obs) => (

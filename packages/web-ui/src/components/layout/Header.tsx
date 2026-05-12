@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Search, Menu } from 'lucide-react';
 import { useT } from '@/i18n/translation-context';
+import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 
 interface HeaderProps {
   onMobileMenuToggle?: () => void;
@@ -12,12 +13,13 @@ interface HeaderProps {
 export function Header({ onMobileMenuToggle }: HeaderProps) {
   const router = useRouter();
   const t = useT();
+  const prefix = useLocalePrefix();
   const [searchQuery, setSearchQuery] = useState('');
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      router.push(`${prefix}/search?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery('');
     }
   }

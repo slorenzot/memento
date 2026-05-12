@@ -99,7 +99,9 @@
     "topicKeyPlaceholder": "ej. architecture/auth-model",
     "project": "Proyecto",
     "projectPlaceholder": "ej. mi-proyecto",
-    "saveFailed": "Error al guardar"
+    "saveFailed": "Error al guardar",
+    "editTitle": "Editar observación",
+    "readOnly": "Esta observación es de solo lectura y no puede ser editada."
   },
   "deleteConfirmation": {
     "title": "¿Eliminar \"{title}\"?",
@@ -111,6 +113,15 @@
     "title": "Sesiones",
     "noSessions": "Sin sesiones aún",
     "noSessionsDescription": "Las sesiones se crean automáticamente cuando creas observaciones."
+  },
+  "sessionDetail": {
+    "session": "Sesión #{id}",
+    "project": "Proyecto",
+    "started": "Inicio",
+    "endedAt": "Fin",
+    "endSession": "Finalizar sesión",
+    "observations": "Observaciones ({count})",
+    "noObservations": "Sin observaciones en esta sesión."
   },
   "timeline": {
     "title": "Línea de tiempo",

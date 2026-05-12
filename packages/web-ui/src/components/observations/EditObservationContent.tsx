@@ -1,27 +1,21 @@
-import { getEngine } from '@/lib/engine';
-import { notFound } from 'next/navigation';
+'use client';
+
 import { ObservationEditor } from '@/components/observations/ObservationEditor';
+import { useT } from '@/i18n/translation-context';
+import type { Observation } from '@slorenzot/memento-core';
 
-export const dynamic = 'force-dynamic';
+interface EditObservationContentProps {
+  observation: Observation;
+}
 
-export default async function EditObservationPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const engine = getEngine();
-  const observation = await engine.getObservation(Number(id));
-
-  if (!observation || observation.deletedAt) {
-    notFound();
-  }
+export function EditObservationContent({ observation }: EditObservationContentProps) {
+  const t = useT();
 
   if (observation.readOnly) {
     return (
       <div className="py-8 text-center">
         <p className="text-[14px] text-[var(--color-tertiary)]">
-          This observation is read-only and cannot be edited.
+          {t.observationEditor.readOnly}
         </p>
       </div>
     );
@@ -30,7 +24,7 @@ export default async function EditObservationPage({
   return (
     <div className="space-y-6">
       <h1 className="text-[20px] font-medium text-[var(--color-text-primary)]">
-        Edit observation
+        {t.observationEditor.editTitle}
       </h1>
       <ObservationEditor
         mode="edit"

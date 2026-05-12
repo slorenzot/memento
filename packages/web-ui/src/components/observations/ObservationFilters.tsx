@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Badge } from '@/components/shared/Badge';
 import { useT } from '@/i18n/translation-context';
+import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 
 const TYPES = [
   'decision', 'bug', 'discovery', 'note', 'summary',
@@ -17,6 +18,7 @@ interface ObservationFiltersProps {
 
 export function ObservationFilters({ projects }: ObservationFiltersProps) {
   const t = useT();
+  const prefix = useLocalePrefix();
   const [activeType, setActiveType] = useState('');
 
   // We still use URL params for actual filtering, but labels are translated
@@ -37,7 +39,7 @@ export function ObservationFilters({ projects }: ObservationFiltersProps) {
     }
     // Reset to page 1 when changing filters
     params.delete('page');
-    window.location.href = `/observations?${params.toString()}`;
+    window.location.href = `${prefix}/observations?${params.toString()}`;
   }
 
   return (
