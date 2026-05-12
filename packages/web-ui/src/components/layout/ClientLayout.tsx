@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { MobileNav } from '@/components/layout/MobileNav';
@@ -8,11 +9,24 @@ import { useUIStore, resolveTheme } from '@/stores/ui-store';
 import { TranslationProvider } from '@/i18n/translation-context';
 import type { Dictionary } from '@/i18n/get-dictionary';
 import type { Locale } from '@/i18n/config';
-import { LOCALE_COOKIE } from '@/i18n/config';
+import { LOCALE_COOKIE, LOCALES } from '@/i18n/config';
 import en from '@/i18n/locales/en.json';
 import es from '@/i18n/locales/es.json';
 
 const dictionaries: Record<string, Dictionary> = { en, es };
+
+/**
+ * Detect locale from URL pathname (/es/* → 'es', otherwise fallback).
+ */
+function getLocaleFromPath(pathname: string): Locale | null {
+  for (const locale of LOCALES) {
+    if (locale === 'en') continue;
+    if (pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)) {
+      return locale;
+    }
+  }
+  return null;
+}
 
 export function ClientLayout({
   locale: serverLocale,
@@ -26,9 +40,12 @@ export function ClientLayout({
   const theme = useUIStore((s) => s.theme);
   const zustandLocale = useUIStore((s) => s.locale);
   const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
 
-  // Use zustand locale (from localStorage) after mount, server locale before mount
-  const locale = mounted ? zustandLocale : serverLocale;
+  // URL locale takes priority over cookie/zustand
+  const urlLocale = getLocaleFromPath(pathname);
+  const zustandOrServer = mounted ? zustandLocale : serverLocale;
+  const locale = urlLocale ?? zustandOrServer;
   const dictionary = dictionaries[locale] ?? dictionaries.en;
 
   // Apply dark class to <html> based on theme preference

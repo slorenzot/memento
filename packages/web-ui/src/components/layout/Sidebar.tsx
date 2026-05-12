@@ -16,6 +16,7 @@ import {
 import { useUIStore } from '@/stores/ui-store';
 import { MementoLogo } from './MementoLogo';
 import { useT } from '@/i18n/translation-context';
+import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 import clsx from 'clsx';
 
 export function Sidebar() {
@@ -23,18 +24,19 @@ export function Sidebar() {
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggle = useUIStore((s) => s.toggleSidebar);
   const t = useT();
+  const prefix = useLocalePrefix();
 
   const navItems = [
-    { href: '/', label: t.nav.dashboard, icon: LayoutDashboard },
-    { href: '/observations', label: t.nav.observations, icon: FileText },
-    { href: '/search', label: t.nav.search, icon: Search },
-    { href: '/timeline', label: t.nav.timeline, icon: Clock },
-    { href: '/sessions', label: t.nav.sessions, icon: Activity },
+    { href: `${prefix}/dashboard`, label: t.nav.dashboard, icon: LayoutDashboard, rawPath: '/dashboard' },
+    { href: `${prefix}/observations`, label: t.nav.observations, icon: FileText, rawPath: '/observations' },
+    { href: `${prefix}/search`, label: t.nav.search, icon: Search, rawPath: '/search' },
+    { href: `${prefix}/timeline`, label: t.nav.timeline, icon: Clock, rawPath: '/timeline' },
+    { href: `${prefix}/sessions`, label: t.nav.sessions, icon: Activity, rawPath: '/sessions' },
   ];
 
   const bottomItems = [
-    { href: '/docs', label: t.nav.docs, icon: BookOpen },
-    { href: '/settings', label: t.nav.settings, icon: Settings },
+    { href: `${prefix}/docs`, label: t.nav.docs, icon: BookOpen, rawPath: '/docs' },
+    { href: `${prefix}/settings`, label: t.nav.settings, icon: Settings, rawPath: '/settings' },
   ];
 
   return (
@@ -51,12 +53,11 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 py-4 px-2 space-y-1">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const isActive =
-            href === '/' ? pathname === '/' : pathname.startsWith(href);
+        {navItems.map(({ href, label, icon: Icon, rawPath }) => {
+          const isActive = pathname === `${prefix}${rawPath}` || pathname.startsWith(`${prefix}${rawPath}/`);
           return (
             <Link
-              key={href}
+              key={rawPath}
               href={href}
               className={clsx(
                 'flex items-center gap-3 rounded-[var(--radius-xl)] px-3 py-2 text-[14px] transition-colors',
@@ -76,11 +77,11 @@ export function Sidebar() {
 
       {/* Bottom nav — Settings */}
       <div className="border-t border-[var(--color-border)] py-2 px-2 space-y-1">
-        {bottomItems.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname.startsWith(href);
+        {bottomItems.map(({ href, label, icon: Icon, rawPath }) => {
+          const isActive = pathname === `${prefix}${rawPath}` || pathname.startsWith(`${prefix}${rawPath}/`);
           return (
             <Link
-              key={href}
+              key={rawPath}
               href={href}
               className={clsx(
                 'flex items-center gap-3 rounded-[var(--radius-xl)] px-3 py-2 text-[14px] transition-colors',

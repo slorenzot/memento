@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/shared/Badge';
 import { RelativeTime } from '@/components/shared/RelativeTime';
+import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 import type { Observation } from '@slorenzot/memento-core';
 
 interface ObservationCardProps {
@@ -11,9 +12,11 @@ interface ObservationCardProps {
 }
 
 export function ObservationCard({ observation }: ObservationCardProps) {
+  const prefix = useLocalePrefix();
+
   return (
     <Link
-      href={`/observations/${observation.id}`}
+      href={`${prefix}/observations/${observation.id}`}
       className="block rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-4 transition-colors hover:border-[var(--color-border-strong)] hover:bg-[var(--color-surface-hover)]"
     >
       <div className="flex items-start justify-between gap-3">
