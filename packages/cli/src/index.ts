@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { MemoryEngine, loadConfig, resolveDbPath, getProjectId, createConfig, migrateConfig, findConfigPath, NEW_CONFIG_DIR } from '@slorenzot/memento-core';
+import { MemoryEngine, loadConfig, resolveDbPath, getProjectId, createConfig, migrateConfig, findConfigPath, NEW_CONFIG_DIR, getStaleThresholdMs, DEFAULT_STALE_THRESHOLD_MS } from '@slorenzot/memento-core';
 import type { Observation, ExportFormat, CreateConfigResult, MigrateConfigResult } from '@slorenzot/memento-core';
 import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, writeFileSync, readFileSync, appendFileSync } from 'fs';
 import { join, dirname, basename } from 'path';
@@ -51,6 +51,25 @@ function resetState(): void {
   _projectId = null;
   _memory = null;
   activeSessionId = null;
+}
+
+/**
+ * Parse human-readable duration string (e.g. '30m', '2h', '1d', '24h') to milliseconds.
+ * Returns null if the format is invalid.
+ */
+function parseDuration(input: string): number | null {
+  const match = input.match(/^(\d+(?:\.\d+)?)\s*(ms|s|m|h|d)$/i);
+  if (!match) return null;
+  const value = parseFloat(match[1]);
+  const unit = match[2].toLowerCase();
+  switch (unit) {
+    case 'ms': return value;
+    case 's': return value * 1000;
+    case 'm': return value * 60 * 1000;
+    case 'h': return value * 60 * 60 * 1000;
+    case 'd': return value * 24 * 60 * 60 * 1000;
+    default: return null;
+  }
 }
 
 async function getOrCreateSessionId(projectId: string): Promise<number> {
@@ -562,6 +581,95 @@ program
     console.log(`  Showing ${observations.length} of ${result.total} total observations.`);
 
     getMemory().close();
+  });
+
+// ─── Sessions ───────────────────────────────────────────────
+
+const sessionsCommand = program
+  .command('sessions')
+  .description('Manage memory sessions');
+
+sessionsCommand
+  .command('list')
+  .description('List sessions')
+  .option('-p, --project <project>', 'Filter by project')
+  .option('--active', 'Show only active (unclosed) sessions')
+  .option('-l, --limit <number>', 'Max results', '20')
+  .action(async (options: any) => {
+    const result = await getMemory().listSessions({
+      projectId: options.project,
+      activeOnly: options.active || false,
+      limit: parseInt(options.limit),
+    });
+
+    const W = 60;
+    const line = (s: string) => `│ ${s.padEnd(W - 2)}│`;
+    const border = (l: string, r: string) => l + '─'.repeat(W - 2) + r;
+
+    console.log(border('╭', '╮'));
+    console.log(line(`SESSIONS${options.active ? ' (active only)' : ''}`));
+    console.log(border('├', '┤'));
+
+    if (result.sessions.length === 0) {
+      console.log(line('  No sessions found.'));
+    } else {
+      for (const s of result.sessions) {
+        const status = s.endedAt ? 'closed' : 'active';
+        const autoClosed = s.metadata?.auto_closed ? ' [auto-closed]' : '';
+        const time = relativeTime(s.startedAt).padStart(10);
+        const maxProjectLen = W - 14 - time.length - 4;
+        const project = s.projectId.length > maxProjectLen
+          ? s.projectId.substring(0, maxProjectLen - 1) + '…'
+          : s.projectId;
+        console.log(line(`#${s.id} ${project} │ ${status}${autoClosed} │ ${time}`));
+      }
+    }
+
+    console.log(border('╰', '╯'));
+    console.log(`  Showing ${result.sessions.length} of ${result.total} total sessions.`);
+
+    getMemory().close();
+  });
+
+sessionsCommand
+  .command('cleanup')
+  .description('Close stale (orphaned) sessions')
+  .option('--max-age <duration>', 'Max age before considering stale (e.g. 30m, 2h, 1d)', '24h')
+  .option('--all', 'Close ALL active sessions regardless of age')
+  .option('-p, --project <project>', 'Only close sessions for a specific project')
+  .action(async (options: any) => {
+    const engine = getMemory();
+
+    let maxAgeMs: number;
+    if (options.all) {
+      maxAgeMs = Infinity; // Will match all sessions
+    } else {
+      maxAgeMs = parseDuration(options.maxAge) ?? getStaleThresholdMs();
+    }
+
+    let result: { closed: number };
+
+    if (options.project) {
+      result = engine.closeStaleSessionsForProject(
+        options.project,
+        options.all ? 0 : maxAgeMs
+      );
+    } else {
+      if (options.all) {
+        // Close ALL active sessions — use maxAge=0 (anything older than "now" is stale)
+        result = engine.closeStaleSessions(0);
+      } else {
+        result = engine.closeStaleSessions(maxAgeMs);
+      }
+    }
+
+    if (result.closed > 0) {
+      console.log(`Closed ${result.closed} stale session(s).`);
+    } else {
+      console.log('No stale sessions found.');
+    }
+
+    engine.close();
   });
 
 // ─── Init ──────────────────────────────────────────────────

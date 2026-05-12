@@ -408,4 +408,74 @@ describe('ConfigManager — Init & Migration', () => {
       }
     });
   });
+
+  // ─── getStaleThresholdMs() ─────────────────────────────────
+
+  describe('getStaleThresholdMs()', () => {
+    it('should return default 24h when no config exists', () => {
+      const { getStaleThresholdMs, DEFAULT_STALE_THRESHOLD_MS } = require('../src/ConfigManager');
+
+      const originalCwd = process.cwd;
+      process.cwd = () => testDir;
+      try {
+        const threshold = getStaleThresholdMs();
+        expect(threshold).toBe(DEFAULT_STALE_THRESHOLD_MS);
+        expect(threshold).toBe(24 * 60 * 60 * 1000);
+      } finally {
+        process.cwd = originalCwd;
+      }
+    });
+
+    it('should return configured threshold from V1 config', () => {
+      const { getStaleThresholdMs } = require('../src/ConfigManager');
+
+      const customThreshold = 2 * 60 * 60 * 1000; // 2 hours
+      mkdirSync(join(testDir, '.memento'), { recursive: true });
+      writeFileSync(
+        join(testDir, '.memento', 'config.json'),
+        JSON.stringify({
+          version: 1,
+          project: 'threshold-test',
+          database: { path: '.memento/memento.db' },
+          defaults: {
+            session: {
+              staleThresholdMs: customThreshold,
+            },
+          },
+        })
+      );
+
+      const originalCwd = process.cwd;
+      process.cwd = () => testDir;
+      try {
+        const threshold = getStaleThresholdMs();
+        expect(threshold).toBe(customThreshold);
+      } finally {
+        process.cwd = originalCwd;
+      }
+    });
+
+    it('should return default when config has no session section', () => {
+      const { getStaleThresholdMs, DEFAULT_STALE_THRESHOLD_MS } = require('../src/ConfigManager');
+
+      mkdirSync(join(testDir, '.memento'), { recursive: true });
+      writeFileSync(
+        join(testDir, '.memento', 'config.json'),
+        JSON.stringify({
+          version: 1,
+          project: 'no-session-config',
+          database: { path: '.memento/memento.db' },
+        })
+      );
+
+      const originalCwd = process.cwd;
+      process.cwd = () => testDir;
+      try {
+        const threshold = getStaleThresholdMs();
+        expect(threshold).toBe(DEFAULT_STALE_THRESHOLD_MS);
+      } finally {
+        process.cwd = originalCwd;
+      }
+    });
+  });
 });

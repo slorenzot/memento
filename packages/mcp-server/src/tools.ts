@@ -10,7 +10,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { MemoryEngine } from '@slorenzot/memento-core';
+import { MemoryEngine, getStaleThresholdMs } from '@slorenzot/memento-core';
 import type { ExportFormat, MergeStrategy, Observation } from '@slorenzot/memento-core';
 import { existsSync } from 'fs';
 import { join } from 'path';
@@ -572,6 +572,10 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     { title: 'Start session', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     async ({ project_id, metadata }) => {
       try {
+        // Auto-close stale sessions for this project before creating new one
+        const staleThreshold = getStaleThresholdMs();
+        const staleResult = ctx.engine.closeStaleSessionsForProject(project_id, staleThreshold);
+
         const session = await ctx.engine.createSession({
           projectId: project_id,
           endedAt: null,
@@ -580,11 +584,15 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         });
         ctx.activeSessionId = session.id;
 
+        const staleNote = staleResult.closed > 0
+          ? `\nAuto-closed ${staleResult.closed} stale session(s) for project: ${project_id}`
+          : '';
+
         return {
           content: [
             {
               type: 'text',
-              text: `Session #${session.id} started (project: ${project_id})`,
+              text: `Session #${session.id} started (project: ${project_id})${staleNote}`,
             },
           ],
         };
