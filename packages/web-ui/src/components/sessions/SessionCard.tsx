@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { RelativeTime } from '@/components/shared/RelativeTime';
 import { Badge } from '@/components/shared/Badge';
 import { useT } from '@/i18n/translation-context';
+import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 import type { Session } from '@slorenzot/memento-core';
 
 interface SessionCardProps {
@@ -12,11 +13,12 @@ interface SessionCardProps {
 
 export function SessionCard({ session }: SessionCardProps) {
   const t = useT();
+  const prefix = useLocalePrefix();
   const isActive = !session.endedAt;
 
   return (
     <Link
-      href={`/sessions/${session.id}`}
+      href={`${prefix}/sessions/${session.id}`}
       className="block rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-4 transition-colors hover:border-[var(--color-border-strong)] hover:bg-[var(--color-surface-hover)]"
     >
       <div className="flex items-start justify-between gap-3">

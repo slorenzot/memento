@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { LayoutDashboard, FileText, Search, Clock, Activity, X } from 'lucide-react';
 import { MementoLogo } from './MementoLogo';
 import { useT } from '@/i18n/translation-context';
+import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 import clsx from 'clsx';
 
 interface MobileNavProps {
@@ -15,13 +16,14 @@ interface MobileNavProps {
 export function MobileNav({ open, onClose }: MobileNavProps) {
   const pathname = usePathname();
   const t = useT();
+  const prefix = useLocalePrefix();
 
   const navItems = [
-    { href: '/', label: t.nav.dashboard, icon: LayoutDashboard },
-    { href: '/observations', label: t.nav.observations, icon: FileText },
-    { href: '/search', label: t.nav.search, icon: Search },
-    { href: '/timeline', label: t.nav.timeline, icon: Clock },
-    { href: '/sessions', label: t.nav.sessions, icon: Activity },
+    { href: `${prefix}/dashboard`, label: t.nav.dashboard, icon: LayoutDashboard, rawPath: '/dashboard' },
+    { href: `${prefix}/observations`, label: t.nav.observations, icon: FileText, rawPath: '/observations' },
+    { href: `${prefix}/search`, label: t.nav.search, icon: Search, rawPath: '/search' },
+    { href: `${prefix}/timeline`, label: t.nav.timeline, icon: Clock, rawPath: '/timeline' },
+    { href: `${prefix}/sessions`, label: t.nav.sessions, icon: Activity, rawPath: '/sessions' },
   ];
 
   if (!open) return null;
@@ -47,11 +49,11 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
 
         {/* Navigation */}
         <nav className="flex-1 py-4 px-2 space-y-1">
-          {navItems.map(({ href, label, icon: Icon }) => {
-            const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href);
+          {navItems.map(({ href, label, icon: Icon, rawPath }) => {
+            const isActive = pathname === `${prefix}${rawPath}` || pathname.startsWith(`${prefix}${rawPath}/`);
             return (
               <Link
-                key={href}
+                key={rawPath}
                 href={href}
                 onClick={onClose}
                 className={clsx(

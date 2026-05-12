@@ -8,6 +8,7 @@ import { RelativeTime } from '@/components/shared/RelativeTime';
 import { MarkdownContent } from '@/components/shared/MarkdownContent';
 import { DeleteConfirmation } from '@/components/observations/DeleteConfirmation';
 import { useT } from '@/i18n/translation-context';
+import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 import type { Observation } from '@slorenzot/memento-core';
 
 interface ObservationDetailProps {
@@ -17,6 +18,7 @@ interface ObservationDetailProps {
 export default function ObservationDetailPage({ observation }: ObservationDetailProps) {
   const router = useRouter();
   const t = useT();
+  const prefix = useLocalePrefix();
   const [showDelete, setShowDelete] = useState(false);
 
   return (
@@ -45,7 +47,7 @@ export default function ObservationDetailPage({ observation }: ObservationDetail
         <div className="flex items-center gap-2">
           {!observation.deletedAt && !observation.readOnly && (
             <Link
-              href={`/observations/${observation.id}/edit`}
+              href={`${prefix}/observations/${observation.id}/edit`}
               className="rounded-full border border-[var(--color-border)] px-4 py-1.5 text-[13px] text-[var(--color-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
             >
               {t.common.edit}
@@ -79,7 +81,7 @@ export default function ObservationDetailPage({ observation }: ObservationDetail
           observationId={observation.id}
           observationTitle={observation.title}
           onCancel={() => setShowDelete(false)}
-          onDeleted={() => router.push('/observations')}
+          onDeleted={() => router.push(`${prefix}/observations`)}
         />
       )}
 

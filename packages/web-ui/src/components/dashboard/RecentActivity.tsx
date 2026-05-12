@@ -5,6 +5,7 @@ import type { Observation } from '@slorenzot/memento-core';
 import { Badge } from '@/components/shared/Badge';
 import { RelativeTime } from '@/components/shared/RelativeTime';
 import { useT } from '@/i18n/translation-context';
+import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 
 interface RecentActivityProps {
   observations: Observation[];
@@ -12,6 +13,7 @@ interface RecentActivityProps {
 
 export function RecentActivity({ observations }: RecentActivityProps) {
   const t = useT();
+  const prefix = useLocalePrefix();
 
   if (observations.length === 0) {
     return (
@@ -35,7 +37,7 @@ export function RecentActivity({ observations }: RecentActivityProps) {
         {observations.map((obs) => (
           <Link
             key={obs.id}
-            href={`/observations/${obs.id}`}
+            href={`${prefix}/observations/${obs.id}`}
             className="block rounded-[var(--radius-2xl)] border border-[var(--color-border)] p-4 transition-colors hover:border-[var(--color-border-strong)]"
           >
             <div className="flex items-start justify-between gap-4">
