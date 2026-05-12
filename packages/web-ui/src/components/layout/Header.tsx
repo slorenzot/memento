@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Search, Menu } from 'lucide-react';
+import { useT } from '@/i18n/translation-context';
 
 interface HeaderProps {
   onMobileMenuToggle?: () => void;
@@ -10,6 +11,7 @@ interface HeaderProps {
 
 export function Header({ onMobileMenuToggle }: HeaderProps) {
   const router = useRouter();
+  const t = useT();
   const [searchQuery, setSearchQuery] = useState('');
 
   function handleSearch(e: React.FormEvent) {
@@ -26,7 +28,7 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
       <button
         className="md:hidden mr-3 text-[var(--color-secondary)] hover:text-[var(--color-text-primary)]"
         onClick={onMobileMenuToggle}
-        aria-label="Toggle menu"
+        aria-label={t.nav.toggleMenu}
       >
         <Menu className="w-5 h-5" />
       </button>
@@ -39,7 +41,7 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search observations..."
+            placeholder={t.header.searchPlaceholder}
             className="w-full rounded-full bg-[var(--color-neutral-bg)] border border-transparent py-2 pl-9 pr-4 text-[14px] text-[var(--color-text-primary)] placeholder:text-[var(--color-tertiary)] focus:outline-none focus:bg-[var(--color-bg)] focus:border-[var(--color-border-strong)] transition-colors"
           />
           <kbd className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 items-center gap-0.5 rounded bg-[var(--color-bg)] border border-[var(--color-border)] px-1.5 py-0.5 text-[11px] text-[var(--color-tertiary)]">

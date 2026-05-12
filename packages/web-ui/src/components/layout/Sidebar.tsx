@@ -15,25 +15,27 @@ import {
 } from 'lucide-react';
 import { useUIStore } from '@/stores/ui-store';
 import { MementoLogo } from './MementoLogo';
+import { useT } from '@/i18n/translation-context';
 import clsx from 'clsx';
-
-const navItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/observations', label: 'Observations', icon: FileText },
-  { href: '/search', label: 'Search', icon: Search },
-  { href: '/timeline', label: 'Timeline', icon: Clock },
-  { href: '/sessions', label: 'Sessions', icon: Activity },
-];
-
-const bottomItems = [
-  { href: '/docs', label: 'Docs', icon: BookOpen },
-  { href: '/settings', label: 'Settings', icon: Settings },
-];
 
 export function Sidebar() {
   const pathname = usePathname();
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggle = useUIStore((s) => s.toggleSidebar);
+  const t = useT();
+
+  const navItems = [
+    { href: '/', label: t.nav.dashboard, icon: LayoutDashboard },
+    { href: '/observations', label: t.nav.observations, icon: FileText },
+    { href: '/search', label: t.nav.search, icon: Search },
+    { href: '/timeline', label: t.nav.timeline, icon: Clock },
+    { href: '/sessions', label: t.nav.sessions, icon: Activity },
+  ];
+
+  const bottomItems = [
+    { href: '/docs', label: t.nav.docs, icon: BookOpen },
+    { href: '/settings', label: t.nav.settings, icon: Settings },
+  ];
 
   return (
     <aside
@@ -104,14 +106,14 @@ export function Sidebar() {
             'flex items-center w-full rounded-[var(--radius-xl)] px-3 py-2 text-[14px] text-[var(--color-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors',
             collapsed && 'justify-center px-2',
           )}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? t.nav.expandSidebar : t.nav.collapseSidebar}
         >
           {collapsed ? (
             <PanelLeft className="w-[18px] h-[18px] shrink-0" />
           ) : (
             <>
               <PanelLeftClose className="w-[18px] h-[18px] shrink-0" />
-              <span className="ml-3">Collapse</span>
+              <span className="ml-3">{t.nav.collapse}</span>
             </>
           )}
         </button>

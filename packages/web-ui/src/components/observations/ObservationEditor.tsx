@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
 import { OBSERVATION_TYPES, ObservationTypeIcon } from '@/components/shared/ObservationTypeIcon';
+import { useT } from '@/i18n/translation-context';
 
 interface ObservationEditorProps {
   mode: 'create' | 'edit';
@@ -20,6 +21,7 @@ interface ObservationEditorProps {
 
 export function ObservationEditor({ mode, initialData, observationId }: ObservationEditorProps) {
   const router = useRouter();
+  const t = useT();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,14 +63,14 @@ export function ObservationEditor({ mode, initialData, observationId }: Observat
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.message || 'Save failed');
+        throw new Error(err.message || t.observationEditor.saveFailed);
       }
 
       const obs = await res.json();
       router.push(`/observations/${obs.id}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed');
+      setError(err instanceof Error ? err.message : t.observationEditor.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -85,13 +87,13 @@ export function ObservationEditor({ mode, initialData, observationId }: Observat
       {/* Title */}
       <div>
         <label className="mb-1 block text-[13px] font-medium text-[var(--color-secondary)]">
-          Title
+          {t.observationEditor.title}
         </label>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="What did you observe?"
+          placeholder={t.observationEditor.titlePlaceholder}
           required
           className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-[14px] text-[var(--color-text-primary)] placeholder:text-[var(--color-tertiary)] focus:border-[var(--color-border-strong)] focus:outline-none"
         />
@@ -100,12 +102,12 @@ export function ObservationEditor({ mode, initialData, observationId }: Observat
       {/* Content */}
       <div>
         <label className="mb-1 block text-[13px] font-medium text-[var(--color-secondary)]">
-          Content
+          {t.observationEditor.content}
         </label>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Describe what/why/where/learned..."
+          placeholder={t.observationEditor.contentPlaceholder}
           required
           rows={8}
           className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-[14px] text-[var(--color-text-primary)] placeholder:text-[var(--color-tertiary)] focus:border-[var(--color-border-strong)] focus:outline-none resize-y"
@@ -116,7 +118,7 @@ export function ObservationEditor({ mode, initialData, observationId }: Observat
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="mb-1 block text-[13px] font-medium text-[var(--color-secondary)]">
-            Type
+            {t.observationEditor.type}
           </label>
           <div className="flex flex-wrap gap-1.5">
             {OBSERVATION_TYPES.map((t) => (
@@ -140,7 +142,7 @@ export function ObservationEditor({ mode, initialData, observationId }: Observat
 
         <div>
           <label className="mb-1 block text-[13px] font-medium text-[var(--color-secondary)]">
-            Scope
+            {t.observationEditor.scope}
           </label>
           <select
             value={scope}
@@ -157,26 +159,26 @@ export function ObservationEditor({ mode, initialData, observationId }: Observat
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="mb-1 block text-[13px] font-medium text-[var(--color-secondary)]">
-            Topic Key
+            {t.observationEditor.topicKey}
           </label>
           <input
             type="text"
             value={topicKey}
             onChange={(e) => setTopicKey(e.target.value)}
-            placeholder="e.g. architecture/auth-model"
+            placeholder={t.observationEditor.topicKeyPlaceholder}
             className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-[14px] text-[var(--color-text-primary)] placeholder:text-[var(--color-tertiary)] focus:border-[var(--color-border-strong)] focus:outline-none"
           />
         </div>
 
         <div>
           <label className="mb-1 block text-[13px] font-medium text-[var(--color-secondary)]">
-            Project
+            {t.observationEditor.project}
           </label>
           <input
             type="text"
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
-            placeholder="e.g. my-project"
+            placeholder={t.observationEditor.projectPlaceholder}
             className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-[14px] text-[var(--color-text-primary)] placeholder:text-[var(--color-tertiary)] focus:border-[var(--color-border-strong)] focus:outline-none"
           />
         </div>
@@ -189,14 +191,14 @@ export function ObservationEditor({ mode, initialData, observationId }: Observat
           disabled={saving || !title.trim() || !content.trim()}
           className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-[14px] font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
         >
-          {saving ? 'Saving...' : mode === 'create' ? 'Create' : 'Save changes'}
+          {saving ? t.common.saving : mode === 'create' ? t.common.create : t.common.saveChanges}
         </button>
         <button
           type="button"
           onClick={() => router.back()}
           className="rounded-full px-5 py-2 text-[14px] text-[var(--color-secondary)] hover:text-[var(--color-text-primary)]"
         >
-          Cancel
+          {t.common.cancel}
         </button>
       </div>
     </form>

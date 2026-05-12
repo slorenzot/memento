@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useT } from '@/i18n/translation-context';
 
 interface DeleteConfirmationProps {
   observationId: number;
@@ -15,6 +16,7 @@ export function DeleteConfirmation({
   onCancel,
   onDeleted,
 }: DeleteConfirmationProps) {
+  const t = useT();
   const [reason, setReason] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,12 +34,12 @@ export function DeleteConfirmation({
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.message || 'Delete failed');
+        throw new Error(err.message || t.deleteConfirmation.deleteFailed);
       }
 
       onDeleted();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed');
+      setError(err instanceof Error ? err.message : t.deleteConfirmation.deleteFailed);
     } finally {
       setDeleting(false);
     }
@@ -46,10 +48,10 @@ export function DeleteConfirmation({
   return (
     <div className="rounded-lg border border-red-200 bg-red-50 p-4">
       <h4 className="text-[14px] font-medium text-red-800">
-        Delete &ldquo;{observationTitle}&rdquo;?
+        {t.deleteConfirmation.title.replace('{title}', observationTitle)}
       </h4>
       <p className="mt-1 text-[13px] text-red-600">
-        This is a soft delete. The observation can be restored later.
+        {t.deleteConfirmation.description}
       </p>
 
       {error && (
@@ -61,7 +63,7 @@ export function DeleteConfirmation({
           type="text"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason for deletion (optional)"
+          placeholder={t.deleteConfirmation.reasonPlaceholder}
           className="w-full rounded-lg border border-red-200 bg-white px-3 py-1.5 text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-tertiary)] focus:outline-none"
         />
       </div>
@@ -72,13 +74,13 @@ export function DeleteConfirmation({
           disabled={deleting}
           className="rounded-full bg-red-600 px-4 py-1.5 text-[13px] font-medium text-white hover:bg-red-700 disabled:opacity-50"
         >
-          {deleting ? 'Deleting...' : 'Delete'}
+          {deleting ? t.common.deleting : t.common.delete}
         </button>
         <button
           onClick={onCancel}
           className="rounded-full px-4 py-1.5 text-[13px] text-red-600 hover:text-red-800"
         >
-          Cancel
+          {t.common.cancel}
         </button>
       </div>
     </div>

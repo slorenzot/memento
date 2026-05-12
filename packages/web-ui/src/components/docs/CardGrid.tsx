@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -13,6 +15,7 @@ import {
   Wrench,
   Layers,
 } from 'lucide-react';
+import { useT } from '@/i18n/translation-context';
 
 interface CardProps {
   title: string;
@@ -41,46 +44,47 @@ function Card({ title, description, href, icon: Icon }: CardProps) {
 }
 
 export function CardGrid() {
+  const t = useT();
+
   return (
     <div className="space-y-12">
       {/* Hero */}
       <div className="space-y-3">
         <h1 className="text-[32px] font-bold text-[var(--color-text-primary)] tracking-tight">
-          Memento
+          {t.docs.hero.title}
         </h1>
         <p className="text-[16px] text-[var(--color-text-secondary)] leading-relaxed max-w-[600px]">
-          Persistent memory for AI coding agents. Capture decisions, discoveries, and patterns from
-          your coding sessions and recover them across conversations.
+          {t.docs.hero.description}
         </p>
       </div>
 
       {/* Main cards */}
       <section>
         <h2 className="text-[13px] font-medium text-[var(--color-tertiary)] uppercase tracking-wider mb-3">
-          Getting Started
+          {t.docs.sections.gettingStarted}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <Card
-            title="Quickstart"
-            description="Get up and running with your first observation in 5 minutes"
+            title={t.docs.cards.quickstart.title}
+            description={t.docs.cards.quickstart.description}
             href="/docs/quickstart"
             icon={Rocket}
           />
           <Card
-            title="CLI Reference"
-            description="Full command-line interface documentation"
+            title={t.docs.cards.cliReference.title}
+            description={t.docs.cards.cliReference.description}
             href="/docs/cli/reference"
             icon={Terminal}
           />
           <Card
-            title="MCP Tools"
-            description="21 tools for AI agent integration via Model Context Protocol"
+            title={t.docs.cards.mcpTools.title}
+            description={t.docs.cards.mcpTools.description}
             href="/docs/mcp/introduction"
             icon={Plug}
           />
           <Card
-            title="API Reference"
-            description="REST API endpoints and examples"
+            title={t.docs.cards.apiReference.title}
+            description={t.docs.cards.apiReference.description}
             href="/docs/api/introduction"
             icon={Code}
           />
@@ -90,36 +94,36 @@ export function CardGrid() {
       {/* Packages */}
       <section>
         <h2 className="text-[13px] font-medium text-[var(--color-tertiary)] uppercase tracking-wider mb-3">
-          Packages
+          {t.docs.sections.packages}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Card
-            title="Core"
-            description="Database engine, observations, sessions, and search"
+            title={t.docs.cards.core.title}
+            description={t.docs.cards.core.description}
             href="/docs/packages/core"
             icon={Box}
           />
           <Card
-            title="MCP Server"
-            description="Model Context Protocol server with 21 tools"
+            title={t.docs.cards.mcpServer.title}
+            description={t.docs.cards.mcpServer.description}
             href="/docs/packages/mcp-server"
             icon={Plug}
           />
           <Card
-            title="CLI"
-            description="Command-line interface for terminal workflows"
+            title={t.docs.cards.cli.title}
+            description={t.docs.cards.cli.description}
             href="/docs/packages/cli"
             icon={Terminal}
           />
           <Card
-            title="Web UI"
-            description="Next.js dashboard for browsing and managing memory"
+            title={t.docs.cards.webUi.title}
+            description={t.docs.cards.webUi.description}
             href="/docs/packages/web-ui"
             icon={Monitor}
           />
           <Card
-            title="TUI"
-            description="Terminal UI built with Ink and React"
+            title={t.docs.cards.tui.title}
+            description={t.docs.cards.tui.description}
             href="/docs/packages/tui"
             icon={Tv}
           />
@@ -129,24 +133,24 @@ export function CardGrid() {
       {/* Resources */}
       <section>
         <h2 className="text-[13px] font-medium text-[var(--color-tertiary)] uppercase tracking-wider mb-3">
-          Resources
+          {t.docs.sections.resources}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Card
-            title="Core Concepts"
-            description="Observations, sessions, projects, journal, and search"
+            title={t.docs.cards.coreConcepts.title}
+            description={t.docs.cards.coreConcepts.description}
             href="/docs/core-concepts/observations"
             icon={BookOpen}
           />
           <Card
-            title="Architecture"
-            description="Database design, FTS5 search, and monorepo structure"
+            title={t.docs.cards.architecture.title}
+            description={t.docs.cards.architecture.description}
             href="/docs/architecture/database"
             icon={Layers}
           />
           <Card
-            title="FAQ & Troubleshooting"
-            description="Common questions and solutions to known issues"
+            title={t.docs.cards.faqTroubleshooting.title}
+            description={t.docs.cards.faqTroubleshooting.description}
             href="/docs/faq"
             icon={Wrench}
           />
@@ -156,24 +160,24 @@ export function CardGrid() {
       {/* Capabilities */}
       <section>
         <h2 className="text-[13px] font-medium text-[var(--color-tertiary)] uppercase tracking-wider mb-3">
-          Capabilities
+          {t.docs.sections.capabilities}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Card
-            title="Context Recovery"
-            description="Recover what happened in previous sessions"
+            title={t.docs.cards.contextRecovery.title}
+            description={t.docs.cards.contextRecovery.description}
             href="/docs/capabilities/context-recovery"
             icon={Cpu}
           />
           <Card
-            title="Passive Capture"
-            description="Extract learnings from text with automatic deduplication"
+            title={t.docs.cards.passiveCapture.title}
+            description={t.docs.cards.passiveCapture.description}
             href="/docs/capabilities/passive-capture"
             icon={BookOpen}
           />
           <Card
-            title="Export & Import"
-            description="Backup and migrate memory in JSON, XML, or TXT"
+            title={t.docs.cards.exportImport.title}
+            description={t.docs.cards.exportImport.description}
             href="/docs/capabilities/export-import"
             icon={Layers}
           />

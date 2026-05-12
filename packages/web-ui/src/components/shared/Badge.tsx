@@ -1,5 +1,8 @@
+'use client';
+
 import clsx from 'clsx';
 import { getTypeMeta } from './ObservationTypeIcon';
+import { useT } from '@/i18n/translation-context';
 
 interface BadgeProps {
   type: string;
@@ -8,7 +11,9 @@ interface BadgeProps {
 }
 
 export function Badge({ type, active, onClick }: BadgeProps) {
-  const { icon: Icon, label } = getTypeMeta(type);
+  const t = useT();
+  const { icon: Icon, typeKey } = getTypeMeta(type);
+  const label = (t.types as Record<string, string>)[typeKey] ?? type;
   const Component = onClick ? 'button' : 'span';
   return (
     <Component

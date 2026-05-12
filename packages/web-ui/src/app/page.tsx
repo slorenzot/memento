@@ -2,6 +2,7 @@ import { StatsCards } from '@/components/dashboard/StatsCards';
 import { TypeDistribution } from '@/components/dashboard/TypeDistribution';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { getLocaleFromCookie, getDictionary } from '@/i18n/get-dictionary';
 
 // Force dynamic rendering — requires bun:sqlite at runtime
 export const dynamic = 'force-dynamic';
@@ -11,16 +12,19 @@ export default async function HomePage() {
   const { getEngine } = await import('@/lib/engine');
   const engine = getEngine();
 
-  const stats = await engine.getDashboardStats();
-  const projects = await engine.listProjects();
+  const [stats, projects, t] = await Promise.all([
+    engine.getDashboardStats(),
+    engine.listProjects(),
+    getLocaleFromCookie().then((locale) => getDictionary(locale)),
+  ]);
 
   const hasData = stats.totalObservations > 0;
 
   if (!hasData) {
     return (
       <EmptyState
-        title="No observations yet"
-        description="Start using Memento to capture decisions, discoveries, and patterns from your coding sessions."
+        title={t.dashboard.noObservations}
+        description={t.dashboard.noObservationsDescription}
       />
     );
   }

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/shared/Badge';
+import { useT } from '@/i18n/translation-context';
 
 const TYPES = [
   'decision', 'bug', 'discovery', 'note', 'summary',
@@ -16,12 +16,17 @@ interface ObservationFiltersProps {
 }
 
 export function ObservationFilters({ projects }: ObservationFiltersProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const t = useT();
+  const [activeType, setActiveType] = useState('');
 
-  const activeType = searchParams.get('type') ?? '';
+  // We still use URL params for actual filtering, but labels are translated
+  const searchParams = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search)
+    : new URLSearchParams();
+
   const activeScope = searchParams.get('scope') ?? '';
   const activeProject = searchParams.get('projectId') ?? '';
+  const urlActiveType = searchParams.get('type') ?? '';
 
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -32,7 +37,7 @@ export function ObservationFilters({ projects }: ObservationFiltersProps) {
     }
     // Reset to page 1 when changing filters
     params.delete('page');
-    router.push(`/observations?${params.toString()}`);
+    window.location.href = `/observations?${params.toString()}`;
   }
 
   return (
@@ -43,8 +48,8 @@ export function ObservationFilters({ projects }: ObservationFiltersProps) {
           <Badge
             key={type}
             type={type}
-            active={activeType === type}
-            onClick={() => updateFilter('type', activeType === type ? '' : type)}
+            active={urlActiveType === type}
+            onClick={() => updateFilter('type', urlActiveType === type ? '' : type)}
           />
         ))}
       </div>
@@ -56,7 +61,7 @@ export function ObservationFilters({ projects }: ObservationFiltersProps) {
           onChange={(e) => updateFilter('scope', e.target.value)}
           className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-[13px] text-[var(--color-text-primary)]"
         >
-          <option value="">All scopes</option>
+          <option value="">{t.common.allScopes}</option>
           {SCOPES.map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
@@ -68,7 +73,7 @@ export function ObservationFilters({ projects }: ObservationFiltersProps) {
             onChange={(e) => updateFilter('projectId', e.target.value)}
             className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-[13px] text-[var(--color-text-primary)]"
           >
-            <option value="">All projects</option>
+            <option value="">{t.common.allProjects}</option>
             {projects.map((p) => (
               <option key={p} value={p}>{p}</option>
             ))}

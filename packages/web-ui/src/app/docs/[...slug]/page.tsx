@@ -3,6 +3,7 @@ import { join } from 'path';
 import { notFound } from 'next/navigation';
 import { MarkdownContent } from '@/components/shared/MarkdownContent';
 import { getAllDocSlugs } from '@/components/docs/docs-nav';
+import { getLocaleFromCookie, getDictionary } from '@/i18n/get-dictionary';
 
 const CONTENT_DIR = join(process.cwd(), 'content/docs');
 
@@ -43,9 +44,10 @@ export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params;
   const allSlugs = getAllDocSlugs();
   const match = allSlugs.find((s) => s.slug === slug.join('/'));
+  const t = getDictionary(await getLocaleFromCookie());
 
   return {
-    title: match ? `${match.title} — Memento Docs` : 'Memento Docs',
+    title: match ? `${match.title} — ${t.docs.docsTitle}` : t.docs.docsTitle,
   };
 }
 

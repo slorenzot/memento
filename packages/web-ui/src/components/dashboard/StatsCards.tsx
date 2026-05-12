@@ -1,3 +1,7 @@
+'use client';
+
+import { useT } from '@/i18n/translation-context';
+
 interface StatCardProps {
   label: string;
   value: number | string;
@@ -24,12 +28,14 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ stats }: StatsCardsProps) {
+  const t = useT();
+
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      <StatCard label="Total observations" value={stats.totalObservations} />
-      <StatCard label="Active" value={stats.activeObservations} />
-      <StatCard label="Sessions" value={stats.activeSessions} />
-      <StatCard label="Projects" value={stats.projectCount} />
+      <StatCard label={t.dashboard.totalObservations} value={stats.totalObservations} />
+      <StatCard label={t.dashboard.active} value={stats.activeObservations} />
+      <StatCard label={t.dashboard.sessions} value={stats.activeSessions} />
+      <StatCard label={t.dashboard.projects} value={stats.projectCount} />
     </div>
   );
 }
