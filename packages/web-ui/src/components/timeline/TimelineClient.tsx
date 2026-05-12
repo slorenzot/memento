@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ObservationCard } from '@/components/observations/ObservationCard';
 import { useT } from '@/i18n/translation-context';
-import { useUIStore } from '@/stores/ui-store';
 import type { Observation } from '@slorenzot/memento-core';
+import type { Locale } from 'date-fns';
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
 
@@ -21,7 +21,7 @@ interface TimelineClientProps {
   projects: string[];
 }
 
-const dateFnsLocales = { en: enUS, es: es };
+const dateFnsLocales: Record<string, Locale> = { en: enUS, es: es };
 
 function groupByDay(observations: Observation[]): Map<string, Observation[]> {
   const groups = new Map<string, Observation[]>();
@@ -35,7 +35,7 @@ function groupByDay(observations: Observation[]): Map<string, Observation[]> {
   return groups;
 }
 
-function formatDayHeader(dateStr: string, t: ReturnType<typeof useT>): string {
+function formatDayHeader(dateStr: string, t: ReturnType<typeof useT>, locale: string): string {
   const date = new Date(dateStr + 'T12:00:00');
   const today = new Date();
   const yesterday = new Date(today);
@@ -44,7 +44,6 @@ function formatDayHeader(dateStr: string, t: ReturnType<typeof useT>): string {
   if (dateStr === today.toISOString().split('T')[0]) return t.common.today;
   if (dateStr === yesterday.toISOString().split('T')[0]) return t.common.yesterday;
 
-  const locale = useUIStore.getState().locale;
   const dateFnsLocale = dateFnsLocales[locale] ?? dateFnsLocales.en;
   return date.toLocaleDateString(locale === 'es' ? 'es-ES' : 'en-US', {
     weekday: 'long',
@@ -64,6 +63,8 @@ export function TimelineClient({
   const t = useT();
   const router = useRouter();
   const pathname = usePathname();
+  const urlParams = useParams<{ lang?: string }>();
+  const locale = urlParams.lang ?? 'en';
 
   const [observations, setObservations] = useState<Observation[]>(initialObservations);
   const [total, setTotal] = useState(initialTotal);
@@ -176,7 +177,7 @@ export function TimelineClient({
         {Array.from(groups.entries()).map(([dateStr, dayObservations]) => (
           <div key={dateStr}>
             <h2 className="mb-3 text-[13px] font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
-              {formatDayHeader(dateStr, t)}
+              {formatDayHeader(dateStr, t, locale)}
             </h2>
             <div className="grid gap-3">
               {dayObservations.map((obs) => (
