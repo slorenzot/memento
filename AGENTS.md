@@ -93,29 +93,40 @@ Dependency flow: `core → mcp-server → cli / api / tui → web-ui`
 
 **NO se commitea directo a `main`. SIEMPRE branch + PR.**
 
+**CHECKLIST OBLIGATORIO — ejecutar en ESTE orden, sin saltar pasos**:
+
 ```
-1. Crear Issue (bug/feature/docs) en GitHub
-2. Crear branch desde develop:
-   - fix/{issue}-{description}   (bugs)
-   - feat/{issue}-{description}  (features)
-   - docs/{issue}-{description}  (docs)
-3. Implementar cambio + tests en el branch
-4. Ejecutar tests: bun test
-5. Commit → Push → PR → Merge — ejecutar todo en secuencia SIN pausar a preguntar:
-   git add + git commit → git push -u → gh pr create → gh pr merge --squash --delete-branch
-6. Verificar cierre del Issue
+□ Paso 1: Crear Issue (bug/feature/docs) en GitHub
+□ Paso 2: Crear branch desde develop:
+           fix/{issue}-{description}   (bugs)
+           feat/{issue}-{description}  (features)
+           docs/{issue}-{description}  (docs)
+□ Paso 3: Implementar cambio + tests en el branch
+□ Paso 4: bun run build    ← DEBE pasar sin errores
+□ Paso 5: bun test         ← DEBE pasar: 0 failures
+□ Paso 6: Commit → Push → PR → Merge (secuencia continua SIN pausar):
+           git add -A
+           git commit -m "type(scope): subject"
+           git push -u origin {branch}
+           gh pr create --base develop
+           gh pr merge --squash --delete-branch
+□ Paso 7: Verificar cierre del Issue
+           gh issue view {N} --json state
+           gh issue close {N} --reason completed (si no cerró auto)
 ```
 
+**GATES OBLIGATORIOS — NO continuar si fallan**:
+- ⛔ `bun run build` falla → FIX antes de continuar
+- ⛔ `bun test` tiene failures → FIX antes de continuar
+- ⛔ NUNCA commit directo a `main` — siempre branch + PR
+- ⛔ NUNCA crear PR sin haber ejecutado `bun test` antes
+
 **Reglas**:
-- NUNCA commit directo a `main` — siempre branch + PR
 - El commit message usa `Fixes #{issue}` o `Closes #{issue}` en el body del PR, NO en el commit
 - Un Issue se cierra cuando el PR se mergea, no cuando se commitea
 - Si el Issue no existe, crearlo ANTES de empezar a codear
-- Los tests (`bun test`) DEBEN pasar antes de crear el PR
-
-**Merge rules**:
 - Commit + Push + PR + Merge en UNA secuencia continua, SIN preguntar al usuario entre pasos
-- SIEMPRE `gh pr merge --squash --delete-branch` SIN `--subject`/`--body` para que GitHub use el body original del PR
+- SIEMPRE `gh pr merge --squash --delete-branch` SIN `--subject`/`--body`
 - El body del PR DEBE incluir `Closes #{issue}` o `Fixes #{issue}` para cierre automático
 - DESPUÉS del merge, verificar con `gh issue view {N} --json state` que el Issue se cerró
 - Si no se cerró automáticamente, cerrar manualmente con `gh issue close {N} --reason completed`
