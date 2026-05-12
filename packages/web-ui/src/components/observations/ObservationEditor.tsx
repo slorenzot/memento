@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
 import { OBSERVATION_TYPES, ObservationTypeIcon } from '@/components/shared/ObservationTypeIcon';
 import { useT } from '@/i18n/translation-context';
+import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 
 interface ObservationEditorProps {
   mode: 'create' | 'edit';
@@ -22,6 +23,7 @@ interface ObservationEditorProps {
 export function ObservationEditor({ mode, initialData, observationId }: ObservationEditorProps) {
   const router = useRouter();
   const t = useT();
+  const prefix = useLocalePrefix();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,7 +69,7 @@ export function ObservationEditor({ mode, initialData, observationId }: Observat
       }
 
       const obs = await res.json();
-      router.push(`/observations/${obs.id}`);
+      router.push(`${prefix}/observations/${obs.id}`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : t.observationEditor.saveFailed);

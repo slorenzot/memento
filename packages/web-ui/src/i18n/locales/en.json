@@ -99,7 +99,9 @@
     "topicKeyPlaceholder": "e.g. architecture/auth-model",
     "project": "Project",
     "projectPlaceholder": "e.g. my-project",
-    "saveFailed": "Save failed"
+    "saveFailed": "Save failed",
+    "editTitle": "Edit observation",
+    "readOnly": "This observation is read-only and cannot be edited."
   },
   "deleteConfirmation": {
     "title": "Delete \"{title}\"?",
@@ -111,6 +113,15 @@
     "title": "Sessions",
     "noSessions": "No sessions yet",
     "noSessionsDescription": "Sessions are created automatically when you create observations."
+  },
+  "sessionDetail": {
+    "session": "Session #{id}",
+    "project": "Project",
+    "started": "Started",
+    "endedAt": "Ended",
+    "endSession": "End session",
+    "observations": "Observations ({count})",
+    "noObservations": "No observations in this session."
   },
   "timeline": {
     "title": "Timeline",
