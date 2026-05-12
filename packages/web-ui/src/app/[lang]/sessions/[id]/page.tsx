@@ -5,6 +5,7 @@ import { ObservationCard } from '@/components/observations/ObservationCard';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { getDictionary } from '@/i18n/get-dictionary';
 import type { Locale } from '@/i18n/config';
+import { ClockIcon, FolderIcon, LayersIcon, PlayIcon, StopCircleIcon } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +36,11 @@ export default async function LangSessionDetailPage({
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
+            {isActive ? (
+              <PlayIcon className="size-5 text-green-500" />
+            ) : (
+              <StopCircleIcon className="size-5 text-[var(--color-tertiary)]" />
+            )}
             <h1 className="text-[20px] font-medium text-[var(--color-text-primary)]">
               {t.sessionDetail.session.replace('{id}', String(session.id))}
             </h1>
@@ -43,9 +49,22 @@ export default async function LangSessionDetailPage({
             </span>
           </div>
           <div className="mt-2 flex items-center gap-3 text-[13px] text-[var(--color-tertiary)]">
-            <span>{t.sessionDetail.project}: {session.projectId}</span>
-            <span>{t.sessionDetail.started}: <RelativeTime date={session.startedAt} /></span>
-            {session.endedAt && <span>{t.sessionDetail.endedAt}: <RelativeTime date={session.endedAt} /></span>}
+            {session.projectId && (
+              <div className="flex items-center gap-1.5">
+                <FolderIcon className="size-4" />
+                <span>{session.projectId}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5">
+              <ClockIcon className="size-4" />
+              <span>{t.sessionDetail.started}: <RelativeTime date={session.startedAt} /></span>
+            </div>
+            {session.endedAt && (
+              <div className="flex items-center gap-1.5">
+                <StopCircleIcon className="size-4" />
+                <span>{t.sessionDetail.endedAt}: <RelativeTime date={session.endedAt} /></span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -77,7 +96,8 @@ export default async function LangSessionDetailPage({
       )}
 
       <div>
-        <h2 className="mb-3 text-[14px] font-medium text-[var(--color-secondary)]">
+        <h2 className="mb-3 flex items-center gap-2 text-[14px] font-medium text-[var(--color-secondary)]">
+          <LayersIcon className="size-4" />
           {t.sessionDetail.observations.replace('{count}', String(sessionObs.length))}
         </h2>
         {sessionObs.length === 0 ? (
