@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { ObservationCard } from '@/components/observations/ObservationCard';
 import { Badge } from '@/components/shared/Badge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useT } from '@/i18n/translation-context';
+import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 import type { Observation } from '@slorenzot/memento-core';
 
 const SEARCH_PAGE_SIZE = 50;
@@ -21,7 +21,16 @@ const SCOPES = ['project', 'personal'] as const;
 export function SearchPage() {
   const t = useT();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const prefix = useLocalePrefix();
+
+  // Read initial values from URL
   const initialQuery = searchParams.get('q') ?? '';
+  const initialType = searchParams.get('type') ?? '';
+  const initialScope = searchParams.get('scope') ?? '';
+  const initialProject = searchParams.get('projectId') ?? '';
+
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<Observation[]>([]);
   const [total, setTotal] = useState(0);
@@ -30,13 +39,13 @@ export function SearchPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [searched, setSearched] = useState(false);
 
-  // Filters
-  const [activeType, setActiveType] = useState('');
-  const [activeScope, setActiveScope] = useState('');
-  const [activeProject, setActiveProject] = useState('');
+  // Filters — initialized from URL params
+  const [activeType, setActiveType] = useState(initialType);
+  const [activeScope, setActiveScope] = useState(initialScope);
+  const [activeProject, setActiveProject] = useState(initialProject);
   const [projects, setProjects] = useState<string[]>([]);
 
-  // Auto-execute search when arriving from header with ?q= param
+  // Track whether the initial URL-based search has been executed
   const [initialSearchDone, setInitialSearchDone] = useState(false);
 
   // Load projects list on mount
@@ -45,7 +54,6 @@ export function SearchPage() {
       try {
         const res = await fetch('/api/projects');
         const data = await res.json();
-        // API returns array of { project_id, ... } — extract names
         const names = (data.data ?? data).map((p: { project_id: string } | string) =>
           typeof p === 'string' ? p : p.project_id
         );
@@ -56,6 +64,21 @@ export function SearchPage() {
     }
     loadProjects();
   }, []);
+
+  /**
+   * Update the browser URL with current query + filters.
+   * Uses router.replace to avoid polluting browser history.
+   */
+  const updateURL = useCallback((q: string, type: string, scope: string, projectId: string) => {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (type) params.set('type', type);
+    if (scope) params.set('scope', scope);
+    if (projectId) params.set('projectId', projectId);
+    const search = params.toString();
+    // Use pathname which already includes the locale prefix
+    router.replace(search ? `${pathname}?${search}` : pathname);
+  }, [router, pathname]);
 
   const handleSearch = useCallback(async (searchOffset = 0) => {
     if (!query.trim()) return;
@@ -74,7 +97,6 @@ export function SearchPage() {
         offset: searchOffset,
       };
 
-      // Add filters only when set
       if (activeType) body.type = activeType;
       if (activeScope) body.scope = activeScope;
       if (activeProject) body.projectId = activeProject;
@@ -87,7 +109,6 @@ export function SearchPage() {
       const data = await res.json();
 
       if (isLoadMore) {
-        // Deduplicate by id (safety net)
         const existingIds = new Set(results.map((r) => r.id));
         const newObs = data.observations.filter((o: Observation) => !existingIds.has(o.id));
         setResults((prev) => [...prev, ...newObs]);
@@ -97,14 +118,19 @@ export function SearchPage() {
 
       setTotal(data.total);
       setOffset(searchOffset);
+
+      // Update URL with query + active filters (only on new search, not load more)
+      if (!isLoadMore) {
+        updateURL(query.trim(), activeType, activeScope, activeProject);
+      }
     } finally {
       setSearching(false);
       setLoadingMore(false);
       setSearched(true);
     }
-  }, [query, results, activeType, activeScope, activeProject]);
+  }, [query, results, activeType, activeScope, activeProject, updateURL]);
 
-  // Auto-search on mount when arriving with ?q= param from header
+  // Auto-search on mount when arriving with ?q= param (from header or shared URL)
   useEffect(() => {
     if (initialQuery && !initialSearchDone) {
       setInitialSearchDone(true);
@@ -118,7 +144,6 @@ export function SearchPage() {
 
   const handleQueryChange = useCallback((value: string) => {
     setQuery(value);
-    // Reset results when query changes
     if (value.trim() !== query.trim()) {
       setResults([]);
       setTotal(0);
