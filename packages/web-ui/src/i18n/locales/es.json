@@ -65,7 +65,12 @@
     "results": "{total} resultado para \"{query}\" | {total} resultados para \"{query}\"",
     "showing": "— mostrando {shown} de {total}",
     "noResults": "No se encontraron observaciones.",
-    "loadEarlier": "Cargar anteriores"
+    "loadEarlier": "Cargar anteriores",
+    "hintTitle": "Buscar observaciones",
+    "hintDescription": "Escribe términos para buscar en todas tus observaciones",
+    "filterByType": "Filtrar por tipo",
+    "filterByScope": "Ámbito",
+    "filterByProject": "Proyecto"
   },
   "settings": {
     "title": "Configuración",

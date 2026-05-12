@@ -7,7 +7,7 @@ import { RelativeTime } from '@/components/shared/RelativeTime';
 import { useT } from '@/i18n/translation-context';
 import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 import type { Observation } from '@slorenzot/memento-core';
-import { CalendarClockIcon } from 'lucide-react';
+import { CalendarClockIcon, EyeIcon, FolderIcon, TagsIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -35,16 +35,29 @@ export default function ObservationDetailPage({ observation }: ObservationDetail
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-[13px] text-[var(--color-tertiary)]">
             <Badge type={observation.type} />
-            {observation.topicKey && <span>{observation.topicKey}</span>}
-            {observation.projectId && <span>{observation.projectId}</span>}
-            <span>{observation.scope}</span>
-            <CalendarClockIcon className="w-4" />
-            <RelativeTime date={observation.createdAt} />
-            {observation.revisionCount > 0 && (
-              <span>
-                {t.common.revisions.replace('{count}', String(observation.revisionCount))}
+            {observation.projectId && (
+              <span className="flex justify-start items-center gap-2">
+                <FolderIcon className="size-4" /> {observation.projectId}
               </span>
             )}
+            {observation.topicKey && (
+              <span className="flex justify-start items-center gap-2">
+                <TagsIcon className="size-4" /> {observation.topicKey}
+              </span>
+            )}
+            <span className="flex justify-start items-center gap-2">
+              <EyeIcon className="size-4" />
+              {observation.scope}
+            </span>
+            <div className="flex items-center gap-2">
+              <CalendarClockIcon className="size-4 ml-2" />
+              <RelativeTime date={observation.createdAt} />
+              {observation.revisionCount > 0 && (
+                <span>
+                  {t.common.revisions.replace('{count}', String(observation.revisionCount))}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

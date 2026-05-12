@@ -2,12 +2,21 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import { Search } from 'lucide-react';
 import { ObservationCard } from '@/components/observations/ObservationCard';
+import { Badge } from '@/components/shared/Badge';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { useT } from '@/i18n/translation-context';
 import type { Observation } from '@slorenzot/memento-core';
 
 const SEARCH_PAGE_SIZE = 50;
+
+const TYPES = [
+  'decision', 'bug', 'discovery', 'note', 'summary',
+  'learning', 'pattern', 'architecture', 'config', 'preference',
+];
+
+const SCOPES = ['project', 'personal'] as const;
 
 export function SearchPage() {
   const t = useT();
@@ -21,8 +30,32 @@ export function SearchPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [searched, setSearched] = useState(false);
 
+  // Filters
+  const [activeType, setActiveType] = useState('');
+  const [activeScope, setActiveScope] = useState('');
+  const [activeProject, setActiveProject] = useState('');
+  const [projects, setProjects] = useState<string[]>([]);
+
   // Auto-execute search when arriving from header with ?q= param
   const [initialSearchDone, setInitialSearchDone] = useState(false);
+
+  // Load projects list on mount
+  useEffect(() => {
+    async function loadProjects() {
+      try {
+        const res = await fetch('/api/projects');
+        const data = await res.json();
+        // API returns array of { project_id, ... } — extract names
+        const names = (data.data ?? data).map((p: { project_id: string } | string) =>
+          typeof p === 'string' ? p : p.project_id
+        );
+        setProjects(names);
+      } catch {
+        // Silently fail — project filter just won't show options
+      }
+    }
+    loadProjects();
+  }, []);
 
   const handleSearch = useCallback(async (searchOffset = 0) => {
     if (!query.trim()) return;
@@ -35,14 +68,21 @@ export function SearchPage() {
     }
 
     try {
+      const body: Record<string, unknown> = {
+        query: query.trim(),
+        limit: SEARCH_PAGE_SIZE,
+        offset: searchOffset,
+      };
+
+      // Add filters only when set
+      if (activeType) body.type = activeType;
+      if (activeScope) body.scope = activeScope;
+      if (activeProject) body.projectId = activeProject;
+
       const res = await fetch('/api/observations/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: query.trim(),
-          limit: SEARCH_PAGE_SIZE,
-          offset: searchOffset,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
 
@@ -62,7 +102,7 @@ export function SearchPage() {
       setLoadingMore(false);
       setSearched(true);
     }
-  }, [query, results]);
+  }, [query, results, activeType, activeScope, activeProject]);
 
   // Auto-search on mount when arriving with ?q= param from header
   useEffect(() => {
@@ -118,6 +158,56 @@ export function SearchPage() {
           {searching ? t.common.searching : t.common.search}
         </button>
       </div>
+
+      {/* Filters — always visible */}
+      <div className="space-y-3">
+        {/* Type filter badges */}
+        <div className="flex flex-wrap gap-1.5">
+          {TYPES.map((type) => (
+            <Badge
+              key={type}
+              type={type}
+              active={activeType === type}
+              onClick={() => setActiveType(activeType === type ? '' : type)}
+            />
+          ))}
+        </div>
+
+        {/* Scope + Project selects */}
+        <div className="flex items-center gap-3">
+          <select
+            value={activeScope}
+            onChange={(e) => setActiveScope(e.target.value)}
+            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-[13px] text-[var(--color-text-primary)]"
+          >
+            <option value="">{t.common.allScopes}</option>
+            {SCOPES.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+
+          {projects.length > 0 && (
+            <select
+              value={activeProject}
+              onChange={(e) => setActiveProject(e.target.value)}
+              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-[13px] text-[var(--color-text-primary)]"
+            >
+              <option value="">{t.common.allProjects}</option>
+              {projects.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      </div>
+
+      {/* Initial empty state with hint */}
+      {!searched && (
+        <EmptyState
+          title={t.searchPage.hintTitle}
+          description={t.searchPage.hintDescription}
+        />
+      )}
 
       {/* Results */}
       {searched && (
