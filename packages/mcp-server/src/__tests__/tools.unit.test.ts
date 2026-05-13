@@ -443,6 +443,29 @@ describe('Tool Handlers', () => {
       expect(setup.ctx.activeSessionId).toBe(sessionId);
     });
 
+    it('should start a session without project_id (uses config default)', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_session_start',
+        arguments: { metadata: { agent: 'test' } },
+      });
+
+      const text = parseActionText(response);
+      expect(text).toContain('started');
+      // Should use the default project from ctx.projectId
+      expect(text).toContain(setup.ctx.projectId);
+    });
+
+    it('should normalize project_id on session start', async () => {
+      const response = await setup.client.callTool({
+        name: 'mem_session_start',
+        arguments: { project_id: 'SURA Chile Autos' },
+      });
+
+      const text = parseActionText(response);
+      expect(text).toContain('started');
+      expect(text).toContain('sura-chile-autos');
+    });
+
     it('should end active session', async () => {
       await setup.client.callTool({
         name: 'mem_session_start',
