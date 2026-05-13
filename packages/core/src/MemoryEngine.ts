@@ -121,6 +121,28 @@ export class MemoryEngine {
       );
     `);
 
+    // Migrate: add working_dir and aliases columns to projects table (Issue #177)
+    try {
+      this.db.exec('SELECT working_dir FROM projects LIMIT 0');
+    } catch {
+      try {
+        this.db.exec('ALTER TABLE projects ADD COLUMN working_dir TEXT');
+        console.error('✓ Migration: added working_dir column to projects');
+      } catch {
+        // Column may already exist
+      }
+    }
+    try {
+      this.db.exec('SELECT aliases FROM projects LIMIT 0');
+    } catch {
+      try {
+        this.db.exec("ALTER TABLE projects ADD COLUMN aliases TEXT DEFAULT '[]'");
+        console.error('✓ Migration: added aliases column to projects');
+      } catch {
+        // Column may already exist
+      }
+    }
+
     // Migrate: add deleted_at column if missing
     try {
       this.db.exec('SELECT deleted_at FROM observations LIMIT 0');
@@ -1977,6 +1999,253 @@ export class MemoryEngine {
     });
 
     return projects;
+  }
+
+  // ─── Project Registry (Issue #177) ────────────────────────
+
+  /**
+   * Register a project in the projects table.
+   * Uses INSERT OR IGNORE to be idempotent.
+   * Returns the registered project name (normalized).
+   */
+  registerProject(name: string, workingDir?: string): string {
+    this.checkHealth();
+
+    const { normalizeProjectId } = require('./ConfigManager');
+    const normalizedName = normalizeProjectId(name);
+
+    const now = Date.now();
+    this.db
+      .prepare(
+        `INSERT OR IGNORE INTO projects (name, created_at, metadata, working_dir, aliases) VALUES (?, ?, ?, ?, ?)`
+      )
+      .run(normalizedName, now, '{}', workingDir || null, '[]');
+
+    return normalizedName;
+  }
+
+  /**
+   * Get all registered project names from the projects table.
+   */
+  listRegisteredProjects(): Array<{ name: string; workingDir: string | null; aliases: string[] }> {
+    this.checkHealth();
+
+    const rows = this.db
+      .prepare('SELECT name, working_dir, aliases FROM projects ORDER BY name')
+      .all() as Array<{ name: string; working_dir: string | null; aliases: string | null }>;
+
+    return rows.map((row) => ({
+      name: row.name,
+      workingDir: row.working_dir,
+      aliases: row.aliases ? JSON.parse(row.aliases) : [],
+    }));
+  }
+
+  /**
+   * Merge all observations and sessions from sourceProject into targetProject.
+   * Also updates FTS index. Returns count of affected records.
+   *
+   * Tries both the raw source name and the normalized version to handle
+   * un-normalized data in the database.
+   */
+  mergeProject(sourceProjectId: string, targetProjectId: string): {
+    observationsMoved: number;
+    sessionsMoved: number;
+    journalMoved: number;
+    promptsMoved: number;
+  } {
+    this.checkHealth();
+
+    const { normalizeProjectId } = require('./ConfigManager');
+    const normalizedSource = normalizeProjectId(sourceProjectId);
+    const target = normalizeProjectId(targetProjectId);
+
+    // Check same-name BEFORE searching for data
+    if (normalizedSource === target) {
+      throw new Error(`Source and target are the same after normalization: "${normalizedSource}"`);
+    }
+
+    // Resolve source: try raw name first, then normalized
+    const candidates = [sourceProjectId, normalizedSource];
+    let source: string | null = null;
+
+    for (const candidate of candidates) {
+      if (candidate === target) continue; // skip if same as target
+      const count = this.db
+        .prepare('SELECT COUNT(*) as count FROM observations WHERE project_id = ?')
+        .get(candidate) as { count: number };
+      if (count.count > 0) {
+        source = candidate;
+        break;
+      }
+      // Also check sessions and journal
+      const sessionCount = this.db
+        .prepare('SELECT COUNT(*) as count FROM sessions WHERE project_id = ?')
+        .get(candidate) as { count: number };
+      const journalCount = this.db
+        .prepare('SELECT COUNT(*) as count FROM journal WHERE project_id = ?')
+        .get(candidate) as { count: number };
+      if (sessionCount.count > 0 || journalCount.count > 0) {
+        source = candidate;
+        break;
+      }
+    }
+
+    if (!source) {
+      throw new Error(
+        `No data found for source project: "${sourceProjectId}" (also tried "${normalizedSource}")`
+      );
+    }
+
+    // Move observations
+    const obsResult = this.db
+      .prepare('UPDATE observations SET project_id = ? WHERE project_id = ?')
+      .run(target, source);
+
+    // Move sessions
+    const sessionResult = this.db
+      .prepare('UPDATE sessions SET project_id = ? WHERE project_id = ?')
+      .run(target, source);
+
+    // Move journal entries
+    const journalResult = this.db
+      .prepare('UPDATE journal SET project_id = ? WHERE project_id = ?')
+      .run(target, source);
+
+    // Move prompts
+    const promptsResult = this.db
+      .prepare('UPDATE prompts SET project_id = ? WHERE project_id = ?')
+      .run(target, source);
+
+    // Re-index FTS for moved observations (delete old + insert new)
+    this.db.prepare('DELETE FROM observations_fts WHERE project_id = ?').run(source);
+    const movedObs = this.db
+      .prepare('SELECT id, title, content, topic_key, project_id FROM observations WHERE project_id = ?')
+      .all(target) as Array<{ id: number; title: string; content: string; topic_key: string; project_id: string }>;
+    for (const obs of movedObs) {
+      this.db
+        .prepare('INSERT OR REPLACE INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)')
+        .run(obs.id, obs.title, obs.content, obs.topic_key ?? '', obs.project_id);
+    }
+
+    // Add source as alias of target in projects table
+    try {
+      const existing = this.db
+        .prepare('SELECT aliases FROM projects WHERE name = ?')
+        .get(target) as { aliases: string | null } | undefined;
+
+      if (existing) {
+        const aliases: string[] = existing.aliases ? JSON.parse(existing.aliases) : [];
+        if (!aliases.includes(source)) {
+          aliases.push(source);
+          this.db.prepare('UPDATE projects SET aliases = ? WHERE name = ?').run(JSON.stringify(aliases), target);
+        }
+      }
+    } catch {
+      // Non-critical — alias tracking is best-effort
+    }
+
+    return {
+      observationsMoved: obsResult.changes,
+      sessionsMoved: sessionResult.changes,
+      journalMoved: journalResult.changes,
+      promptsMoved: promptsResult.changes,
+    };
+  }
+
+  /**
+   * Normalize all project_id values in the database.
+   * After normalization, merges projects that became identical.
+   * Returns details of what was changed.
+   */
+  normalizeAllProjectIds(): {
+    normalized: number;
+    merged: Array<{ from: string; to: string; observationsMoved: number }>;
+  } {
+    this.checkHealth();
+
+    const { normalizeProjectId } = require('./ConfigManager');
+
+    // Get all distinct project_ids
+    const obsProjects = this.db
+      .prepare('SELECT DISTINCT project_id FROM observations')
+      .all() as Array<{ project_id: string }>;
+    const sessionProjects = this.db
+      .prepare('SELECT DISTINCT project_id FROM sessions')
+      .all() as Array<{ project_id: string }>;
+
+    const allProjects = new Set([
+      ...obsProjects.map((r) => r.project_id),
+      ...sessionProjects.map((r) => r.project_id),
+    ]);
+
+    // Build normalization map: original → normalized
+    const normalizationMap = new Map<string, string>();
+    for (const original of allProjects) {
+      const normalized = normalizeProjectId(original);
+      if (normalized !== original) {
+        normalizationMap.set(original, normalized);
+      }
+    }
+
+    // Apply normalizations
+    let normalizedCount = 0;
+    for (const [original, normalized] of normalizationMap) {
+      // Update observations
+      const obsResult = this.db
+        .prepare('UPDATE observations SET project_id = ? WHERE project_id = ?')
+        .run(normalized, original);
+      normalizedCount += obsResult.changes;
+
+      // Update sessions
+      const sessionResult = this.db
+        .prepare('UPDATE sessions SET project_id = ? WHERE project_id = ?')
+        .run(normalized, original);
+      normalizedCount += sessionResult.changes;
+
+      // Update journal
+      const journalResult = this.db
+        .prepare('UPDATE journal SET project_id = ? WHERE project_id = ?')
+        .run(normalized, original);
+      normalizedCount += journalResult.changes;
+
+      // Update prompts
+      const promptsResult = this.db
+        .prepare('UPDATE prompts SET project_id = ? WHERE project_id = ?')
+        .run(normalized, original);
+      normalizedCount += promptsResult.changes;
+    }
+
+    // After normalization, find duplicates (same normalized name) and merge
+    const currentProjects = this.db
+      .prepare('SELECT DISTINCT project_id FROM observations')
+      .all() as Array<{ project_id: string }>;
+
+    // Group by normalized name to find duplicates — but since we already normalized,
+    // just check for remaining duplicates (shouldn't be any after normalization above)
+    // The main purpose of mergeProject is for MANUAL consolidation of differently-named projects
+    // that happen to represent the same real-world project
+
+    // Re-index FTS completely for affected projects
+    if (normalizedCount > 0) {
+      // Delete and rebuild FTS for all changed projects
+      for (const normalized of new Set(normalizationMap.values())) {
+        this.db.prepare('DELETE FROM observations_fts WHERE project_id = ?').run(normalized);
+        const obs = this.db
+          .prepare('SELECT id, title, content, topic_key, project_id FROM observations WHERE project_id = ?')
+          .all(normalized) as Array<{ id: number; title: string; content: string; topic_key: string; project_id: string }>;
+        for (const o of obs) {
+          this.db
+            .prepare('INSERT OR REPLACE INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)')
+            .run(o.id, o.title, o.content, o.topic_key ?? '', o.project_id);
+        }
+      }
+    }
+
+    return {
+      normalized: normalizedCount,
+      merged: [],
+    };
   }
 
   async getDashboardStats(): Promise<{

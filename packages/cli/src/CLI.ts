@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { MemoryEngine, loadConfig, resolveDbPath, getProjectId } from '@slorenzot/memento-core';
+import { MemoryEngine, loadConfig, resolveDbPath, getProjectId, normalizeProjectId } from '@slorenzot/memento-core';
 import type { Observation } from '@slorenzot/memento-core';
 
 // @ts-ignore
@@ -228,6 +228,92 @@ export class CLI {
         console.log(`Using model: ${status.model}`);
         const result = await this.memory.backfillEmbeddings(batchSize);
         console.log(`Backfill complete: ${result.processed} embeddings generated, ${result.failed} failed`);
+      });
+
+    // ─── Project commands (Issue #177) ─────────────────────────
+
+    const project = this.program.command('project').description('Manage project identifiers and fix fragmentation');
+
+    project
+      .command('list')
+      .description('List all projects with observation counts')
+      .action(async () => {
+        const projects = await this.memory.listProjects();
+        if (projects.length === 0) {
+          console.log('No projects found.');
+          return;
+        }
+
+        console.log(`\nProjects (${projects.length}):\n`);
+        console.log('  Project Name'.padEnd(45) + 'Active  Deleted  Last Activity');
+        console.log('  ' + '─'.repeat(75));
+        for (const p of projects) {
+          const lastActivity = p.lastActivity
+            ? p.lastActivity.toISOString().split('T')[0]
+            : 'never';
+          const name = p.name.length > 40 ? p.name.substring(0, 37) + '...' : p.name;
+          console.log(
+            `  ${name.padEnd(43)}${String(p.activeCount).padStart(5)}  ${String(p.deletedCount).padStart(7)}  ${lastActivity}`
+          );
+        }
+        console.log('');
+      });
+
+    project
+      .command('merge <source> <target>')
+      .description('Move all observations from source project to target')
+      .action(async (source, target) => {
+        const normalizedSource = normalizeProjectId(source);
+        const normalizedTarget = normalizeProjectId(target);
+
+        if (normalizedSource === normalizedTarget) {
+          console.error(`Error: Source and target are the same after normalization: "${normalizedSource}"`);
+          return;
+        }
+
+        console.log(`Merging "${source}" → "${target}" (normalized: "${normalizedSource}" → "${normalizedTarget}")`);
+        const result = this.memory.mergeProject(source, target);
+        console.log(`  Observations moved: ${result.observationsMoved}`);
+        console.log(`  Sessions moved: ${result.sessionsMoved}`);
+        console.log(`  Journal entries moved: ${result.journalMoved}`);
+        console.log(`  Prompts moved: ${result.promptsMoved}`);
+      });
+
+    project
+      .command('normalize')
+      .description('Normalize all project_id values in the database (lowercase, hyphens, no spaces)')
+      .action(async () => {
+        console.log('Normalizing all project_id values...');
+        const result = this.memory.normalizeAllProjectIds();
+        if (result.normalized === 0) {
+          console.log('All project names are already normalized.');
+        } else {
+          console.log(`Normalized ${result.normalized} record(s).`);
+          if (result.merged.length > 0) {
+            for (const m of result.merged) {
+              console.log(`  Merged "${m.from}" → "${m.to}" (${m.observationsMoved} observations)`);
+            }
+          }
+        }
+      });
+
+    project
+      .command('registered')
+      .description('List registered (canonical) projects')
+      .action(async () => {
+        const projects = this.memory.listRegisteredProjects();
+        if (projects.length === 0) {
+          console.log('No projects registered. Start an MCP server to auto-register.');
+          return;
+        }
+
+        console.log(`\nRegistered Projects (${projects.length}):\n`);
+        for (const p of projects) {
+          console.log(`  ${p.name}`);
+          if (p.workingDir) console.log(`    Working dir: ${p.workingDir}`);
+          if (p.aliases.length > 0) console.log(`    Aliases: ${p.aliases.join(', ')}`);
+        }
+        console.log('');
       });
 
     // ─── Journal commands (append-only evidence) ──────────────

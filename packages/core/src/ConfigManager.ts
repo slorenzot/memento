@@ -76,6 +76,35 @@ const GLOBAL_CONFIG_DIR = join(homedir(), '.memento');
 const GLOBAL_CONFIG_FILE = 'config.json';
 const GLOBAL_CONFIG_PATH = join(GLOBAL_CONFIG_DIR, GLOBAL_CONFIG_FILE);
 
+// ─── Project ID Normalization ──────────────────────────────
+
+/**
+ * Normalize a project identifier to a canonical form.
+ * - Lowercase
+ * - Replace spaces, underscores, and special chars with hyphens
+ * - Collapse multiple consecutive hyphens into one
+ * - Strip leading/trailing hyphens
+ *
+ * Examples:
+ *   "sura chile autos"           → "sura-chile-autos"
+ *   "suratech-salesforce-CL-app" → "suratech-salesforce-cl-app"
+ *   "my__cool  project"          → "my-cool-project"
+ *   "--leading-trailing--"       → "leading-trailing"
+ *   "  spaces  everywhere  "     → "spaces-everywhere"
+ */
+export function normalizeProjectId(name: string): string {
+  if (!name || typeof name !== 'string') {
+    return 'default';
+  }
+
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')   // replace non-alphanumeric sequences with single hyphen
+    .replace(/^-+|-+$/g, '')       // strip leading/trailing hyphens
+    || 'default';                   // fallback if result is empty
+}
+
 // ─── Internal Helpers ───────────────────────────────────────
 
 function loadJSONFile<T>(path: string): T | null {
@@ -267,13 +296,15 @@ export function resolveDbPath(config: MementoConfig): string {
 
 export function getProjectId(config: MementoConfig): string {
   if (config.projectId) {
-    return config.projectId;
+    return normalizeProjectId(config.projectId);
   }
 
   const packageJsonPath = join(process.cwd(), 'package.json');
   const packageJson = loadJSONFile<{ name?: string }>(packageJsonPath);
+  const rawName = packageJson?.name || 'default';
 
-  return packageJson?.name || 'default';
+  // Strip @scope/ prefix before normalizing (consistent with deriveProjectName)
+  return normalizeProjectId(rawName.replace(/^@[^/]+\//, ''));
 }
 
 // ─── Config V1 ↔ Legacy Conversion ─────────────────────────

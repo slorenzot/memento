@@ -10,7 +10,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { MemoryEngine, getStaleThresholdMs } from '@slorenzot/memento-core';
+import { MemoryEngine, getStaleThresholdMs, normalizeProjectId } from '@slorenzot/memento-core';
 import type { ExportFormat, MergeStrategy, Observation } from '@slorenzot/memento-core';
 import { existsSync } from 'fs';
 import { join } from 'path';
@@ -61,6 +61,18 @@ function handleToolError(error: unknown, ctx: McpServerContext): { content: Arra
 // ─── Tool Registration ──────────────────────────────────────
 
 export function registerTools(server: McpServer, ctx: McpServerContext): void {
+
+  // ─── Project ID Resolution (Issue #177) ────────────────────
+  /**
+   * Normalize an incoming project_id and fall back to the canonical
+   * project from config (ctx.projectId) when not provided.
+   */
+  function resolveProjectId(projectId?: string): string {
+    if (projectId) {
+      return normalizeProjectId(projectId);
+    }
+    return ctx.projectId;
+  }
   // ─── Observation Tools ──────────────────────────────────────
 
   server.tool(
@@ -86,7 +98,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     { title: 'Save observation', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     async ({ title, content, type, topic_key, project_id, metadata, scope, pinned, read_only }) => {
       try {
-        const currentProjectId = project_id || ctx.projectId;
+        const currentProjectId = resolveProjectId(project_id);
         let sessionId = ctx.activeSessionId;
 
         if (!sessionId) {
@@ -154,13 +166,14 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     { title: 'Search observations', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     async ({ query, type, project_id, topic_key, limit, offset, include_deleted, scope, sort, mode }) => {
       try {
+        const resolvedProjectId = resolveProjectId(project_id);
         const searchMode = mode || 'keyword';
         const sortMode = sort || 'relevance';
 
         // Chronological mode: delegate to getTimeline for strict chronological order
         if (sortMode === 'chronological') {
           const result = await ctx.engine.getTimeline({
-            projectId: project_id,
+            projectId: resolvedProjectId,
             limit: limit || 50,
             offset,
           });
@@ -173,7 +186,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         const result = await ctx.engine.search({
           query,
           type: type as Observation['type'] | undefined,
-          projectId: project_id,
+          projectId: resolvedProjectId,
           topicKey: topic_key,
           limit: limit || 10,
           offset,
@@ -347,7 +360,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
               };
             }
             const result = await ctx.engine.purgeObservations({
-              projectId: project_id,
+              projectId: resolveProjectId(project_id),
               observationIds: observation_ids,
             });
             return {
@@ -356,7 +369,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
           }
 
           case 'list': {
-            const result = await ctx.engine.listDeleted({ projectId: project_id, limit });
+            const result = await ctx.engine.listDeleted({ projectId: resolveProjectId(project_id), limit });
             return {
               content: [{ type: 'text', text: formatObservationList(result) }],
             };
@@ -395,7 +408,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     async ({ project_id, topic_key, observation_ids, strategy, dry_run }) => {
       try {
         const results = await ctx.engine.mergeObservations({
-          projectId: project_id,
+          projectId: resolveProjectId(project_id),
           topicKey: topic_key,
           observationIds: observation_ids,
           strategy: (strategy as MergeStrategy) || 'by_topic',
@@ -528,7 +541,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
       try {
         const result = await ctx.engine.exportObservations({
           format: (format as ExportFormat) || 'json',
-          projectId: project_id,
+          projectId: resolveProjectId(project_id),
           type: type as Observation['type'] | undefined,
           topicKey: topic_key,
           dateFrom: date_from ? new Date(date_from) : undefined,
@@ -566,18 +579,20 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     'mem_session_start',
     'Start a new memory session for tracking a coding conversation. Call this at the BEGINNING of a session to group all subsequent observations together. Only one session is active at a time — starting a new one replaces the previous. Returns: human-readable confirmation with session ID.',
     {
-      project_id: z.string().describe('Project identifier'),
+      project_id: z.string().optional().describe('Project identifier (defaults to config project)'),
       metadata: z.record(z.unknown()).optional().describe('Additional session metadata (e.g. agent name, environment)'),
     },
     { title: 'Start session', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     async ({ project_id, metadata }) => {
       try {
+        const resolvedProjectId = resolveProjectId(project_id);
+
         // Auto-close stale sessions for this project before creating new one
         const staleThreshold = getStaleThresholdMs();
-        const staleResult = ctx.engine.closeStaleSessionsForProject(project_id, staleThreshold);
+        const staleResult = ctx.engine.closeStaleSessionsForProject(resolvedProjectId, staleThreshold);
 
         const session = await ctx.engine.createSession({
-          projectId: project_id,
+          projectId: resolvedProjectId,
           endedAt: null,
           metadata: metadata || {},
           seedIfEmpty: true,
@@ -585,14 +600,14 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         ctx.activeSessionId = session.id;
 
         const staleNote = staleResult.closed > 0
-          ? `\nAuto-closed ${staleResult.closed} stale session(s) for project: ${project_id}`
+          ? `\nAuto-closed ${staleResult.closed} stale session(s) for project: ${resolvedProjectId}`
           : '';
 
         return {
           content: [
             {
               type: 'text',
-              text: `Session #${session.id} started (project: ${project_id})${staleNote}`,
+              text: `Session #${session.id} started (project: ${resolvedProjectId})${staleNote}`,
             },
           ],
         };
@@ -641,7 +656,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     async ({ project_id, limit, scope }) => {
       try {
         const result = await ctx.engine.getRecentContext({
-          projectId: project_id,
+          projectId: resolveProjectId(project_id),
           limit: limit || 20,
           scope: scope as 'project' | 'personal' | undefined,
         });
@@ -660,13 +675,13 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     'Create a session summary observation at the END of a conversation. Saves an observation with type "summary" and a structured format (Goal/Discoveries/Accomplished/Files). Call this BEFORE closing a conversation. Returns: human-readable confirmation with observation ID.',
     {
       content: z.string().describe('Structured summary content (Goal/Discoveries/Accomplished/Files format)'),
-      project_id: z.string().describe('Project identifier'),
+      project_id: z.string().optional().describe('Project identifier'),
       session_id: z.number().optional().describe('Session ID (uses active session if not provided)'),
     },
     { title: 'Save session summary', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     async ({ content, project_id, session_id }) => {
       try {
-        const currentProjectId = project_id || ctx.projectId;
+        const currentProjectId = resolveProjectId(project_id);
         let sessionId = session_id || ctx.activeSessionId;
 
         if (!sessionId) {
@@ -719,7 +734,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     { title: 'Capture passive learnings', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     async ({ content, project_id, session_id, source }) => {
       try {
-        const currentProjectId = project_id || ctx.projectId;
+        const currentProjectId = resolveProjectId(project_id);
         let sessionId = session_id || ctx.activeSessionId;
 
         if (!sessionId) {
@@ -934,7 +949,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         // Sessions section
         if (sec === 'all' || sec === 'sessions') {
           const result = await ctx.engine.listSessions({
-            projectId: project_id,
+            projectId: resolveProjectId(project_id),
             limit: limit || 20,
           });
           sections.push(formatSessionList({ sessions: result.sessions, total: result.total }));
@@ -965,7 +980,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
     { title: 'Write journal entry', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     async ({ title, body, tags, project_id, supersedes, metadata }) => {
       try {
-        const currentProjectId = project_id || ctx.projectId;
+        const currentProjectId = resolveProjectId(project_id);
         let sessionId = ctx.activeSessionId;
 
         if (!sessionId) {
@@ -1049,7 +1064,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
         const result = await ctx.engine.searchJournal({
           query,
           tags,
-          projectId: project_id,
+          projectId: resolveProjectId(project_id),
           activeOnly: active_only,
           dateFrom: date_from ? new Date(date_from) : undefined,
           dateTo: date_to ? new Date(date_to) : undefined,
