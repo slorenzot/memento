@@ -24,6 +24,16 @@ import type {
   JournalSearchResult,
   PromptInjectionConfig,
   RenderedPromptContext,
+  FullExportData,
+  FullExportedProject,
+  FullExportedSession,
+  FullExportedObservation,
+  FullExportedPrompt,
+  FullExportedJournalEntry,
+  FullImportOptions,
+  FullImportResult,
+  ListPromptsParams,
+  ListPromptsResult,
 } from './types.js';
 
 import { Database } from 'bun:sqlite';
@@ -2846,6 +2856,413 @@ export class MemoryEngine {
       metadata: this.deserialize(r.metadata),
       createdAt: new Date(r.created_at),
     };
+  }
+
+  // ─── Full Export/Import (v2.0) ────────────────────────────────
+
+  async listPrompts(params?: ListPromptsParams): Promise<ListPromptsResult> {
+    this.checkHealth();
+    const { projectId, sessionId, limit = 50, offset = 0 } = params || {};
+
+    let whereClause = ' WHERE 1=1';
+    const values: (string | number)[] = [];
+
+    if (projectId) {
+      whereClause += ' AND project_id = ?';
+      values.push(projectId);
+    }
+    if (sessionId) {
+      whereClause += ' AND session_id = ?';
+      values.push(sessionId);
+    }
+
+    const countResult = this.db.prepare(
+      `SELECT COUNT(*) as count FROM prompts${whereClause}`
+    ).get(...values) as { count: number } | undefined;
+    const total = countResult?.count ?? 0;
+
+    const rows = this.db.prepare(
+      `SELECT * FROM prompts${whereClause} ORDER BY created_at ASC LIMIT ? OFFSET ?`
+    ).all(...values, limit, offset);
+
+    const prompts = (rows as Record<string, unknown>[]).map((row) => this.mapPrompt(row));
+    return { prompts, total };
+  }
+
+  async exportProject(projectId: string): Promise<FullExportData> {
+    this.checkHealth();
+
+    // Fetch all data in parallel using Promise.all
+    const [
+      observationsResult,
+      sessionsResult,
+      journalResult,
+      promptsResult,
+    ] = await Promise.all([
+      this.search({ projectId, limit: 100000, includeDeleted: true }),
+      this.listSessions({ projectId, limit: 100000 }),
+      this.searchJournal({ projectId, limit: 100000 }),
+      this.listPrompts({ projectId, limit: 100000 }),
+    ]);
+
+    // Fetch project data
+    const projectRow = this.db
+      .prepare('SELECT * FROM projects WHERE name = ?')
+      .get(projectId) as Record<string, unknown> | undefined;
+
+    const projects: FullExportedProject[] = projectRow
+      ? [{
+          name: projectRow.name as string,
+          createdAt: new Date(projectRow.created_at as number).toISOString(),
+          metadata: this.deserialize(projectRow.metadata as string | null),
+        }]
+      : [{
+          name: projectId,
+          createdAt: new Date().toISOString(),
+          metadata: {},
+        }];
+
+    const sessions: FullExportedSession[] = sessionsResult.sessions.map((s) => ({
+      uuid: s.uuid,
+      projectId: s.projectId,
+      startedAt: s.startedAt.toISOString(),
+      endedAt: s.endedAt ? s.endedAt.toISOString() : null,
+      metadata: s.metadata,
+    }));
+
+    const observations: FullExportedObservation[] = observationsResult.observations.map((o) => ({
+      uuid: o.uuid,
+      title: o.title,
+      content: o.content,
+      type: o.type,
+      topicKey: o.topicKey,
+      projectId: o.projectId,
+      scope: o.scope,
+      pinned: o.pinned,
+      readOnly: o.readOnly,
+      revisionCount: o.revisionCount,
+      createdAt: o.createdAt.toISOString(),
+      deletedAt: o.deletedAt ? o.deletedAt.toISOString() : null,
+      metadata: o.metadata,
+    }));
+
+    const prompts: FullExportedPrompt[] = promptsResult.prompts.map((p) => ({
+      uuid: p.uuid,
+      content: p.content,
+      projectId: p.projectId,
+      createdAt: p.createdAt.toISOString(),
+      metadata: p.metadata,
+    }));
+
+    const journal: FullExportedJournalEntry[] = journalResult.entries.map((j) => ({
+      uuid: j.uuid,
+      title: j.title,
+      body: j.body,
+      tags: j.tags,
+      projectId: j.projectId,
+      model: j.model,
+      provider: j.provider,
+      agent: j.agent,
+      supersededByUuid: null, // Resolved below
+      invalidatedAt: j.invalidatedAt ? j.invalidatedAt.toISOString() : null,
+      metadata: j.metadata,
+      createdAt: j.createdAt.toISOString(),
+    }));
+
+    // Resolve journal supersedes references from ID to UUID
+    const journalIdToUuid = new Map<number, string>();
+    for (const entry of journalResult.entries) {
+      journalIdToUuid.set(entry.id, entry.uuid);
+    }
+    for (let i = 0; i < journal.length; i++) {
+      const supersededById = journalResult.entries[i].supersededBy;
+      if (supersededById !== null) {
+        journal[i].supersededByUuid = journalIdToUuid.get(supersededById) ?? null;
+      }
+    }
+
+    return {
+      version: '2.0',
+      exportedAt: new Date().toISOString(),
+      source: {
+        project: projectId,
+        allProjects: false,
+      },
+      stats: {
+        totalProjects: projects.length,
+        totalSessions: sessions.length,
+        totalObservations: observations.length,
+        totalPrompts: prompts.length,
+        totalJournalEntries: journal.length,
+      },
+      projects,
+      sessions,
+      observations,
+      prompts,
+      journal,
+    };
+  }
+
+  async importProject(data: FullExportData, options?: FullImportOptions): Promise<FullImportResult> {
+    this.checkHealth();
+    const { conflictStrategy = 'skip', dryRun = false } = options || {};
+
+    const result: FullImportResult = {
+      imported: { projects: 0, sessions: 0, observations: 0, prompts: 0, journalEntries: 0 },
+      skipped: { observations: 0, sessions: 0, journalEntries: 0 },
+      overwritten: { observations: 0 },
+      failed: 0,
+      errors: [],
+    };
+
+    if (!data.version) {
+      throw new Error('Invalid import data: missing version field');
+    }
+
+    // Determine target project
+    const targetProject = options?.projectId || data.source?.project || 'import';
+
+    // Validate observations types
+    const validTypes: Observation['type'][] = ['decision', 'bug', 'discovery', 'note', 'summary', 'learning', 'pattern', 'architecture', 'config', 'preference'];
+
+    // UUID → new ID mappings for referential integrity
+    const sessionUuidToId = new Map<string, number>();
+
+    // Create import session
+    const importSession = await this.createSession({
+      projectId: targetProject,
+      endedAt: null,
+      metadata: { type: 'full-import', source: 'web-ui', timestamp: new Date().toISOString() },
+    });
+
+    const doImport = this.db.transaction(() => {
+      // 1. Import projects (register if not exists)
+      if (data.projects && data.projects.length > 0) {
+        for (const proj of data.projects) {
+          if (!dryRun) {
+            this.db.prepare(
+              'INSERT OR IGNORE INTO projects (name, created_at, metadata) VALUES (?, ?, ?)'
+            ).run(proj.name, Date.now(), this.serialize(proj.metadata || {}));
+          }
+          result.imported.projects++;
+        }
+      }
+
+      // 2. Import sessions (create new, map UUID → new ID)
+      if (data.sessions && data.sessions.length > 0) {
+        for (const sess of data.sessions) {
+          // Check if session with this UUID already exists
+          const existing = this.db
+            .prepare('SELECT id FROM sessions WHERE uuid = ?')
+            .get(sess.uuid) as { id: number } | undefined;
+
+          if (existing) {
+            sessionUuidToId.set(sess.uuid, existing.id);
+            result.skipped.sessions++;
+            continue;
+          }
+
+          if (!dryRun) {
+            const insertResult = this.db.prepare(
+              'INSERT INTO sessions (uuid, project_id, started_at, ended_at, metadata) VALUES (?, ?, ?, ?, ?)'
+            ).run(
+              sess.uuid,
+              targetProject,
+              new Date(sess.startedAt).getTime(),
+              sess.endedAt ? new Date(sess.endedAt).getTime() : null,
+              this.serialize(sess.metadata || {})
+            );
+            const newId = typeof insertResult.lastInsertRowid === 'bigint'
+              ? Number(insertResult.lastInsertRowid)
+              : insertResult.lastInsertRowid;
+            sessionUuidToId.set(sess.uuid, newId);
+          } else {
+            // For dry run, assign placeholder IDs
+            sessionUuidToId.set(sess.uuid, -(result.imported.sessions + 1));
+          }
+          result.imported.sessions++;
+        }
+      }
+
+      // 3. Import observations
+      if (data.observations && data.observations.length > 0) {
+        for (const obs of data.observations) {
+          if (!obs.title || !obs.content || !obs.type) {
+            result.errors.push(`Invalid observation: missing required fields`);
+            result.failed++;
+            continue;
+          }
+
+          if (!validTypes.includes(obs.type as Observation['type'])) {
+            result.errors.push(`Invalid type: "${obs.type}"`);
+            result.failed++;
+            continue;
+          }
+
+          // Check for duplicate by UUID
+          const existing = obs.uuid
+            ? this.db.prepare('SELECT id FROM observations WHERE uuid = ?').get(obs.uuid) as { id: number } | undefined
+            : undefined;
+
+          if (existing) {
+            if (conflictStrategy === 'skip') {
+              result.skipped.observations++;
+              continue;
+            }
+            if (conflictStrategy === 'overwrite' && !dryRun) {
+              this.db.prepare(
+                `UPDATE observations SET title = ?, content = ?, type = ?, topic_key = ?, metadata = ?, scope = ?, pinned = ?, read_only = ?, revision_count = revision_count + 1 WHERE id = ?`
+              ).run(
+                obs.title, obs.content, obs.type, obs.topicKey ?? null,
+                this.serialize(obs.metadata || {}),
+                obs.scope || 'project', obs.pinned ? 1 : 0, obs.readOnly ? 1 : 0,
+                existing.id
+              );
+              // FTS5 sync
+              this.db.prepare('DELETE FROM observations_fts WHERE rowid = ?').run(existing.id);
+              const row = this.db
+                .prepare('SELECT title, content, topic_key, project_id FROM observations WHERE id = ?')
+                .get(existing.id) as { title: string; content: string; topic_key: string; project_id: string } | undefined;
+              if (row) {
+                this.db.prepare(
+                  'INSERT INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)'
+                ).run(existing.id, row.title, row.content, row.topic_key, row.project_id);
+              }
+            }
+            result.overwritten.observations++;
+            continue;
+          }
+
+          if (!dryRun) {
+            const uuid = obs.uuid || crypto.randomUUID();
+            const createdAt = obs.createdAt ? new Date(obs.createdAt).getTime() : Date.now();
+            const sessionId = importSession.id;
+            const metadata = this.serialize(obs.metadata || {});
+
+            const insertResult = this.db.prepare(
+              `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, deleted_at, metadata, scope, pinned, read_only, revision_count)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            ).run(
+              uuid, sessionId, obs.title, obs.content, obs.type,
+              obs.topicKey ?? null, targetProject, createdAt,
+              obs.deletedAt ? new Date(obs.deletedAt).getTime() : null,
+              metadata, obs.scope || 'project',
+              obs.pinned ? 1 : 0, obs.readOnly ? 1 : 0,
+              obs.revisionCount ?? 0
+            );
+
+            const insertId = typeof insertResult.lastInsertRowid === 'bigint'
+              ? Number(insertResult.lastInsertRowid)
+              : insertResult.lastInsertRowid;
+
+            // FTS5 sync
+            this.db.prepare(
+              'INSERT INTO observations_fts(rowid, title, content, topic_key, project_id) VALUES (?, ?, ?, ?, ?)'
+            ).run(insertId, obs.title, obs.content, obs.topicKey ?? '', targetProject);
+          }
+          result.imported.observations++;
+        }
+      }
+
+      // 4. Import prompts
+      if (data.prompts && data.prompts.length > 0) {
+        for (const prompt of data.prompts) {
+          // Skip if UUID already exists
+          if (prompt.uuid) {
+            const existingPrompt = this.db
+              .prepare('SELECT id FROM prompts WHERE uuid = ?')
+              .get(prompt.uuid) as { id: number } | undefined;
+            if (existingPrompt) continue;
+          }
+
+          if (!dryRun) {
+            const uuid = prompt.uuid || crypto.randomUUID();
+            const createdAt = prompt.createdAt ? new Date(prompt.createdAt).getTime() : Date.now();
+            this.db.prepare(
+              'INSERT INTO prompts (uuid, session_id, content, project_id, created_at, metadata) VALUES (?, ?, ?, ?, ?, ?)'
+            ).run(uuid, importSession.id, prompt.content, targetProject, createdAt, this.serialize(prompt.metadata || {}));
+          }
+          result.imported.prompts++;
+        }
+      }
+
+      // 5. Import journal entries (with tag support and supersedes UUID mapping)
+      if (data.journal && data.journal.length > 0) {
+        // Two-pass: first insert all entries, then resolve supersedes
+        const journalUuidToId = new Map<string, number>();
+
+        for (const entry of data.journal) {
+          // Check if UUID already exists
+          const existingEntry = entry.uuid
+            ? this.db.prepare('SELECT id FROM journal WHERE uuid = ?').get(entry.uuid) as { id: number } | undefined
+            : undefined;
+
+          if (existingEntry) {
+            journalUuidToId.set(entry.uuid, existingEntry.id);
+            result.skipped.journalEntries++;
+            continue;
+          }
+
+          if (!dryRun) {
+            const uuid = entry.uuid || crypto.randomUUID();
+            const createdAt = entry.createdAt ? new Date(entry.createdAt).getTime() : Date.now();
+
+            // Find session by UUID if available
+            let sessionId: number | null = null;
+            // We don't have session UUID reference in journal import, use import session
+
+            const insertResult = this.db.prepare(
+              `INSERT INTO journal (uuid, project_id, session_id, title, body, model, provider, agent, superseded_by, invalidated_at, metadata, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`
+            ).run(
+              uuid, targetProject, sessionId,
+              entry.title, entry.body,
+              entry.model ?? null, entry.provider ?? null, entry.agent ?? null,
+              entry.invalidatedAt ? new Date(entry.invalidatedAt).getTime() : null,
+              this.serialize(entry.metadata || {}),
+              createdAt
+            );
+
+            const newId = typeof insertResult.lastInsertRowid === 'bigint'
+              ? Number(insertResult.lastInsertRowid)
+              : insertResult.lastInsertRowid;
+            journalUuidToId.set(uuid, newId);
+
+            // Insert tags
+            if (entry.tags && entry.tags.length > 0) {
+              for (const tag of entry.tags) {
+                this.db.prepare('INSERT INTO journal_tags (journal_id, tag) VALUES (?, ?)').run(newId, tag);
+              }
+            }
+          }
+          result.imported.journalEntries++;
+        }
+
+        // Second pass: resolve supersedes references
+        if (!dryRun) {
+          for (const entry of data.journal) {
+            if (entry.supersededByUuid && entry.uuid) {
+              const entryId = journalUuidToId.get(entry.uuid);
+              const supersededById = journalUuidToId.get(entry.supersededByUuid);
+              if (entryId && supersededById) {
+                this.db.prepare('UPDATE journal SET superseded_by = ? WHERE id = ?').run(supersededById, entryId);
+              }
+            }
+          }
+        }
+      }
+    });
+
+    try {
+      doImport();
+    } catch (error) {
+      if (error instanceof Error) {
+        result.errors.push(`Transaction failed: ${error.message}`);
+      }
+      result.failed++;
+    }
+
+    return result;
   }
 
   close(): void {

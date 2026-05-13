@@ -131,6 +131,13 @@ Dependency flow: `core → mcp-server → cli / api / tui → web-ui`
 - DESPUÉS del merge, verificar con `gh issue view {N} --json state` que el Issue se cerró
 - Si no se cerró automáticamente, cerrar manualmente con `gh issue close {N} --reason completed`
 
+**Ajustes en Issues cerrados**:
+- Si se encuentra un problema o gap después de cerrar un Issue, REABRIR el mismo Issue con `gh issue reopen {N}`
+- Crear branch con el MISMO nombre original: `fix/{issue}-{description}` o `feat/{issue}-{description}`
+- Hacer los ajustes + tests en esa branch
+- Seguir el workflow normal: build → test → commit → push → PR → merge → verificar cierre
+- NUNCA crear un branch nuevo para ajustes de un Issue existente — misma issue, misma rama
+
 ### Memento Epic Workflow (MEW)
 
 **Trigger**: Epic issues (#49, #50, #61, #30) — complex multi-step features requiring structured phases. Non-Epic issues use the standard delegation protocol.

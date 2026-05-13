@@ -2,6 +2,8 @@
 
 import { useUIStore, type Theme } from '@/stores/ui-store';
 import { useT } from '@/i18n/translation-context';
+import ProjectExport from '@/components/settings/ProjectExport';
+import ProjectImport from '@/components/settings/ProjectImport';
 
 export default function SettingsPage() {
   const t = useT();
@@ -63,6 +65,23 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Data Management section */}
+      <section className="space-y-4">
+        <h2 className="text-[16px] font-medium text-[var(--color-text-primary)]">
+          {t.dataManagement.title}
+        </h2>
+
+        {/* Export */}
+        <div className="rounded-lg border border-[var(--color-border)] p-4">
+          <ProjectExport />
+        </div>
+
+        {/* Import */}
+        <div className="rounded-lg border border-[var(--color-border)] p-4">
+          <ProjectImport />
         </div>
       </section>
     </div>
