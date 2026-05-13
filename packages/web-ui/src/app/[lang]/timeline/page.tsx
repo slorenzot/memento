@@ -4,6 +4,7 @@ import { TimelineClient } from '@/components/timeline/TimelineClient';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { getDictionary } from '@/i18n/get-dictionary';
 import type { Locale } from '@/i18n/config';
+import type { Session } from '@slorenzot/memento-core';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,16 @@ export default async function LangTimelinePage({ params, searchParams }: LangTim
     projectId: filters.projectId,
     limit: TIMELINE_PAGE_SIZE,
   });
+
+  // Batch-fetch unique sessions (no N+1)
+  const sessionIds = [...new Set(result.observations.map((o) => o.sessionId))];
+  const sessions: Record<number, Session> = {};
+  await Promise.all(
+    sessionIds.map(async (id) => {
+      const session = await engine.getSession(id);
+      if (session) sessions[id] = session;
+    }),
+  );
 
   // Load projects list for filter dropdown
   let projects: string[] = [];
@@ -53,6 +64,7 @@ export default async function LangTimelinePage({ params, searchParams }: LangTim
       initialTotal={result.total}
       initialScope={filters.scope ?? ''}
       initialProject={filters.projectId ?? ''}
+      initialSessions={sessions}
       projects={projects}
     />
   );

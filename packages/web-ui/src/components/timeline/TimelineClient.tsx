@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ObservationCard } from '@/components/observations/ObservationCard';
 import { useT } from '@/i18n/translation-context';
-import type { Observation } from '@slorenzot/memento-core';
+import type { Observation, Session } from '@slorenzot/memento-core';
 import type { Locale } from 'date-fns';
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
@@ -18,6 +18,7 @@ interface TimelineClientProps {
   initialTotal: number;
   initialScope: string;
   initialProject: string;
+  initialSessions: Record<number, Session>;
   projects: string[];
 }
 
@@ -58,6 +59,7 @@ export function TimelineClient({
   initialTotal,
   initialScope,
   initialProject,
+  initialSessions,
   projects,
 }: TimelineClientProps) {
   const t = useT();
@@ -71,6 +73,7 @@ export function TimelineClient({
   const [loading, setLoading] = useState(false);
   const [activeScope, setActiveScope] = useState(initialScope);
   const [activeProject, setActiveProject] = useState(initialProject);
+  const [sessions, setSessions] = useState<Record<number, Session>>(initialSessions);
 
   const hasMore = observations.length < total;
 
@@ -84,11 +87,7 @@ export function TimelineClient({
 
   const fetchTimeline = useCallback(async (scope: string, projectId: string, offset = 0) => {
     const isLoadMore = offset > 0;
-    if (isLoadMore) {
-      setLoading(true);
-    } else {
-      setLoading(true);
-    }
+    setLoading(true);
 
     try {
       const params = new URLSearchParams({
@@ -99,17 +98,24 @@ export function TimelineClient({
       if (projectId) params.set('projectId', projectId);
 
       const res = await fetch(`/api/observations/timeline?${params}`);
-      const data = await res.json();
+      const data = await res.json() as {
+        observations: Observation[];
+        total: number;
+        sessions: Record<number, Session>;
+      };
 
       if (isLoadMore) {
         setObservations((prev) => {
           const existingIds = new Set(prev.map((o) => o.id));
-          const newObs = (data.observations as Observation[]).filter((o) => !existingIds.has(o.id));
+          const newObs = data.observations.filter((o) => !existingIds.has(o.id));
           return [...prev, ...newObs];
         });
+        // Merge new sessions into existing map
+        setSessions((prev) => ({ ...prev, ...data.sessions }));
       } else {
         setObservations(data.observations);
         setTotal(data.total);
+        setSessions(data.sessions);
       }
     } finally {
       setLoading(false);
@@ -181,7 +187,11 @@ export function TimelineClient({
             </h2>
             <div className="grid gap-3">
               {dayObservations.map((obs) => (
-                <ObservationCard key={obs.id} observation={obs} />
+                <ObservationCard
+                  key={obs.id}
+                  observation={obs}
+                  session={sessions[obs.sessionId]}
+                />
               ))}
             </div>
           </div>
