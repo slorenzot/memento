@@ -21,8 +21,8 @@ export function Badge({ type, active, onClick }: BadgeProps) {
       className={clsx(
         'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] font-medium transition-colors',
         active
-          ? 'bg-[var(--color-primary)] text-white'
-          : 'bg-[var(--color-surface-hover)] text-[var(--color-secondary)]',
+          ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]'
+          : 'bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)]',
         onClick && 'cursor-pointer hover:opacity-80',
       )}
     >

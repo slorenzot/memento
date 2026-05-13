@@ -249,7 +249,7 @@ export default function ProjectImport() {
           <div className="flex items-center gap-3">
             <button
               onClick={handleImport}
-              className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-[14px] font-medium text-white hover:opacity-90 transition-opacity"
+              className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-[14px] font-medium text-[var(--color-on-primary)] hover:opacity-90 transition-opacity"
             >
               {t.dataManagement.importButton}
             </button>

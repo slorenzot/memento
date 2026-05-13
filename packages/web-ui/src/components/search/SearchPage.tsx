@@ -179,7 +179,7 @@ export function SearchPage() {
         <button
           onClick={() => handleSearch()}
           disabled={searching || !query.trim()}
-          className="rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-50 transition-colors"
+          className="rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-[14px] font-medium text-[var(--color-on-primary)] hover:bg-[var(--color-accent-hover)] disabled:opacity-50 transition-colors"
         >
           {searching ? t.common.searching : t.common.search}
         </button>
