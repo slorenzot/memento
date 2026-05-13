@@ -38,7 +38,7 @@ import type {
 
 import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'fs';
-import { dirname } from 'path';
+import { dirname, resolve } from 'path';
 
 export class MemoryEngine {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Bun Database type is incompatible with mock pattern
@@ -48,13 +48,13 @@ export class MemoryEngine {
   private embeddingService: EmbeddingService;
 
   constructor(dbPath: string = './data/memento.db') {
-    this.dbPath = dbPath;
+    this.dbPath = resolve(dbPath);
     this.embeddingService = new EmbeddingService();
 
     try {
-      const dbDir = dirname(dbPath);
+      const dbDir = dirname(this.dbPath);
       mkdirSync(dbDir, { recursive: true });
-      this.db = new Database(dbPath, { create: true });
+      this.db = new Database(this.dbPath, { create: true });
       this.initializeDatabase();
     } catch (error: unknown) {
       this.initError = error instanceof Error ? error : new Error(String(error));
