@@ -135,7 +135,10 @@
     "title": "Línea de tiempo",
     "noObservations": "Sin observaciones aún",
     "noObservationsDescription": "Tu línea de tiempo aparecerá aquí cuando crees observaciones.",
-    "loadEarlier": "Cargar anteriores"
+    "loadEarlier": "Cargar anteriores",
+    "sessionLabel": "Sesión #{id}",
+    "sessionActive": "Activa",
+    "sessionClosed": "Cerrada"
   },
   "dashboard": {
     "totalObservations": "Total observaciones",

@@ -135,7 +135,10 @@
     "title": "Timeline",
     "noObservations": "No observations yet",
     "noObservationsDescription": "Your timeline will appear here once you create observations.",
-    "loadEarlier": "Load earlier"
+    "loadEarlier": "Load earlier",
+    "sessionLabel": "Session #{id}",
+    "sessionActive": "Active",
+    "sessionClosed": "Closed"
   },
   "dashboard": {
     "totalObservations": "Total observations",

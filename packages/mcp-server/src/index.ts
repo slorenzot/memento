@@ -2,7 +2,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { MemoryEngine, loadConfig, resolveDbPath, getProjectId } from '@slorenzot/memento-core';
+import { MemoryEngine, loadConfig, resolveDbPath, getProjectId, normalizeProjectId } from '@slorenzot/memento-core';
 import { registerTools } from './tools.js';
 import type { McpServerContext } from './tools.js';
 
@@ -15,6 +15,8 @@ const projectId = getProjectId(config);
 const engine = new MemoryEngine(dbPath);
 if (engine.isHealthy()) {
   console.error(`✓ Database initialized successfully at: ${dbPath}`);
+  // Register canonical project in projects table (Issue #177)
+  engine.registerProject(projectId, process.cwd());
 } else {
   const initError = engine.getInitError();
   console.error(`✗ Failed to initialize database at ${dbPath}:`, initError?.message);
