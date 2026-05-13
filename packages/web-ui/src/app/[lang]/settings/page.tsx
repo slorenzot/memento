@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useUIStore, type Theme } from '@/stores/ui-store';
 import { useT } from '@/i18n/translation-context';
+import { TruncatedPath } from '@/components/shared/TruncatedPath';
 import ProjectExport from '@/components/settings/ProjectExport';
 import ProjectImport from '@/components/settings/ProjectImport';
 
@@ -89,14 +90,13 @@ export default function SettingsPage() {
         </h2>
 
         <div className="rounded-lg border border-[var(--color-border)] p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[13px] text-[var(--color-secondary)]">{t.settings.databasePath}</span>
-            <span
-              className="text-[13px] font-mono text-[var(--color-text-primary)]"
-              title={health?.database || ''}
-            >
-              {health?.database || '—'}
-            </span>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[13px] text-[var(--color-secondary)] shrink-0">{t.settings.databasePath}</span>
+            {health?.database ? (
+              <TruncatedPath path={health.database} className="text-[13px] text-[var(--color-text-primary)]" />
+            ) : (
+              <span className="text-[13px] font-mono text-[var(--color-text-primary)]">—</span>
+            )}
           </div>
           <div className="flex items-center justify-between">
             <span className="text-[13px] text-[var(--color-secondary)]">{t.settings.databaseStatus}</span>
