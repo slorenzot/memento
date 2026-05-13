@@ -6,17 +6,18 @@ import { MarkdownContent } from '@/components/shared/MarkdownContent';
 import { RelativeTime } from '@/components/shared/RelativeTime';
 import { useT } from '@/i18n/translation-context';
 import { useLocalePrefix } from '@/i18n/use-locale-prefix';
-import type { Observation } from '@slorenzot/memento-core';
-import { ClockIcon, EyeIcon, FolderIcon, PinIcon, TagsIcon } from 'lucide-react';
+import type { Observation, Session } from '@slorenzot/memento-core';
+import { ClockIcon, EyeIcon, FolderIcon, MessageSquareIcon, PinIcon, TagsIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 interface ObservationDetailProps {
   observation: Observation;
+  session?: Session | null;
 }
 
-export default function ObservationDetailPage({ observation }: ObservationDetailProps) {
+export default function ObservationDetailPage({ observation, session }: ObservationDetailProps) {
   const router = useRouter();
   const t = useT();
   const prefix = useLocalePrefix();
@@ -39,6 +40,20 @@ export default function ObservationDetailPage({ observation }: ObservationDetail
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-[13px] text-[var(--color-tertiary)]">
             <Badge type={observation.type} />
+            {session && (
+              <Link
+                href={`${prefix}/sessions/${session.id}`}
+                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-medium transition-colors ${!session.endedAt ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-[var(--color-surface-hover)] text-[var(--color-secondary)] hover:bg-[var(--color-border)]'}`}
+              >
+                <MessageSquareIcon className="size-3.5" />
+                <span
+                  className={`inline-block size-1.5 rounded-full ${!session.endedAt ? 'bg-green-500' : 'bg-[var(--color-tertiary)]'}`}
+                />
+                {t.sessionDetail.session.replace('{id}', String(session.id))}
+                <span className="opacity-70">·</span>
+                {!session.endedAt ? t.common.active : t.common.ended}
+              </Link>
+            )}
             {observation.projectId && (
               <span className="flex justify-start items-center gap-2">
                 <FolderIcon className="size-4" /> {observation.projectId}
