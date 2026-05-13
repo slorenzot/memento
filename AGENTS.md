@@ -1,5 +1,23 @@
 # AGENTS.md
 
+> ## ⛔⛔⛔ REGLA #1 — OBLIGATORIA E INVARIABLE ⛔⛔⛔
+>
+> **ANTES de escribir UNA SOLA LÍNEA de código, ejecutar el [Issue & Fix Workflow](#issue--fix-workflow-mandatory) completo.**
+>
+> ```
+> □ 1. Crear Issue en GitHub        ← SIN EXCEPTIONS
+> □ 2. Crear branch desde develop   ← SIN EXCEPTIONS
+> □ 3. Implementar cambio + tests
+> □ 4. bun run build                ← DEBE pasar
+> □ 5. bun test                     ← DEBE pasar
+> □ 6. Commit → Push → PR → Merge   ← Secuencia continua
+> □ 7. Verificar cierre del Issue
+> ```
+>
+> **NUNCA modificar archivos directo en main/develop. NUNCA saltar pasos.**
+> **Si el usuario dice "arreglá esto" → primero Issue, luego branch, luego código.**
+> **Esta regla aplica para TODO cambio: bug fix, feature, refactor, docs, CSS.**
+
 ## Project Overview
 
 Memento — persistent memory system for AI coding agents. Runtime: **Bun**. Tests: **bun:test**. Monorepo via **bun workspaces** with 6 published packages under `@slorenzot/memento-*`.

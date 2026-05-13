@@ -46,16 +46,16 @@ export function DeleteConfirmation({
   }
 
   return (
-    <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-      <h4 className="text-[14px] font-medium text-red-800">
+    <div className="rounded-lg border border-[var(--color-error)]/30 bg-[var(--color-error-surface)] p-4">
+      <h4 className="text-[14px] font-medium text-[var(--color-error-text)]">
         {t.deleteConfirmation.title.replace('{title}', observationTitle)}
       </h4>
-      <p className="mt-1 text-[13px] text-red-600">
+      <p className="mt-1 text-[13px] text-[var(--color-error)]">
         {t.deleteConfirmation.description}
       </p>
 
       {error && (
-        <p className="mt-2 text-[13px] text-red-700">{error}</p>
+        <p className="mt-2 text-[13px] text-[var(--color-error)]">{error}</p>
       )}
 
       <div className="mt-3">
@@ -64,7 +64,7 @@ export function DeleteConfirmation({
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder={t.deleteConfirmation.reasonPlaceholder}
-          className="w-full rounded-lg border border-red-200 bg-white px-3 py-1.5 text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-tertiary)] focus:outline-none"
+          className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-tertiary)] focus:outline-none"
         />
       </div>
 
@@ -72,13 +72,13 @@ export function DeleteConfirmation({
         <button
           onClick={handleDelete}
           disabled={deleting}
-          className="rounded-full bg-red-600 px-4 py-1.5 text-[13px] font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          className="rounded-full bg-[var(--color-error)] px-4 py-1.5 text-[13px] font-medium text-white hover:brightness-110 disabled:opacity-50"
         >
           {deleting ? t.common.deleting : t.common.delete}
         </button>
         <button
           onClick={onCancel}
-          className="rounded-full px-4 py-1.5 text-[13px] text-red-600 hover:text-red-800"
+          className="rounded-full px-4 py-1.5 text-[13px] text-[var(--color-error)] hover:text-[var(--color-error-text)]"
         >
           {t.common.cancel}
         </button>

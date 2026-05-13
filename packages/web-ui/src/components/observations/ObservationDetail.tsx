@@ -95,7 +95,7 @@ export default function ObservationDetailPage({ observation, session }: Observat
           {!observation.deletedAt && (
             <button
               onClick={() => setShowDelete(true)}
-              className="rounded-full border border-red-200 px-4 py-1.5 text-[13px] text-red-600 hover:bg-red-50 transition-colors"
+              className="rounded-full border border-[var(--color-error)]/30 px-4 py-1.5 text-[13px] text-[var(--color-error)] hover:bg-[var(--color-error-surface)] transition-colors"
             >
               {t.common.delete}
             </button>
