@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { MobileNav } from '@/components/layout/MobileNav';
+import { Footer } from '@/components/layout/Footer';
 import { useUIStore, resolveTheme } from '@/stores/ui-store';
 import { TranslationProvider } from '@/i18n/translation-context';
 import type { Dictionary } from '@/i18n/get-dictionary';
@@ -101,6 +102,7 @@ export function ClientLayout({
               {children}
             </div>
           </main>
+          <Footer />
         </div>
       </div>
     </TranslationProvider>

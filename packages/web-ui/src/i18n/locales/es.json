@@ -85,7 +85,11 @@
     "dark": "Oscuro",
     "darkDescription": "Siempre usar modo oscuro",
     "light": "Claro",
-    "lightDescription": "Siempre usar modo claro"
+    "lightDescription": "Siempre usar modo claro",
+    "databaseTitle": "Base de datos",
+    "databasePath": "Ruta",
+    "databaseStatus": "Estado",
+    "databaseHelp": "Configura la ruta de la base de datos con la variable de entorno MEMENTO_DB_PATH. Por defecto es ./data/memento.db."
   },
   "dataManagement": {
     "title": "Gestión de Datos",
@@ -260,5 +264,10 @@
       "faq": "FAQ",
       "troubleshooting": "Solución de problemas"
     }
+  },
+  "footer": {
+    "database": "Base de datos",
+    "healthy": "saludable",
+    "unhealthy": "con errores"
   }
 }

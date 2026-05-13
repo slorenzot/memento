@@ -85,7 +85,11 @@
     "dark": "Dark",
     "darkDescription": "Always use dark mode",
     "light": "Light",
-    "lightDescription": "Always use light mode"
+    "lightDescription": "Always use light mode",
+    "databaseTitle": "Database",
+    "databasePath": "Path",
+    "databaseStatus": "Status",
+    "databaseHelp": "Set the database path via the MEMENTO_DB_PATH environment variable. Defaults to ./data/memento.db."
   },
   "dataManagement": {
     "title": "Data Management",
@@ -260,5 +264,10 @@
       "faq": "FAQ",
       "troubleshooting": "Troubleshooting"
     }
+  },
+  "footer": {
+    "database": "Database",
+    "healthy": "healthy",
+    "unhealthy": "unhealthy"
   }
 }
