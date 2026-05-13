@@ -1,14 +1,28 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useUIStore, type Theme } from '@/stores/ui-store';
 import { useT } from '@/i18n/translation-context';
 import ProjectExport from '@/components/settings/ProjectExport';
 import ProjectImport from '@/components/settings/ProjectImport';
 
+interface HealthData {
+  status: 'healthy' | 'unhealthy';
+  database: string;
+}
+
 export default function SettingsPage() {
   const t = useT();
   const theme = useUIStore((s) => s.theme);
   const setTheme = useUIStore((s) => s.setTheme);
+  const [health, setHealth] = useState<HealthData | null>(null);
+
+  useEffect(() => {
+    fetch('/api/health')
+      .then((res) => res.json())
+      .then((data) => setHealth(data))
+      .catch(() => setHealth(null));
+  }, []);
 
   const themeOptions: { value: Theme; label: string; description: string }[] = [
     { value: 'system', label: t.settings.system, description: t.settings.systemDescription },
@@ -65,6 +79,41 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Database section */}
+      <section className="space-y-4">
+        <h2 className="text-[16px] font-medium text-[var(--color-text-primary)]">
+          {t.settings.databaseTitle}
+        </h2>
+
+        <div className="rounded-lg border border-[var(--color-border)] p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[13px] text-[var(--color-secondary)]">{t.settings.databasePath}</span>
+            <span
+              className="text-[13px] font-mono text-[var(--color-text-primary)]"
+              title={health?.database || ''}
+            >
+              {health?.database || '—'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[13px] text-[var(--color-secondary)]">{t.settings.databaseStatus}</span>
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`inline-block h-1.5 w-1.5 rounded-full ${
+                  health?.status === 'healthy' ? 'bg-green-500' : 'bg-red-500'
+                }`}
+              />
+              <span className="text-[13px] text-[var(--color-text-primary)]">
+                {health ? (health.status === 'healthy' ? t.footer.healthy : t.footer.unhealthy) : '—'}
+              </span>
+            </div>
+          </div>
+          <p className="text-[12px] text-[var(--color-tertiary)] pt-1">
+            {t.settings.databaseHelp}
+          </p>
         </div>
       </section>
 
