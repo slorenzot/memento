@@ -147,7 +147,7 @@ export interface DashboardStats {
   recentObservations: Observation[];
 }
 
-// --- Import/Export data types ---
+// --- Import/Export data types (legacy, observation-only) ---
 
 export interface ExportData {
   version: string;
@@ -176,7 +176,7 @@ export interface ExportedSession {
   metadata: Record<string, unknown>;
 }
 
-// Import types
+// Import types (legacy, observation-only)
 export interface ImportData {
   version: string;
   project?: string;
@@ -207,6 +207,120 @@ export interface ImportResult {
   failed: number;
   errors: string[];
   observations: Observation[];
+}
+
+// --- Full Export/Import types (v2.0, all data) ---
+
+export interface FullExportData {
+  version: '2.0';
+  exportedAt: string;
+  source: {
+    project: string;
+    allProjects: boolean;
+  };
+  stats: {
+    totalProjects: number;
+    totalSessions: number;
+    totalObservations: number;
+    totalPrompts: number;
+    totalJournalEntries: number;
+  };
+  projects: FullExportedProject[];
+  sessions: FullExportedSession[];
+  observations: FullExportedObservation[];
+  prompts: FullExportedPrompt[];
+  journal: FullExportedJournalEntry[];
+}
+
+export interface FullExportedProject {
+  name: string;
+  createdAt: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface FullExportedSession {
+  uuid: string;
+  projectId: string;
+  startedAt: string;
+  endedAt: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export interface FullExportedObservation {
+  uuid: string;
+  title: string;
+  content: string;
+  type: Observation['type'];
+  topicKey: string | null;
+  projectId: string;
+  scope: 'project' | 'personal';
+  pinned: boolean;
+  readOnly: boolean;
+  revisionCount: number;
+  createdAt: string;
+  deletedAt: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export interface FullExportedPrompt {
+  uuid: string;
+  content: string;
+  projectId: string;
+  createdAt: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface FullExportedJournalEntry {
+  uuid: string;
+  title: string;
+  body: string;
+  tags: string[];
+  projectId: string;
+  model: string | null;
+  provider: string | null;
+  agent: string | null;
+  supersededByUuid: string | null;
+  invalidatedAt: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface FullImportOptions {
+  projectId?: string;
+  conflictStrategy?: ConflictStrategy;
+  dryRun?: boolean;
+}
+
+export interface FullImportResult {
+  imported: {
+    projects: number;
+    sessions: number;
+    observations: number;
+    prompts: number;
+    journalEntries: number;
+  };
+  skipped: {
+    observations: number;
+    sessions: number;
+    journalEntries: number;
+  };
+  overwritten: {
+    observations: number;
+  };
+  failed: number;
+  errors: string[];
+}
+
+export interface ListPromptsParams {
+  projectId?: string;
+  sessionId?: number;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ListPromptsResult {
+  prompts: Prompt[];
+  total: number;
 }
 
 // --- Journal types (append-only, evidence-first) ---
