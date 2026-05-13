@@ -1,6 +1,7 @@
 import { getEngine } from '@/lib/engine';
 import { notFound } from 'next/navigation';
 import ObservationDetailClient from '@/components/observations/ObservationDetail';
+import type { Session } from '@slorenzot/memento-core';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,5 +18,8 @@ export default async function LangObservationPage({
     notFound();
   }
 
-  return <ObservationDetailClient observation={observation} />;
+  // Fetch session for status badge (graceful fallback if not found)
+  const session: Session | null = await engine.getSession(observation.sessionId);
+
+  return <ObservationDetailClient observation={observation} session={session} />;
 }
