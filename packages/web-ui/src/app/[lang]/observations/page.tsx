@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { getEngine } from '@/lib/engine';
 import { PAGE_SIZE } from '@/lib/constants';
@@ -84,7 +85,9 @@ export default async function LangObservationsPage({ params, searchParams }: Lan
         </Link>
       </div>
 
-      <ObservationFilters projects={projects.map((p) => p.name)} />
+      <Suspense fallback={null}>
+        <ObservationFilters projects={projects.map((p) => p.name)} />
+      </Suspense>
 
       {result.observations.length === 0 ? (
         <p className="py-8 text-center text-[14px] text-[var(--color-tertiary)]">
