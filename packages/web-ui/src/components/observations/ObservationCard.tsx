@@ -7,6 +7,7 @@ import { useT } from '@/i18n/translation-context';
 import type { Observation, Session } from '@slorenzot/memento-core';
 import { ClockIcon, EyeIcon, FolderIcon, PinIcon, TagsIcon, MessageSquareIcon } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface ObservationCardProps {
   observation: Observation;
@@ -16,6 +17,7 @@ interface ObservationCardProps {
 export function ObservationCard({ observation, session }: ObservationCardProps) {
   const prefix = useLocalePrefix();
   const t = useT();
+  const router = useRouter();
 
   return (
     <Link
@@ -54,9 +56,13 @@ export function ObservationCard({ observation, session }: ObservationCardProps) 
           <span>{observation.scope}</span>
         </div>
         {session && (
-          <Link
-            href={`${prefix}/sessions/${session.id}`}
-            onClick={(e) => e.stopPropagation()}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              router.push(`${prefix}/sessions/${session.id}`);
+            }}
             className="flex items-center gap-1.5 rounded-full px-1.5 py-0.5 transition-colors hover:bg-[var(--color-surface-hover)]"
             title={t.sessionDetail.session.replace('{id}', String(session.id))}
           >
@@ -67,7 +73,7 @@ export function ObservationCard({ observation, session }: ObservationCardProps) 
             <span>
               {t.timeline.sessionLabel.replace('{id}', String(session.id))}
             </span>
-          </Link>
+          </button>
         )}
         <div className="flex items-center gap-2">
           <ClockIcon className="size-4" />
