@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useT } from '@/i18n/translation-context';
+import { useEffect, useState } from 'react';
 
 interface Project {
   name: string;
@@ -70,9 +70,7 @@ export default function ProjectExport() {
         {t.dataManagement.exportDescription}
       </p>
 
-      {error && (
-        <p className="text-[13px] text-red-500">{error}</p>
-      )}
+      {error && <p className="text-[13px] text-red-500">{error}</p>}
 
       <div className="flex items-end gap-3">
         <div className="flex-1">
@@ -95,7 +93,7 @@ export default function ProjectExport() {
         <button
           onClick={handleExport}
           disabled={loading || !selectedProject || projects.length === 0}
-          className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-[14px] font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+          className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-[14px] font-medium text-[var(--color-on-primary)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
         >
           {loading ? t.dataManagement.exporting : t.dataManagement.exportButton}
         </button>

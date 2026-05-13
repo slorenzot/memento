@@ -131,8 +131,8 @@ export function ObservationEditor({ mode, initialData, observationId }: Observat
                 className={clsx(
                   'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-medium transition-colors',
                   type === t
-                    ? 'bg-[var(--color-primary)] text-white'
-                    : 'bg-[var(--color-surface-hover)] text-[var(--color-secondary)] hover:opacity-80',
+                    ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]'
+                    : 'bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:opacity-80',
                 )}
               >
                 <ObservationTypeIcon type={t} size={12} strokeWidth={2.5} />
@@ -191,7 +191,7 @@ export function ObservationEditor({ mode, initialData, observationId }: Observat
         <button
           type="submit"
           disabled={saving || !title.trim() || !content.trim()}
-          className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-[14px] font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
+          className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-[14px] font-medium text-[var(--color-on-primary)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
         >
           {saving ? t.common.saving : mode === 'create' ? t.common.create : t.common.saveChanges}
         </button>

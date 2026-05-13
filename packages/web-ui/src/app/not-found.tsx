@@ -17,7 +17,7 @@ export default async function NotFound() {
         </p>
         <Link
           href={`/${locale}/dashboard`}
-          className="mt-6 inline-block rounded-full bg-[var(--color-primary)] px-4 py-2 text-[14px] text-white hover:bg-[var(--color-accent-hover)]"
+          className="mt-6 inline-block rounded-full bg-[var(--color-primary)] px-4 py-2 text-[14px] text-[var(--color-on-primary)] hover:bg-[var(--color-accent-hover)]"
         >
           {t.notFound.goHome}
         </Link>

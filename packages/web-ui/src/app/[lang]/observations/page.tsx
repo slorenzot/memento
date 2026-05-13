@@ -53,7 +53,7 @@ export default async function LangObservationsPage({ params, searchParams }: Lan
           </h1>
           <Link
             href={`${prefix}/observations/new`}
-            className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-[14px] font-medium text-white hover:bg-[var(--color-accent-hover)] transition-colors"
+            className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-[14px] font-medium text-[var(--color-on-primary)] hover:bg-[var(--color-accent-hover)] transition-colors"
           >
             {t.observations.newObservation}
           </Link>
@@ -79,7 +79,7 @@ export default async function LangObservationsPage({ params, searchParams }: Lan
         </h1>
         <Link
           href={`${prefix}/observations/new`}
-          className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-[14px] font-medium text-white hover:bg-[var(--color-accent-hover)] transition-colors"
+          className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-[14px] font-medium text-[var(--color-on-primary)] hover:bg-[var(--color-accent-hover)] transition-colors"
         >
           {t.observations.newObservation}
         </Link>

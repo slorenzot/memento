@@ -35,6 +35,7 @@
   --color-text-secondary: #525252;
   --color-accent: #262626;
   --color-accent-hover: #000000;
+  --color-on-primary: #ffffff;
   --color-error: #dc2626;
   --color-error-surface: #fef2f2;
   --color-error-text: #991b1b;
@@ -67,6 +68,7 @@ body {
   --color-text-secondary: #a3a3a3;
   --color-accent: #ffffff;
   --color-accent-hover: #d4d4d4;
+  --color-on-primary: #0a0a0a;
   --color-error: #ef4444;
   --color-error-surface: #1c1111;
   --color-error-text: #fca5a5;
