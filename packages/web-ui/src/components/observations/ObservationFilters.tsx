@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Badge } from '@/components/shared/Badge';
 import { useT } from '@/i18n/translation-context';
 import { useLocalePrefix } from '@/i18n/use-locale-prefix';
@@ -18,17 +18,13 @@ interface ObservationFiltersProps {
 
 export function ObservationFilters({ projects }: ObservationFiltersProps) {
   const t = useT();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const prefix = useLocalePrefix();
-  const [activeType, setActiveType] = useState('');
-
-  // We still use URL params for actual filtering, but labels are translated
-  const searchParams = typeof window !== 'undefined'
-    ? new URLSearchParams(window.location.search)
-    : new URLSearchParams();
 
   const activeScope = searchParams.get('scope') ?? '';
   const activeProject = searchParams.get('projectId') ?? '';
-  const urlActiveType = searchParams.get('type') ?? '';
+  const activeType = searchParams.get('type') ?? '';
 
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -39,7 +35,7 @@ export function ObservationFilters({ projects }: ObservationFiltersProps) {
     }
     // Reset to page 1 when changing filters
     params.delete('page');
-    window.location.href = `${prefix}/observations?${params.toString()}`;
+    router.push(`${prefix}/observations?${params.toString()}`);
   }
 
   return (
@@ -50,8 +46,8 @@ export function ObservationFilters({ projects }: ObservationFiltersProps) {
           <Badge
             key={type}
             type={type}
-            active={urlActiveType === type}
-            onClick={() => updateFilter('type', urlActiveType === type ? '' : type)}
+            active={activeType === type}
+            onClick={() => updateFilter('type', activeType === type ? '' : type)}
           />
         ))}
       </div>
