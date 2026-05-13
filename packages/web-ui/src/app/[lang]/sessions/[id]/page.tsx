@@ -1,5 +1,6 @@
 import { getEngine } from '@/lib/engine';
 import { notFound } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { RelativeTime } from '@/components/shared/RelativeTime';
 import { ObservationCard } from '@/components/observations/ObservationCard';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -73,6 +74,7 @@ export default async function LangSessionDetailPage({
             'use server';
             const e = (await import('@/lib/engine')).getEngine();
             await e.endSession(session.id);
+            revalidatePath(`/[lang]/sessions/${session.id}`, 'page');
           }}>
             <button
               type="submit"
