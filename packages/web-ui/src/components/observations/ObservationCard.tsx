@@ -3,16 +3,19 @@
 import { Badge } from '@/components/shared/Badge';
 import { RelativeTime } from '@/components/shared/RelativeTime';
 import { useLocalePrefix } from '@/i18n/use-locale-prefix';
-import type { Observation } from '@slorenzot/memento-core';
-import { ClockIcon, EyeIcon, FolderIcon, PinIcon, TagsIcon } from 'lucide-react';
+import { useT } from '@/i18n/translation-context';
+import type { Observation, Session } from '@slorenzot/memento-core';
+import { ClockIcon, EyeIcon, FolderIcon, PinIcon, TagsIcon, MessageSquareIcon } from 'lucide-react';
 import Link from 'next/link';
 
 interface ObservationCardProps {
   observation: Observation;
+  session?: Session;
 }
 
-export function ObservationCard({ observation }: ObservationCardProps) {
+export function ObservationCard({ observation, session }: ObservationCardProps) {
   const prefix = useLocalePrefix();
+  const t = useT();
 
   return (
     <Link
@@ -50,6 +53,22 @@ export function ObservationCard({ observation }: ObservationCardProps) {
           <EyeIcon className="size-4" />
           <span>{observation.scope}</span>
         </div>
+        {session && (
+          <Link
+            href={`${prefix}/sessions/${session.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5 rounded-full px-1.5 py-0.5 transition-colors hover:bg-[var(--color-surface-hover)]"
+            title={t.sessionDetail.session.replace('{id}', String(session.id))}
+          >
+            <MessageSquareIcon className="size-4" />
+            <span
+              className={`inline-block size-1.5 rounded-full ${!session.endedAt ? 'bg-green-500' : 'bg-[var(--color-tertiary)]'}`}
+            />
+            <span>
+              {t.timeline.sessionLabel.replace('{id}', String(session.id))}
+            </span>
+          </Link>
+        )}
         <div className="flex items-center gap-2">
           <ClockIcon className="size-4" />
           <RelativeTime date={observation.createdAt} />
