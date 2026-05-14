@@ -14,7 +14,14 @@ export function MementoLogo({ size = 20, collapsed = false, showText = true }: M
     <div
       className={clsx('flex justify-start items-center', collapsed ? 'justify-center' : 'gap-2')}
     >
-      <Image src="/icon.svg" alt="Memento" width="48" height="48" className="shrink-0" priority />
+      <Image
+        src="/icon.svg"
+        alt="Memento"
+        width="48"
+        height="48"
+        className="dark:invert shrink-0"
+        priority
+      />
       {showText && !collapsed && (
         <span className="text-[24px] font-medium text-[var(--color-text-primary)]">Memento</span>
       )}

@@ -10,14 +10,13 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: dict.meta.title,
     description: dict.meta.description,
+    icons: {
+      icon: '/favicon.ico',
+    },
   };
 }
 
-export default async function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocaleFromCookie();
   const dict = getDictionary(locale);
 
