@@ -5,16 +5,18 @@ import { useState } from 'react';
 import { Search, Menu } from 'lucide-react';
 import { useT } from '@/i18n/translation-context';
 import { useLocalePrefix } from '@/i18n/use-locale-prefix';
+import { ThemeToggle } from '../shared/ThemeToggle';
 
 interface HeaderProps {
   onMobileMenuToggle?: () => void;
 }
 
 export function Header({ onMobileMenuToggle }: HeaderProps) {
-  const router = useRouter();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const t = useT();
   const prefix = useLocalePrefix();
-  const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -51,6 +53,11 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
           </kbd>
         </div>
       </form>
+
+      {/* Mobile: theme toggle + hamburger */}
+      <div className="flex items-center gap-2 hidden">
+        <ThemeToggle className="rounded-lg p-2 text-[var(--color-secondary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]" />
+      </div>
     </header>
   );
 }
