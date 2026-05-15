@@ -69,7 +69,7 @@ export function SyncButton() {
 
   return (
     <button
-      onClick={() => router.push(`${prefix}/login`)}
+      onClick={() => router.push(`${prefix}/sync`)}
       className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-surface-hover)] transition-colors"
     >
       <Cloud className="w-3.5 h-3.5" />
