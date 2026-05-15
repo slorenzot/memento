@@ -6,13 +6,13 @@ import { Search, Menu } from 'lucide-react';
 import { useT } from '@/i18n/translation-context';
 import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 import { ThemeToggle } from '../shared/ThemeToggle';
+import { SyncButton } from './SyncButton';
 
 interface HeaderProps {
   onMobileMenuToggle?: () => void;
 }
 
 export function Header({ onMobileMenuToggle }: HeaderProps) {
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const t = useT();
   const prefix = useLocalePrefix();
@@ -54,8 +54,9 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
         </div>
       </form>
 
-      {/* Mobile: theme toggle + hamburger */}
-      <div className="flex items-center gap-2 hidden">
+      {/* Right side: sync button + theme toggle */}
+      <div className="flex items-center gap-2 ml-3">
+        <SyncButton />
         <ThemeToggle className="rounded-lg p-2 text-[var(--color-secondary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]" />
       </div>
     </header>
