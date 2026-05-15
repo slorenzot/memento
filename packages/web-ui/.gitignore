@@ -12,3 +12,7 @@ dist/
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
+
+# environment variables
+.env.local
+.env*.local
