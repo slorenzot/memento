@@ -1,42 +1,45 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as crypto from 'crypto';
 import type { MemoryEngine } from '../MemoryEngine.js';
 import type { Observation } from '../types.js';
 import type {
   SyncConfig,
   SyncMeta,
   SyncResult,
-  SyncObservation,
-  SyncConflictResult,
-  SyncPullResponse,
+  SyncMemento,
+  SyncStatusResponse,
 } from './types.js';
 import { SyncClient } from './sync-client.js';
-import { detectConflicts, resolveAllConflicts } from './conflict-resolution.js';
+import { resolveAllConflicts } from './conflict-resolution.js';
 import { TokenStore } from '../auth/token-store.js';
 
 const DEFAULT_META_PATH = path.join(os.homedir(), '.memento', 'sync-meta.json');
 
 /**
- * SyncEngine — orchestrates bidirectional sync between local DB and remote server.
+ * SyncEngine — orchestrates bidirectional sync between local DB and memento-web.
+ *
+ * Protocol: cursor-based, version-tracked, last-write-wins
  *
  * Flow:
- * 1. Load sync meta (last sync timestamp)
- * 2. Pull: fetch remote observations modified since last sync
- * 3. Merge: resolve conflicts (last-write-wins)
- * 4. Push: send local observations modified since last sync
- * 5. Save updated sync meta
+ * 1. Pull: fetch remote changes since cursor
+ * 2. Apply remote changes locally
+ * 3. Push: send local changes since last sync (scope=project only)
+ * 4. Save new cursor
  */
 export class SyncEngine {
   private config: SyncConfig;
   private metaPath: string;
   private client: SyncClient;
   private tokenStore: TokenStore;
+  private deviceFingerprint: string;
 
   constructor(config: SyncConfig) {
     this.config = config;
     this.metaPath = config.metaFilePath || DEFAULT_META_PATH;
     this.tokenStore = new TokenStore();
+    this.deviceFingerprint = generateDeviceFingerprint();
 
     this.client = new SyncClient({
       serverUrl: config.serverUrl,
@@ -55,48 +58,47 @@ export class SyncEngine {
     const start = Date.now();
     const meta = this.loadMeta();
 
-    // Pull first, then push
-    const pullResult = await this.doPull(engine, meta.lastSyncServerTime);
-    const pushResult = await this.doPush(engine, meta.lastSyncServerTime);
+    // Pull first
+    const pullResult = await this.doPull(engine, meta.lastCursor);
 
-    // Save updated meta
-    const newMeta: SyncMeta = {
+    // Then push
+    const pushResult = await this.doPush(engine, meta.lastCursor);
+
+    // Save meta with new cursor
+    const newCursor = pullResult.newCursor || pushResult.newCursor || meta.lastCursor;
+    this.saveMeta({
       lastSyncAt: Date.now(),
       lastSyncDirection: 'bidirectional',
-      lastSyncServerTime: pullResult.serverTime,
+      lastCursor: newCursor,
       lastPullCount: pullResult.applied,
-      lastPushCount: pushResult.accepted,
+      lastPushCount: pushResult.pushed,
       lastConflictCount: pullResult.conflicts.length + pushResult.conflicts.length,
       serverUrl: this.config.serverUrl,
       updatedAt: Date.now(),
-    };
-    this.saveMeta(newMeta);
-
-    const allConflicts = [...pullResult.conflicts, ...pushResult.conflicts];
-    const allErrors = [...pullResult.errors, ...pushResult.errors];
+    });
 
     return {
       direction: 'bidirectional',
       pulled: pullResult.applied,
-      pushed: pushResult.accepted,
-      conflicts: allConflicts,
-      errors: allErrors,
+      pushed: pushResult.pushed,
+      conflicts: [...pullResult.conflicts, ...pushResult.conflicts],
+      errors: [...pullResult.errors, ...pushResult.errors],
       durationMs: Date.now() - start,
     };
   }
 
   /**
-   * Pull-only: download remote observations to local DB.
+   * Pull-only: download remote changes to local DB.
    */
   async pull(engine: MemoryEngine): Promise<SyncResult> {
     const start = Date.now();
     const meta = this.loadMeta();
-    const result = await this.doPull(engine, meta.lastSyncServerTime);
+    const result = await this.doPull(engine, meta.lastCursor);
 
     this.saveMeta({
       lastSyncAt: Date.now(),
       lastSyncDirection: 'pull',
-      lastSyncServerTime: result.serverTime,
+      lastCursor: result.newCursor || meta.lastCursor,
       lastPullCount: result.applied,
       lastPushCount: 0,
       lastConflictCount: result.conflicts.length,
@@ -115,19 +117,19 @@ export class SyncEngine {
   }
 
   /**
-   * Push-only: upload local observations to remote server.
+   * Push-only: upload local changes to server.
    */
   async push(engine: MemoryEngine): Promise<SyncResult> {
     const start = Date.now();
     const meta = this.loadMeta();
-    const result = await this.doPush(engine, meta.lastSyncServerTime);
+    const result = await this.doPush(engine, meta.lastCursor);
 
     this.saveMeta({
       lastSyncAt: Date.now(),
       lastSyncDirection: 'push',
-      lastSyncServerTime: meta.lastSyncServerTime,
+      lastCursor: result.newCursor || meta.lastCursor,
       lastPullCount: 0,
-      lastPushCount: result.accepted,
+      lastPushCount: result.pushed,
       lastConflictCount: result.conflicts.length,
       serverUrl: this.config.serverUrl,
       updatedAt: Date.now(),
@@ -136,7 +138,7 @@ export class SyncEngine {
     return {
       direction: 'push',
       pulled: 0,
-      pushed: result.accepted,
+      pushed: result.pushed,
       conflicts: result.conflicts,
       errors: result.errors,
       durationMs: Date.now() - start,
@@ -144,155 +146,82 @@ export class SyncEngine {
   }
 
   /**
-   * Get sync status — local meta + remote status.
+   * Get sync status.
    */
   async getStatus(engine: MemoryEngine): Promise<{
     meta: SyncMeta | null;
-    remote?: { totalObservations: number; activeObservations: number };
+    remote?: SyncStatusResponse;
     local: { totalObservations: number; activeObservations: number };
     authenticated: boolean;
   }> {
     const meta = this.loadMeta();
-    const token = await this.tokenStore.getToken();
+    const token = this.tokenStore.getToken();
     const authenticated = !!token;
 
     // Local stats
-    const localActiveResult = await engine.search({
-      projectId: this.config.projectId,
-      limit: 0,
-    });
-    const localActive = localActiveResult.total;
+    const localActive = (await engine.search({ projectId: this.config.projectId, limit: 0 })).total;
+    const localDeleted = (await engine.listDeleted({ limit: 0 })).total;
 
-    const localDeletedResult = await engine.listDeleted({ limit: 0 });
-    const localDeleted = localDeletedResult.total;
-    const localTotal = localActive + localDeleted;
-
-    let remote: { totalObservations: number; activeObservations: number } | undefined;
+    let remote: SyncStatusResponse | undefined;
 
     if (authenticated) {
       try {
-        const remoteStatus = await this.client.status(this.config.projectId);
-        remote = {
-          totalObservations: remoteStatus.totalObservations,
-          activeObservations: remoteStatus.activeObservations,
-        };
+        remote = await this.client.status(this.config.projectId);
       } catch {
-        // Remote unreachable — still return local info
+        // Remote unreachable
       }
     }
 
     return {
       meta: meta.lastSyncAt ? meta : null,
       remote,
-      local: { totalObservations: localTotal, activeObservations: localActive },
+      local: { totalObservations: localActive + localDeleted, activeObservations: localActive },
       authenticated,
     };
   }
 
-  // ── Internal Methods ────────────────────────────────────────
+  // ── Internal ────────────────────────────────────────────────
 
   private async doPull(
     engine: MemoryEngine,
-    since: number | null,
-  ): Promise<{
-    applied: number;
-    conflicts: SyncConflictResult[];
-    errors: string[];
-    serverTime: number;
-  }> {
+    cursor: string | null,
+  ): Promise<{ applied: number; conflicts: any[]; errors: string[]; newCursor: string }> {
     const errors: string[] = [];
-    const conflicts: SyncConflictResult[] = [];
+    const conflicts: any[] = [];
 
-    // Fetch remote observations
-    const response = await this.client.pull(since, this.config.projectId);
+    let hasMore = true;
+    let totalApplied = 0;
+    let latestCursor = cursor;
 
-    // Build local UUID map for conflict detection
-    const localByUuid = await this.buildLocalUuidMap(engine);
+    // Paginated pull
+    while (hasMore) {
+      const response = await this.client.pull({
+        projectId: this.config.projectId,
+        cursor: latestCursor,
+        limit: 100,
+      });
 
-    // Detect conflicts
-    const { conflicts: detectedConflicts, newRemote } = detectConflicts(
-      response.observations,
-      localByUuid,
-    );
-
-    // Resolve conflicts
-    const resolved = resolveAllConflicts(detectedConflicts);
-    for (const { resolutions, winner } of resolved) {
-      conflicts.push(resolutions);
-      try {
-        await this.applyToLocal(engine, winner);
-      } catch (err) {
-        errors.push(`Conflict resolution failed for ${winner.uuid}: ${err}`);
+      for (const change of response.changes) {
+        try {
+          await this.applyToLocal(engine, change);
+          totalApplied++;
+        } catch (err) {
+          errors.push(`Failed to apply ${change.uuid}: ${err}`);
+        }
       }
+
+      latestCursor = response.newCursor;
+      hasMore = response.hasMore;
     }
 
-    // Apply new remote observations
-    let applied = resolved.length; // Conflicts resolved count as applied
-    for (const obs of newRemote) {
-      try {
-        await this.applyToLocal(engine, obs);
-        applied++;
-      } catch (err) {
-        errors.push(`Failed to pull ${obs.uuid}: ${err}`);
-      }
-    }
-
-    return { applied, conflicts, errors, serverTime: response.serverTime };
+    return { applied: totalApplied, conflicts, errors, newCursor: latestCursor || '' };
   }
 
   private async doPush(
     engine: MemoryEngine,
-    since: number | null,
-  ): Promise<{ accepted: number; conflicts: SyncConflictResult[]; errors: string[] }> {
-    const localObs = await this.getLocalModifiedSince(engine, since);
-
-    if (localObs.length === 0) {
-      return { accepted: 0, conflicts: [], errors: [] };
-    }
-
-    const syncObs = localObs.map(obs => this.observationToSync(obs));
-
-    const result = await this.client.push({ observations: syncObs });
-    return {
-      accepted: result.accepted,
-      conflicts: result.conflicts,
-      errors: result.errors,
-    };
-  }
-
-  /**
-   * Build a Map of local observations keyed by UUID for conflict detection.
-   */
-  private async buildLocalUuidMap(engine: MemoryEngine): Promise<Map<string, SyncObservation>> {
-    const map = new Map<string, SyncObservation>();
-
-    // Get all observations (including deleted for sync)
-    const active = await engine.search({
-      projectId: this.config.projectId,
-      limit: 100000,
-    });
-
-    for (const obs of active.observations) {
-      map.set(obs.uuid, this.observationToSync(obs));
-    }
-
-    // Include soft-deleted
-    const deleted = await engine.listDeleted({
-      projectId: this.config.projectId,
-      limit: 100000,
-    });
-
-    for (const obs of deleted.observations) {
-      map.set(obs.uuid, this.observationToSync(obs));
-    }
-
-    return map;
-  }
-
-  /**
-   * Get local observations modified since a given timestamp.
-   */
-  private async getLocalModifiedSince(engine: MemoryEngine, since: number | null): Promise<Observation[]> {
+    cursor: string | null,
+  ): Promise<{ pushed: number; conflicts: any[]; errors: string[]; newCursor: string }> {
+    // Get local observations with scope=project (personal stays local)
     const active = await engine.search({
       projectId: this.config.projectId,
       limit: 100000,
@@ -305,37 +234,71 @@ export class SyncEngine {
 
     const all = [...active.observations, ...deleted.observations];
 
-    if (since === null) {
-      return all;
+    // Filter: only scope=project items get pushed
+    const projectItems = all.filter(obs => obs.scope === 'project');
+
+    // Filter: only items modified since cursor
+    let itemsToSync = projectItems;
+    if (cursor) {
+      const cursorDate = new Date(cursor);
+      itemsToSync = projectItems.filter(obs => obs.updatedAt > cursorDate);
     }
 
-    // Filter by updatedAt
-    return all.filter(obs => obs.updatedAt.getTime() > since);
+    if (itemsToSync.length === 0) {
+      return { pushed: 0, conflicts: [], errors: [], newCursor: cursor || '' };
+    }
+
+    // Convert to SyncMemento wire format
+    const items = itemsToSync.map(obs => this.observationToMemento(obs));
+
+    const result = await this.client.push({
+      projectId: this.config.projectId,
+      cursor,
+      deviceFingerprint: this.deviceFingerprint,
+      clientVersion: '1.0.0',
+      items,
+    });
+
+    // Handle conflicts — apply server data for server_wins
+    for (const conflict of result.conflicts) {
+      if (conflict.resolution === 'server_wins' && conflict.serverData) {
+        try {
+          await this.applyToLocal(engine, conflict.serverData);
+        } catch (err) {
+          // Best effort
+        }
+      }
+    }
+
+    return {
+      pushed: result.synced,
+      conflicts: result.conflicts,
+      errors: [],
+      newCursor: result.newCursor,
+    };
   }
 
   /**
-   * Apply a sync observation to the local DB.
-   * If UUID exists → update. If not → insert.
+   * Apply a SyncMemento to the local DB.
    */
-  private async applyToLocal(engine: MemoryEngine, sync: SyncObservation): Promise<void> {
-    const existing = engine.getObservationByUuid(sync.uuid);
+  private async applyToLocal(engine: MemoryEngine, memento: SyncMemento): Promise<void> {
+    const existing = engine.getObservationByUuid(memento.uuid);
 
     if (existing) {
-      // Update existing observation (skip if read-only)
       if (existing.readOnly) return;
       await engine.updateObservation(existing.id, {
-        title: sync.title,
-        content: sync.content,
-        type: sync.type as Observation['type'],
-        topicKey: sync.topicKey,
-        metadata: sync.metadata,
-        pinned: sync.pinned,
-        readOnly: sync.readOnly,
+        title: memento.title,
+        content: memento.content,
+        type: memento.type as Observation['type'],
+        topicKey: memento.topicKey,
+        metadata: memento.metadata,
+        pinned: memento.pinned,
+        readOnly: memento.readOnly,
       });
     } else {
-      // Insert new observation — find or create a session
+      // Find or create session
       const sessions = await engine.listSessions({
-        projectId: sync.projectId,
+        projectId: memento.projectId,
         limit: 1,
         activeOnly: false,
       });
@@ -345,7 +308,7 @@ export class SyncEngine {
         sessionId = sessions.sessions[0].id;
       } else {
         const session = await engine.createSession({
-          projectId: sync.projectId,
+          projectId: memento.projectId,
           endedAt: null,
           metadata: { source: 'sync', syncedAt: Date.now() },
         });
@@ -354,38 +317,39 @@ export class SyncEngine {
 
       await engine.createObservation({
         sessionId,
-        title: sync.title,
-        content: sync.content,
-        type: sync.type as Observation['type'],
-        topicKey: sync.topicKey,
-        projectId: sync.projectId,
-        scope: sync.scope,
-        pinned: sync.pinned,
-        readOnly: sync.readOnly,
-        metadata: { ...sync.metadata, syncedFrom: sync.uuid },
+        title: memento.title,
+        content: memento.content,
+        type: memento.type as Observation['type'],
+        topicKey: memento.topicKey,
+        projectId: memento.projectId,
+        scope: memento.scope,
+        pinned: memento.pinned,
+        readOnly: memento.readOnly,
+        metadata: { ...memento.metadata, syncedUuid: memento.uuid },
       });
     }
   }
 
   /**
-   * Convert an Observation to a SyncObservation.
+   * Convert a local Observation to a SyncMemento for the wire.
    */
-  private observationToSync(obs: Observation): SyncObservation {
+  private observationToMemento(obs: Observation): SyncMemento {
     return {
       uuid: obs.uuid,
       title: obs.title,
       content: obs.content,
       type: obs.type,
       topicKey: obs.topicKey,
-      projectId: obs.projectId,
       scope: obs.scope,
       pinned: obs.pinned,
       readOnly: obs.readOnly,
       revisionCount: obs.revisionCount,
-      createdAt: obs.createdAt.getTime(),
-      updatedAt: obs.updatedAt.getTime(),
-      deletedAt: obs.deletedAt ? obs.deletedAt.getTime() : null,
+      projectId: obs.projectId,
       metadata: obs.metadata,
+      localCreatedAt: obs.createdAt.toISOString(),
+      localUpdatedAt: obs.updatedAt.toISOString(),
+      version: obs.revisionCount + 1, // Version = revisionCount + 1 (first version is 1)
+      deletedAt: obs.deletedAt ? obs.deletedAt.toISOString() : null,
     };
   }
 
@@ -398,13 +362,13 @@ export class SyncEngine {
         return JSON.parse(raw) as SyncMeta;
       }
     } catch {
-      // Corrupted meta — start fresh
+      // Corrupted — start fresh
     }
 
     return {
       lastSyncAt: null,
       lastSyncDirection: null,
-      lastSyncServerTime: null,
+      lastCursor: null,
       lastPullCount: 0,
       lastPushCount: 0,
       lastConflictCount: 0,
@@ -420,4 +384,11 @@ export class SyncEngine {
     }
     fs.writeFileSync(this.metaPath, JSON.stringify(meta, null, 2), 'utf-8');
   }
+}
+
+/** Generate a stable device fingerprint based on hostname + username */
+function generateDeviceFingerprint(): string {
+  const hostname = os.hostname();
+  const username = os.userInfo().username;
+  return crypto.createHash('sha256').update(`${hostname}:${username}`).digest('hex').slice(0, 16);
 }

@@ -1,70 +1,96 @@
-// ─── Sync Types ─────────────────────────────────────────────────
+// ─── Sync Types — Memento v1 Protocol ──────────────────────────
+// Matches memento-web/src/types/sync.ts
 
 /** Sync direction */
 export type SyncDirection = 'pull' | 'push' | 'bidirectional';
 
-/** Observation data for sync transport (DB-agnostic) */
-export interface SyncObservation {
+/**
+ * A memento item as transferred over the wire.
+ * Matches memento-web SyncMemento exactly.
+ */
+export interface SyncMemento {
   uuid: string;
   title: string;
   content: string;
   type: string;
   topicKey: string | null;
-  projectId: string;
   scope: 'project' | 'personal';
   pinned: boolean;
   readOnly: boolean;
   revisionCount: number;
-  createdAt: number;   // Unix epoch ms
-  updatedAt: number;   // Unix epoch ms
-  deletedAt: number | null; // Unix epoch ms
+  projectId: string;
   metadata: Record<string, unknown>;
+  localCreatedAt: string; // ISO string
+  localUpdatedAt: string; // ISO string
+  version: number;
+  deletedAt: string | null; // ISO string
 }
 
-/** Response from GET /api/sync/pull */
-export interface SyncPullResponse {
-  observations: SyncObservation[];
-  serverTime: number; // Server's current time (for next sync)
-}
-
-/** Request body for POST /api/sync/push */
+/** Push request body — matches memento-web SyncPushRequest */
 export interface SyncPushRequest {
-  observations: SyncObservation[];
+  projectId: string;
+  cursor: string | null;
+  deviceFingerprint?: string;
+  clientVersion?: string;
+  items: SyncMemento[];
 }
 
-/** Response from POST /api/sync/push */
+/** Push response from memento-web */
 export interface SyncPushResponse {
-  accepted: number;
-  conflicts: SyncConflictResult[];
-  errors: string[];
+  synced: number;
+  created: number;
+  updated: number;
+  conflicts: SyncConflict[];
+  newCursor: string;
 }
 
-/** Result of a single conflict resolution */
-export interface SyncConflictResult {
+/** Pull response from memento-web */
+export interface SyncPullResponse {
+  changes: SyncMemento[];
+  hasMore: boolean;
+  totalChanges: number;
+  newCursor: string;
+}
+
+/** Pull query params */
+export interface SyncPullParams {
+  projectId: string;
+  cursor: string | null;
+  limit?: number;
+}
+
+/** Conflict during push */
+export interface SyncConflict {
   uuid: string;
-  resolution: 'local-wins' | 'remote-wins';
-  localUpdatedAt: number;
-  remoteUpdatedAt: number;
+  localVersion: number;
+  serverVersion: number;
+  resolution: 'client_wins' | 'server_wins';
+  serverData?: SyncMemento;
 }
 
-/** Response from GET /api/sync/status */
+/** Status response from memento-web */
 export interface SyncStatusResponse {
-  totalObservations: number;
-  activeObservations: number;
-  deletedObservations: number;
-  lastModifiedAt: number | null;
+  projectId: string;
+  lastSyncAt: string | null;
+  totalMementos: number;
+  pendingChanges: number | null;
+  conflicts: number;
+  device: {
+    fingerprint: string;
+    lastSyncAt: string | null;
+  } | null;
 }
 
 /** Sync metadata persisted locally */
 export interface SyncMeta {
-  lastSyncAt: number | null;     // Unix epoch ms — timestamp of last successful sync
+  lastSyncAt: number | null;        // Unix epoch ms
   lastSyncDirection: SyncDirection | null;
-  lastSyncServerTime: number | null; // Server time at last sync
+  lastCursor: string | null;        // Server cursor for incremental sync
   lastPullCount: number;
   lastPushCount: number;
   lastConflictCount: number;
   serverUrl: string;
-  updatedAt: number; // When this meta was last saved
+  updatedAt: number;
 }
 
 /** Result of a sync operation */
@@ -72,20 +98,16 @@ export interface SyncResult {
   direction: SyncDirection;
   pulled: number;
   pushed: number;
-  conflicts: SyncConflictResult[];
+  conflicts: SyncConflict[];
   errors: string[];
   durationMs: number;
 }
 
 /** Configuration for the sync engine */
 export interface SyncConfig {
-  /** Server URL (e.g. 'https://memento.example.com') */
   serverUrl: string;
-  /** Optional project filter — only sync observations for this project */
-  projectId?: string;
-  /** Custom fetch function for testing */
+  projectId: string;
   fetchFunction?: typeof fetch;
-  /** Path to sync metadata file (default: ~/.memento/sync-meta.json) */
   metaFilePath?: string;
 }
 
@@ -94,6 +116,7 @@ export class SyncApiError extends Error {
   constructor(
     message: string,
     public status: number,
+    public code?: string,
     public body?: string,
   ) {
     super(message);

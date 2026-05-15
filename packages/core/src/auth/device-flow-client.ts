@@ -37,17 +37,13 @@ export class DeviceFlowClient {
 
   /**
    * Step 1: Request a device code from the server.
-   * POST /api/oauth/device
+   * POST /api/v1/auth/device
    */
   async requestDeviceCode(): Promise<DeviceCodeResponse> {
-    const url = `${this.serverUrl}/api/oauth/device`;
+    const url = `${this.serverUrl}/api/v1/auth/device`;
     const response = await this.fetchFn(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_id: this.clientId,
-        scope: 'sync',
-      }),
     });
 
     if (!response.ok) {
@@ -63,7 +59,7 @@ export class DeviceFlowClient {
 
   /**
    * Step 2: Poll the token endpoint until the user authorizes or the code expires.
-   * POST /api/oauth/token
+   * POST /api/v1/auth/device/token
    *
    * Handles all RFC 8628 error codes:
    * - authorization_pending → keep polling
@@ -90,14 +86,12 @@ export class DeviceFlowClient {
         await this.sleepFn(interval * 1000);
       }
 
-      const url = `${this.serverUrl}/api/oauth/token`;
+      const url = `${this.serverUrl}/api/v1/auth/device/token`;
       const response = await this.fetchFn(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
           device_code: deviceCode,
-          client_id: this.clientId,
         }),
       });
 

@@ -7,10 +7,10 @@ import type {
 import { SyncApiError } from './types.js';
 
 /**
- * HTTP client for the Memento sync API.
+ * HTTP client for the Memento v1 Sync API.
  *
- * Handles authentication via Bearer token, error handling,
- * and communication with the web-ui sync endpoints.
+ * Communicates with memento-web server at /api/v1/sync/*
+ * Authentication via Bearer token from DeviceFlowClient.
  */
 export class SyncClient {
   private baseUrl: string;
@@ -22,45 +22,53 @@ export class SyncClient {
     getToken: () => Promise<string | null>;
     fetchFunction?: typeof fetch;
   }) {
-    // Strip trailing slash
     this.baseUrl = options.serverUrl.replace(/\/+$/, '');
     this.getToken = options.getToken;
     this.fetchFn = options.fetchFunction || fetch;
   }
 
   /**
-   * Pull observations modified since a given timestamp.
+   * Pull changes from server since cursor.
+   * GET /api/v1/sync/pull?projectId=<slug>&cursor=<iso>&limit=<n>
    */
-  async pull(since: number | null, projectId?: string): Promise<SyncPullResponse> {
-    const params = new URLSearchParams();
-    if (since !== null) {
-      params.set('since', String(since));
-    }
-    if (projectId) {
-      params.set('projectId', projectId);
-    }
+  async pull(params: { projectId: string; cursor: string | null; limit?: number }): Promise<SyncPullResponse> {
+    const qp = new URLSearchParams({ projectId: params.projectId });
+    if (params.cursor) qp.set('cursor', params.cursor);
+    if (params.limit) qp.set('limit', String(params.limit));
 
-    const query = params.toString() ? `?${params.toString()}` : '';
-    return this.request<SyncPullResponse>('GET', `/api/sync/pull${query}`);
+    const response = await this.request<{ success: boolean; data: SyncPullResponse }>(
+      'GET',
+      `/api/v1/sync/pull?${qp.toString()}`,
+    );
+
+    return response.data;
   }
 
   /**
-   * Push local observations to the server.
+   * Push local mementos to server.
+   * POST /api/v1/sync/push
    */
   async push(data: SyncPushRequest): Promise<SyncPushResponse> {
-    return this.request<SyncPushResponse>('POST', '/api/sync/push', data);
+    const response = await this.request<{ success: boolean; data: SyncPushResponse }>(
+      'POST',
+      '/api/v1/sync/push',
+      data,
+    );
+
+    return response.data;
   }
 
   /**
-   * Get sync status from the server.
+   * Get sync status for a project.
+   * GET /api/v1/sync/status?projectId=<slug>
    */
-  async status(projectId?: string): Promise<SyncStatusResponse> {
-    const params = new URLSearchParams();
-    if (projectId) {
-      params.set('projectId', projectId);
-    }
-    const query = params.toString() ? `?${params.toString()}` : '';
-    return this.request<SyncStatusResponse>('GET', `/api/sync/status${query}`);
+  async status(projectId: string): Promise<SyncStatusResponse> {
+    const response = await this.request<{ success: boolean; data: SyncStatusResponse }>(
+      'GET',
+      `/api/v1/sync/status?projectId=${encodeURIComponent(projectId)}`,
+    );
+
+    return response.data;
   }
 
   /**
@@ -77,6 +85,7 @@ export class SyncClient {
       throw new SyncApiError(
         'Not authenticated. Run `memento login` first.',
         401,
+        'UNAUTHORIZED',
       );
     }
 
@@ -93,15 +102,25 @@ export class SyncClient {
 
     if (response.status === 401) {
       throw new SyncApiError(
-        'Authentication failed. Your token may have expired. Run `memento login` again.',
+        'Authentication failed. Run `memento login` again.',
         401,
+        'UNAUTHORIZED',
       );
     }
 
     if (response.status === 403) {
       throw new SyncApiError(
-        'Access denied. Check your permissions.',
+        'Access denied. Check your project permissions.',
         403,
+        'FORBIDDEN',
+      );
+    }
+
+    if (response.status === 429) {
+      throw new SyncApiError(
+        'Rate limited. Please wait before retrying.',
+        429,
+        'RATE_LIMITED',
       );
     }
 
@@ -110,6 +129,7 @@ export class SyncClient {
       throw new SyncApiError(
         `Sync API error: ${response.status} ${response.statusText}`,
         response.status,
+        undefined,
         text,
       );
     }

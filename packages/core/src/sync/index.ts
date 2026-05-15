@@ -3,11 +3,12 @@ export { SyncClient } from './sync-client.js';
 export { resolveConflict, detectConflicts, resolveAllConflicts } from './conflict-resolution.js';
 export type {
   SyncDirection,
-  SyncObservation,
-  SyncPullResponse,
+  SyncMemento,
   SyncPushRequest,
   SyncPushResponse,
-  SyncConflictResult,
+  SyncPullResponse,
+  SyncPullParams,
+  SyncConflict,
   SyncStatusResponse,
   SyncMeta,
   SyncResult,
