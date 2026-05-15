@@ -1,7 +1,7 @@
 {
   "name": "@slorenzot/memento-core",
-  "version": "1.0.0",
-  "description": "Core memory engine for Memento with bun:sqlite, FTS5 search, soft delete, merge, and export",
+  "version": "2.0.0",
+  "description": "Core memory engine for Memento with bun:sqlite, FTS5 search, semantic search, soft delete, merge, journal, and export",
   "keywords": [
     "memento",
     "memory",
@@ -27,6 +27,9 @@
     "@types/node": "^20.11.0",
     "typescript": "^5.3.3"
   },
+  "files": [
+    "dist"
+  ],
   "engines": {
     "bun": ">=1.0.0"
   }
