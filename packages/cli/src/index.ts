@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { MemoryEngine, loadConfig, resolveDbPath, getProjectId, createConfig, migrateConfig, findConfigPath, NEW_CONFIG_DIR, getStaleThresholdMs, DEFAULT_STALE_THRESHOLD_MS, normalizeProjectId } from '@slorenzot/memento-core';
+import { MemoryEngine, loadConfig, resolveDbPath, getProjectId, createConfig, migrateConfig, findConfigPath, NEW_CONFIG_DIR, getStaleThresholdMs, DEFAULT_STALE_THRESHOLD_MS, normalizeProjectId, DeviceFlowClient, TokenStore } from '@slorenzot/memento-core';
 import type { Observation, ExportFormat, CreateConfigResult, MigrateConfigResult } from '@slorenzot/memento-core';
 import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, writeFileSync, readFileSync, appendFileSync } from 'fs';
 import { join, dirname, basename } from 'path';
 import { homedir } from 'os';
+import { execSync } from 'child_process';
 
 // ─── Lazy Memory Initialization ────────────────────────────
 // MemoryEngine is NOT constructed at module scope so that
@@ -950,5 +951,154 @@ function printInitSummary(
   console.log(border('╰', '╯'));
   console.log('');
 }
+
+// ─── Auth Commands (Issue #211) ──────────────────────────────
+
+const authCommand = program
+  .command('auth')
+  .description('Manage authentication with memento-web');
+
+authCommand
+  .command('status')
+  .description('Show authentication state')
+  .action(async () => {
+    const store = new TokenStore();
+    const W = 48;
+    const lr = '│';
+    const line = (s: string) => `  ${lr} ${s.padEnd(W - 2)}${lr}`;
+    const border = (l: string, r: string) => '  ' + l + '─'.repeat(W - 2) + r;
+
+    console.log(border('╭', '╮'));
+    console.log(line('MEMENTO AUTH'));
+    console.log(border('├', '┤'));
+
+    if (store.isAuthenticated()) {
+      const user = store.getUser();
+      const serverUrl = store.getServerUrl();
+      const remaining = store.getTimeUntilExpiry();
+      const hours = Math.floor(remaining / 3600);
+      const minutes = Math.floor((remaining % 3600) / 60);
+
+      console.log(line('  Status:    ✓ Authenticated'));
+      if (user?.email) console.log(line(`  User:      ${user.email}`));
+      if (user?.name) console.log(line(`  Name:      ${user.name}`));
+      if (serverUrl) console.log(line(`  Server:    ${serverUrl}`));
+      console.log(line(`  Expires:   ${hours}h ${minutes}m remaining`));
+      console.log(line(`  Token:     ${store.getFilePath()}`));
+    } else {
+      const token = store.getToken();
+      if (token) {
+        console.log(line('  Status:    ✗ Token expired'));
+        console.log(line(`  Server:    ${token.serverUrl || 'unknown'}`));
+        console.log(line('  Run `memento login` to re-authenticate'));
+      } else {
+        console.log(line('  Status:    ✗ Not authenticated'));
+        console.log(line('  Run `memento login` to get started'));
+      }
+    }
+
+    console.log(border('╰', '╯'));
+  });
+
+// ─── Login ─────────────────────────────────────────────────
+
+program
+  .command('login')
+  .description('Authenticate with memento-web using OAuth device flow')
+  .option('-s, --server <url>', 'Server URL', 'https://memento-web.app')
+  .action(async (options: any) => {
+    const serverUrl = options.server;
+    const store = new TokenStore();
+
+    // Check if already authenticated
+    if (store.isAuthenticated()) {
+      const user = store.getUser();
+      console.log(`Already authenticated as ${user?.email || 'unknown user'}`);
+      console.log(`Run \`memento logout\` first to switch accounts.`);
+      return;
+    }
+
+    const client = new DeviceFlowClient({ serverUrl });
+
+    try {
+      const result = await client.authorize({
+        onCode: (code) => {
+          const W = 46;
+          const lr = '│';
+          const line = (s: string) => `  ${lr} ${s.padEnd(W - 2)}${lr}`;
+          const border = (l: string, r: string) => '  ' + l + '─'.repeat(W - 2) + r;
+
+          console.log(border('╭', '╮'));
+          console.log(line('MEMENTO LOGIN'));
+          console.log(border('├', '┤'));
+          console.log(line(''));
+          console.log(line('  Abre en tu navegador:'));
+          console.log(line(`  ${code.verification_uri}`));
+          console.log(line(''));
+          console.log(line('  E ingresa el código:'));
+          console.log(line(''));
+          console.log(line(`    ${code.user_code}`));
+          console.log(line(''));
+          console.log(border('╰', '╯'));
+
+          // Try to open browser automatically
+          try {
+            const url = code.verification_uri_complete || code.verification_uri;
+            const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
+            execSync(`${cmd} "${url}"`, { stdio: 'ignore' });
+            console.log('  Opening browser...');
+          } catch {
+            // Couldn't open browser — user will copy URL manually
+          }
+
+          console.log('');
+          process.stdout.write('  ⠋ Esperando autorización');
+        },
+        onPoll: (attempt: number) => {
+          const spinners = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+          const spinner = spinners[attempt % spinners.length];
+          process.stdout.write(`\r  ${spinner} Esperando autorización (${attempt})`);
+        },
+      });
+
+      console.log(''); // New line after spinner
+
+      if (result.success && result.token) {
+        const auth = store.setToken(result.token, serverUrl);
+        const user = auth.user;
+        console.log(`  ✅ Autenticado como ${user?.email || 'usuario'}`);
+        console.log(`  Token guardado en ${store.getFilePath()}`);
+      } else {
+        console.error(`  ✗ Error: ${result.errorDescription || result.error || 'Unknown error'}`);
+        process.exit(1);
+      }
+    } catch (error: unknown) {
+      console.error('');
+      if (error instanceof Error) {
+        console.error(`  ✗ Error: ${error.message}`);
+      } else {
+        console.error(`  ✗ Error: ${String(error)}`);
+      }
+      process.exit(1);
+    }
+  });
+
+// ─── Logout ────────────────────────────────────────────────
+
+program
+  .command('logout')
+  .description('Clear stored authentication token')
+  .action(async () => {
+    const store = new TokenStore();
+
+    if (!store.getToken()) {
+      console.log('No active session to logout from.');
+      return;
+    }
+
+    store.clearToken();
+    console.log('✅ Sesión cerrada. Token eliminado.');
+    console.log(`Run \`memento login\` to authenticate again.`);
+  });
 
 program.parseAsync(process.argv);
