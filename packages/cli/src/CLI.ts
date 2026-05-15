@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { MemoryEngine, loadConfig, resolveDbPath, getProjectId, normalizeProjectId } from '@slorenzot/memento-core';
+import { SyncEngine, TokenStore } from '@slorenzot/memento-core';
 import type { Observation } from '@slorenzot/memento-core';
 
 // @ts-ignore
@@ -396,6 +397,263 @@ export class CLI {
         console.log('');
         console.log(entry.body);
       });
+
+    // ─── Auth commands ──────────────────────────────────────────
+
+    this.program
+      .command('login')
+      .description('Authenticate with a Memento server (email + password)')
+      .option('-s, --server <url>', 'Server URL', 'http://localhost:8086')
+      .option('-e, --email <email>', 'Email address')
+      .option('-p, --password <password>', 'Password')
+      .action(async (options) => {
+        const tokenStore = new TokenStore();
+
+        // Check if already authenticated
+        if (tokenStore.isAuthenticated()) {
+          const user = tokenStore.getUser();
+          const serverUrl = tokenStore.getServerUrl();
+          console.log(`Already authenticated as ${user?.email || 'unknown'} on ${serverUrl}`);
+          console.log('Run `memento logout` first to switch accounts.');
+          return;
+        }
+
+        const serverUrl = options.server.replace(/\/+$/, '');
+        let email = options.email;
+        let password = options.password;
+
+        // Interactive prompt if not provided
+        if (!email) {
+          const readline = await import('readline');
+          const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+          email = await new Promise<string>((resolve) => {
+            rl.question('Email: ', (answer: string) => {
+              rl.close();
+              resolve(answer.trim());
+            });
+          });
+        }
+
+        if (!password) {
+          const readline = await import('readline');
+          const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+          password = await new Promise<string>((resolve) => {
+            rl.question('Password: ', (answer: string) => {
+              rl.close();
+              resolve(answer);
+            });
+          });
+        }
+
+        if (!email || !password) {
+          console.error('Email and password are required.');
+          return;
+        }
+
+        try {
+          console.log(`Authenticating with ${serverUrl}...`);
+          const response = await fetch(`${serverUrl}/api/auth/token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+            console.error(`✗ Authentication failed: ${(errorData as any).message || response.statusText}`);
+            return;
+          }
+
+          const tokenData = await response.json() as {
+            access_token: string;
+            token_type: string;
+            expires_in: number;
+            user: { id: string; email: string; name: string | null };
+          };
+
+          // Save token using TokenStore
+          tokenStore.setToken({
+            access_token: tokenData.access_token,
+            token_type: tokenData.token_type as 'Bearer',
+            expires_in: tokenData.expires_in,
+            user: {
+              email: tokenData.user.email,
+              name: tokenData.user.name ?? undefined,
+            },
+          }, serverUrl);
+
+          console.log(`✅ Authenticated as ${tokenData.user.email}`);
+          if (tokenData.user.name) {
+            console.log(`   Name: ${tokenData.user.name}`);
+          }
+          console.log(`   Token expires in ${Math.floor(tokenData.expires_in / 86400)} days`);
+          console.log(`   Server: ${serverUrl}`);
+        } catch (err) {
+          console.error(`✗ Connection failed: ${err instanceof Error ? err.message : err}`);
+          console.error('   Check that the server URL is correct and the server is running.');
+        }
+      });
+
+    this.program
+      .command('logout')
+      .description('Clear stored authentication token')
+      .action(async () => {
+        const tokenStore = new TokenStore();
+        const cleared = tokenStore.clearToken();
+        if (cleared) {
+          console.log('✅ Logged out successfully.');
+        } else {
+          console.log('Not currently authenticated.');
+        }
+      });
+
+    // ─── Sync commands ──────────────────────────────────────────
+
+    const sync = this.program.command('sync').description('Sync observations with a remote Memento server');
+
+    sync
+      .command('status')
+      .description('Show sync status and authentication state')
+      .option('-s, --server <url>', 'Server URL (overrides stored token server)')
+      .action(async (options) => {
+        const tokenStore = new TokenStore();
+        const token = tokenStore.getToken();
+
+        console.log('\n── Sync Status ──\n');
+
+        // Auth status
+        if (!token) {
+          console.log('  Auth: ❌ Not authenticated');
+          console.log('  Run `memento login` to authenticate.');
+          return;
+        }
+
+        const expiresIn = tokenStore.getTimeUntilExpiry();
+        const expired = expiresIn <= 0;
+        const user = tokenStore.getUser();
+
+        console.log(`  Auth: ${expired ? '⚠️ Token expired' : '✅ Authenticated'}`);
+        console.log(`  User: ${user?.email || 'unknown'}`);
+        console.log(`  Server: ${token.serverUrl}`);
+        console.log(`  Token expires in: ${expired ? 'EXPIRED' : formatDuration(expiresIn)}`);
+
+        // Local stats
+        const localResult = await this.memory.search({ limit: 0 });
+        console.log(`  Local: ${localResult.total} observations`);
+
+        // Remote stats
+        try {
+          const serverUrl = options.server || token.serverUrl;
+          const syncEngine = new SyncEngine({ serverUrl, projectId: this.projectId });
+          const status = await syncEngine.getStatus(this.memory);
+
+          if (status.remote) {
+            console.log(`  Remote: ${status.remote.activeObservations} active, ${status.remote.totalObservations} total`);
+          } else {
+            console.log('  Remote: ❌ Unreachable');
+          }
+
+          if (status.meta) {
+            const lastSync = new Date(status.meta.lastSyncAt!);
+            const ago = Date.now() - status.meta.lastSyncAt!;
+            console.log(`  Last sync: ${lastSync.toISOString()} (${formatDuration(Math.floor(ago / 1000))} ago)`);
+            console.log(`    Pulled: ${status.meta.lastPullCount}, Pushed: ${status.meta.lastPushCount}, Conflicts: ${status.meta.lastConflictCount}`);
+          } else {
+            console.log('  Last sync: Never');
+          }
+        } catch (err) {
+          console.log(`  Remote: ❌ Error — ${err instanceof Error ? err.message : err}`);
+        }
+
+        console.log('');
+      });
+
+    sync
+      .command('pull')
+      .description('Download remote observations to local DB')
+      .option('-s, --server <url>', 'Server URL (overrides stored token server)')
+      .action(async (options) => {
+        const tokenStore = new TokenStore();
+        if (!tokenStore.isAuthenticated()) {
+          console.error('❌ Not authenticated. Run `memento login` first.');
+          return;
+        }
+
+        const serverUrl = options.server || tokenStore.getServerUrl()!;
+        const syncEngine = new SyncEngine({ serverUrl, projectId: this.projectId });
+
+        console.log('⠋ Pulling observations...');
+        const result = await syncEngine.pull(this.memory);
+
+        console.log(`\n── Pull Complete ──\n`);
+        console.log(`  Pulled: ${result.pulled} observations`);
+        console.log(`  Conflicts: ${result.conflicts.length}`);
+        if (result.errors.length > 0) {
+          console.log(`  Errors: ${result.errors.length}`);
+          result.errors.forEach(e => console.log(`    ⚠ ${e}`));
+        }
+        console.log(`  Duration: ${(result.durationMs / 1000).toFixed(1)}s\n`);
+      });
+
+    sync
+      .command('push')
+      .description('Upload local observations to remote server')
+      .option('-s, --server <url>', 'Server URL (overrides stored token server)')
+      .action(async (options) => {
+        const tokenStore = new TokenStore();
+        if (!tokenStore.isAuthenticated()) {
+          console.error('❌ Not authenticated. Run `memento login` first.');
+          return;
+        }
+
+        const serverUrl = options.server || tokenStore.getServerUrl()!;
+        const syncEngine = new SyncEngine({ serverUrl, projectId: this.projectId });
+
+        console.log('⠋ Pushing observations...');
+        const result = await syncEngine.push(this.memory);
+
+        console.log(`\n── Push Complete ──\n`);
+        console.log(`  Pushed: ${result.pushed} observations`);
+        console.log(`  Conflicts: ${result.conflicts.length}`);
+        if (result.errors.length > 0) {
+          console.log(`  Errors: ${result.errors.length}`);
+          result.errors.forEach(e => console.log(`    ⚠ ${e}`));
+        }
+        console.log(`  Duration: ${(result.durationMs / 1000).toFixed(1)}s\n`);
+      });
+
+    sync
+      .command('now', { isDefault: true })
+      .description('Bidirectional sync (pull then push)')
+      .option('-s, --server <url>', 'Server URL (overrides stored token server)')
+      .action(async (options) => {
+        const tokenStore = new TokenStore();
+        if (!tokenStore.isAuthenticated()) {
+          console.error('❌ Not authenticated. Run `memento login` first.');
+          return;
+        }
+
+        const serverUrl = options.server || tokenStore.getServerUrl()!;
+        const syncEngine = new SyncEngine({ serverUrl, projectId: this.projectId });
+
+        console.log('⠋ Syncing observations...');
+        const result = await syncEngine.sync(this.memory);
+
+        console.log(`\n── Sync Complete ──\n`);
+        console.log(`  Pulled: ${result.pulled}`);
+        console.log(`  Pushed: ${result.pushed}`);
+        console.log(`  Conflicts: ${result.conflicts.length}`);
+        if (result.conflicts.length > 0) {
+          result.conflicts.forEach(c => {
+            console.log(`    ${c.uuid}: ${c.resolution} (${new Date(c.remoteUpdatedAt).toISOString()} vs ${new Date(c.localUpdatedAt).toISOString()})`);
+          });
+        }
+        if (result.errors.length > 0) {
+          console.log(`  Errors: ${result.errors.length}`);
+          result.errors.forEach(e => console.log(`    ⚠ ${e}`));
+        }
+        console.log(`  Duration: ${(result.durationMs / 1000).toFixed(1)}s\n`);
+      });
   }
 
   private async getOrCreateSessionId(projectId: string): Promise<number> {
@@ -418,4 +676,17 @@ export class CLI {
   close() {
     this.memory.close();
   }
+}
+
+/**
+ * Format a duration in seconds to a human-readable string.
+ */
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  if (hours < 24) return `${hours}h ${mins}m`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ${hours % 24}h`;
 }

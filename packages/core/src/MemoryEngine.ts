@@ -232,6 +232,21 @@ export class MemoryEngine {
       // Table may not have topic_key column yet
     }
 
+    // Migrate: add updated_at column (Issue #209 — sync support)
+    try {
+      this.db.exec('SELECT updated_at FROM observations LIMIT 0');
+    } catch {
+      try {
+        this.db.exec('ALTER TABLE observations ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0');
+        // Backfill: set updated_at = created_at for existing rows
+        this.db.exec('UPDATE observations SET updated_at = created_at WHERE updated_at = 0');
+        console.error('✓ Migration: added updated_at column to observations');
+      } catch {
+        // Column may already exist in a concurrent scenario
+      }
+    }
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_observations_updated ON observations(updated_at)');
+
     // FTS5 — standalone mode (no content= parameter).
     // FTS5 owns its own data copy, supports full CRUD (INSERT, DELETE, UPDATE),
     // and avoids SQLITE_CORRUPT_VTAB that occurred with content='observations' mode
@@ -384,7 +399,7 @@ export class MemoryEngine {
     const id = await this.withRetry(() => {
       const result = this.db
         .prepare(
-          `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, deleted_at, metadata, scope, pinned, read_only) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)`
+          `INSERT INTO observations (uuid, session_id, title, content, type, topic_key, project_id, created_at, updated_at, deleted_at, metadata, scope, pinned, read_only) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)`
         )
         .run(
           uuid,
@@ -395,6 +410,7 @@ export class MemoryEngine {
           data.topicKey ?? null,
           data.projectId,
           createdAt.getTime(),
+          createdAt.getTime(), // updated_at = created_at on insert
           metadata,
           scope,
           pinned,
@@ -483,6 +499,8 @@ export class MemoryEngine {
     if (fields.length === 0) return current;
 
     fields.push('revision_count = revision_count + 1');
+    fields.push('updated_at = ?');
+    values.push(Date.now());
     values.push(id);
 
     // Check if any FTS5-indexed fields changed
@@ -545,14 +563,14 @@ export class MemoryEngine {
       const meta = { ...obs.metadata, deleteReason: reason };
       await this.withRetry(() => {
         this.db
-          .prepare('UPDATE observations SET deleted_at = ?, metadata = ? WHERE id = ?')
-          .run(now, this.serialize(meta), id);
+          .prepare('UPDATE observations SET deleted_at = ?, updated_at = ?, metadata = ? WHERE id = ?')
+          .run(now, now, this.serialize(meta), id);
         // Application-level FTS5 sync (was trigger observations_soft_delete)
         this.db.prepare('DELETE FROM observations_fts WHERE rowid = ?').run(id);
       });
     } else {
       await this.withRetry(() => {
-        this.db.prepare('UPDATE observations SET deleted_at = ? WHERE id = ?').run(now, id);
+        this.db.prepare('UPDATE observations SET deleted_at = ?, updated_at = ? WHERE id = ?').run(now, now, id);
         // Application-level FTS5 sync (was trigger observations_soft_delete)
         this.db.prepare('DELETE FROM observations_fts WHERE rowid = ?').run(id);
       });
@@ -566,7 +584,8 @@ export class MemoryEngine {
     if (!obs.deletedAt) throw new Error('Observation is not deleted');
 
     await this.withRetry(() => {
-      this.db.prepare('UPDATE observations SET deleted_at = NULL WHERE id = ?').run(id);
+      const now = Date.now();
+      this.db.prepare('UPDATE observations SET deleted_at = NULL, updated_at = ? WHERE id = ?').run(now, id);
       // Application-level FTS5 sync (was trigger observations_undelete)
       const row = this.db
         .prepare('SELECT title, content, topic_key, project_id FROM observations WHERE id = ?')
@@ -1733,6 +1752,17 @@ export class MemoryEngine {
     return observation;
   }
 
+  /**
+   * Get an observation by UUID. Returns null if not found.
+   * Includes soft-deleted observations.
+   */
+  getObservationByUuid(uuid: string): Observation | null {
+    this.checkHealth();
+    const row = this.db.prepare('SELECT * FROM observations WHERE uuid = ?').get(uuid);
+    if (!row) return null;
+    return this.mapObservation(row as Record<string, unknown>);
+  }
+
   private async getSessionById(id: number): Promise<Session | null> {
     const row = this.db.prepare('SELECT * FROM sessions WHERE id = ?').get(id);
     if (!row) return null;
@@ -1756,6 +1786,7 @@ export class MemoryEngine {
       topic_key: string | null;
       project_id: string;
       created_at: number;
+      updated_at: number | null;
       deleted_at: number | null;
       metadata: string | null;
       scope: string | null;
@@ -1773,6 +1804,7 @@ export class MemoryEngine {
       topicKey: r.topic_key,
       projectId: r.project_id,
       createdAt: new Date(r.created_at),
+      updatedAt: new Date(r.updated_at ?? r.created_at),
       deletedAt: r.deleted_at ? new Date(r.deleted_at) : null,
       metadata: this.deserialize(r.metadata),
       scope: (r.scope as 'project' | 'personal') || 'project',
