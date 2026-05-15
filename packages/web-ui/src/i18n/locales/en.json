@@ -212,21 +212,66 @@
       "capabilities": "Capabilities"
     },
     "cards": {
-      "quickstart": { "title": "Quickstart", "description": "Get up and running with your first observation in 5 minutes" },
-      "cliReference": { "title": "CLI Reference", "description": "Full command-line interface documentation" },
-      "mcpTools": { "title": "MCP Tools", "description": "21 tools for AI agent integration via Model Context Protocol" },
-      "apiReference": { "title": "API Reference", "description": "REST API endpoints and examples" },
-      "core": { "title": "Core", "description": "Database engine, observations, sessions, and search" },
-      "mcpServer": { "title": "MCP Server", "description": "Model Context Protocol server with 21 tools" },
-      "cli": { "title": "CLI", "description": "Command-line interface for terminal workflows" },
-      "webUi": { "title": "Web UI", "description": "Next.js dashboard for browsing and managing memory" },
-      "tui": { "title": "TUI", "description": "Terminal UI built with Ink and React" },
-      "coreConcepts": { "title": "Core Concepts", "description": "Observations, sessions, projects, journal, and search" },
-      "architecture": { "title": "Architecture", "description": "Database design, FTS5 search, and monorepo structure" },
-      "faqTroubleshooting": { "title": "FAQ & Troubleshooting", "description": "Common questions and solutions to known issues" },
-      "contextRecovery": { "title": "Context Recovery", "description": "Recover what happened in previous sessions" },
-      "passiveCapture": { "title": "Passive Capture", "description": "Extract learnings from text with automatic deduplication" },
-      "exportImport": { "title": "Export & Import", "description": "Backup and migrate memory in JSON, XML, or TXT" }
+      "quickstart": {
+        "title": "Quickstart",
+        "description": "Get up and running with your first observation in 5 minutes"
+      },
+      "cliReference": {
+        "title": "CLI Reference",
+        "description": "Full command-line interface documentation"
+      },
+      "mcpTools": {
+        "title": "MCP Tools",
+        "description": "21 tools for AI agent integration via Model Context Protocol"
+      },
+      "apiReference": {
+        "title": "API Reference",
+        "description": "REST API endpoints and examples"
+      },
+      "core": {
+        "title": "Core",
+        "description": "Database engine, observations, sessions, and search"
+      },
+      "mcpServer": {
+        "title": "MCP Server",
+        "description": "Model Context Protocol server with 21 tools"
+      },
+      "cli": {
+        "title": "CLI",
+        "description": "Command-line interface for terminal workflows"
+      },
+      "webUi": {
+        "title": "Web UI",
+        "description": "Next.js dashboard for browsing and managing memory"
+      },
+      "tui": {
+        "title": "TUI",
+        "description": "Terminal UI built with Ink and React"
+      },
+      "coreConcepts": {
+        "title": "Core Concepts",
+        "description": "Observations, sessions, projects, journal, and search"
+      },
+      "architecture": {
+        "title": "Architecture",
+        "description": "Database design, FTS5 search, and monorepo structure"
+      },
+      "faqTroubleshooting": {
+        "title": "FAQ & Troubleshooting",
+        "description": "Common questions and solutions to known issues"
+      },
+      "contextRecovery": {
+        "title": "Context Recovery",
+        "description": "Recover what happened in previous sessions"
+      },
+      "passiveCapture": {
+        "title": "Passive Capture",
+        "description": "Extract learnings from text with automatic deduplication"
+      },
+      "exportImport": {
+        "title": "Export & Import",
+        "description": "Backup and migrate memory in JSON, XML, or TXT"
+      }
     },
     "nav": {
       "quickstart": "Quickstart",
@@ -269,5 +314,9 @@
     "database": "Database",
     "healthy": "healthy",
     "unhealthy": "unhealthy"
+  },
+  "sync": {
+    "connectCloud": "Sync with Cloud",
+    "openHub": "memento-hub.com"
   }
 }

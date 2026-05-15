@@ -212,21 +212,66 @@
       "capabilities": "Capacidades"
     },
     "cards": {
-      "quickstart": { "title": "Inicio rápido", "description": "Ponte en marcha con tu primera observación en 5 minutos" },
-      "cliReference": { "title": "Referencia CLI", "description": "Documentación completa de la interfaz de línea de comandos" },
-      "mcpTools": { "title": "Herramientas MCP", "description": "21 herramientas para integración de agentes IA vía Model Context Protocol" },
-      "apiReference": { "title": "Referencia API", "description": "Endpoints y ejemplos de la API REST" },
-      "core": { "title": "Core", "description": "Motor de base de datos, observaciones, sesiones y búsqueda" },
-      "mcpServer": { "title": "Servidor MCP", "description": "Servidor Model Context Protocol con 21 herramientas" },
-      "cli": { "title": "CLI", "description": "Interfaz de línea de comandos para flujos de trabajo en terminal" },
-      "webUi": { "title": "Web UI", "description": "Dashboard Next.js para explorar y gestionar la memoria" },
-      "tui": { "title": "TUI", "description": "Interfaz de terminal construida con Ink y React" },
-      "coreConcepts": { "title": "Conceptos clave", "description": "Observaciones, sesiones, proyectos, journal y búsqueda" },
-      "architecture": { "title": "Arquitectura", "description": "Diseño de base de datos, búsqueda FTS5 y estructura del monorepo" },
-      "faqTroubleshooting": { "title": "FAQ y solución de problemas", "description": "Preguntas comunes y soluciones a problemas conocidos" },
-      "contextRecovery": { "title": "Recuperación de contexto", "description": "Recupera lo que pasó en sesiones anteriores" },
-      "passiveCapture": { "title": "Captura pasiva", "description": "Extrae aprendizajes de texto con deduplicación automática" },
-      "exportImport": { "title": "Exportar e Importar", "description": "Respalda y migra memoria en JSON, XML o TXT" }
+      "quickstart": {
+        "title": "Inicio rápido",
+        "description": "Ponte en marcha con tu primera observación en 5 minutos"
+      },
+      "cliReference": {
+        "title": "Referencia CLI",
+        "description": "Documentación completa de la interfaz de línea de comandos"
+      },
+      "mcpTools": {
+        "title": "Herramientas MCP",
+        "description": "21 herramientas para integración de agentes IA vía Model Context Protocol"
+      },
+      "apiReference": {
+        "title": "Referencia API",
+        "description": "Endpoints y ejemplos de la API REST"
+      },
+      "core": {
+        "title": "Core",
+        "description": "Motor de base de datos, observaciones, sesiones y búsqueda"
+      },
+      "mcpServer": {
+        "title": "Servidor MCP",
+        "description": "Servidor Model Context Protocol con 21 herramientas"
+      },
+      "cli": {
+        "title": "CLI",
+        "description": "Interfaz de línea de comandos para flujos de trabajo en terminal"
+      },
+      "webUi": {
+        "title": "Web UI",
+        "description": "Dashboard Next.js para explorar y gestionar la memoria"
+      },
+      "tui": {
+        "title": "TUI",
+        "description": "Interfaz de terminal construida con Ink y React"
+      },
+      "coreConcepts": {
+        "title": "Conceptos clave",
+        "description": "Observaciones, sesiones, proyectos, journal y búsqueda"
+      },
+      "architecture": {
+        "title": "Arquitectura",
+        "description": "Diseño de base de datos, búsqueda FTS5 y estructura del monorepo"
+      },
+      "faqTroubleshooting": {
+        "title": "FAQ y solución de problemas",
+        "description": "Preguntas comunes y soluciones a problemas conocidos"
+      },
+      "contextRecovery": {
+        "title": "Recuperación de contexto",
+        "description": "Recupera lo que pasó en sesiones anteriores"
+      },
+      "passiveCapture": {
+        "title": "Captura pasiva",
+        "description": "Extrae aprendizajes de texto con deduplicación automática"
+      },
+      "exportImport": {
+        "title": "Exportar e Importar",
+        "description": "Respalda y migra memoria en JSON, XML o TXT"
+      }
     },
     "nav": {
       "quickstart": "Inicio rápido",
@@ -269,5 +314,9 @@
     "database": "Base de datos",
     "healthy": "saludable",
     "unhealthy": "con errores"
+  },
+  "sync": {
+    "connectCloud": "Sincronizar",
+    "openHub": "memento-hub.com"
   }
 }
