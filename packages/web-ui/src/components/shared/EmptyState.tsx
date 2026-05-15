@@ -1,15 +1,17 @@
 interface EmptyStateProps {
   title: string;
   description?: string;
+  icon?: React.ReactNode;
   action?: {
     label: string;
     href: string;
   };
 }
 
-export function EmptyState({ title, description, action }: EmptyStateProps) {
+export function EmptyState({ title, description, icon, action }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
+      {icon && <div className="mb-4 text-[var(--color-tertiary)]">{icon}</div>}
       <h3 className="text-[16px] font-medium text-[var(--color-text-secondary)]">{title}</h3>
       {description && (
         <p className="mt-2 text-[14px] text-[var(--color-tertiary)]">{description}</p>

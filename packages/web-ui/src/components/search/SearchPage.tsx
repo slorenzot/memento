@@ -7,13 +7,22 @@ import { Badge } from '@/components/shared/Badge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useT } from '@/i18n/translation-context';
 import { useLocalePrefix } from '@/i18n/use-locale-prefix';
+import { SearchIcon } from 'lucide-react';
 import type { Observation } from '@slorenzot/memento-core';
 
 const SEARCH_PAGE_SIZE = 50;
 
 const TYPES = [
-  'decision', 'bug', 'discovery', 'note', 'summary',
-  'learning', 'pattern', 'architecture', 'config', 'preference',
+  'decision',
+  'bug',
+  'discovery',
+  'note',
+  'summary',
+  'learning',
+  'pattern',
+  'architecture',
+  'config',
+  'preference',
 ];
 
 const SCOPES = ['project', 'personal'] as const;
@@ -55,8 +64,8 @@ export function SearchPage() {
         const res = await fetch('/api/projects');
         const data = await res.json();
         // API returns array of { name, activeCount, ... } directly (not wrapped in data)
-        const names = (Array.isArray(data) ? data : data.data ?? []).map(
-          (p: { name: string } | string) => typeof p === 'string' ? p : p.name
+        const names = (Array.isArray(data) ? data : (data.data ?? [])).map(
+          (p: { name: string } | string) => (typeof p === 'string' ? p : p.name)
         );
         setProjects(names);
       } catch {
@@ -70,66 +79,72 @@ export function SearchPage() {
    * Update the browser URL with current query + filters.
    * Uses router.replace to avoid polluting browser history.
    */
-  const updateURL = useCallback((q: string, type: string, scope: string, projectId: string) => {
-    const params = new URLSearchParams();
-    if (q) params.set('q', q);
-    if (type) params.set('type', type);
-    if (scope) params.set('scope', scope);
-    if (projectId) params.set('projectId', projectId);
-    const search = params.toString();
-    // Use pathname which already includes the locale prefix
-    router.replace(search ? `${pathname}?${search}` : pathname);
-  }, [router, pathname]);
+  const updateURL = useCallback(
+    (q: string, type: string, scope: string, projectId: string) => {
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      if (type) params.set('type', type);
+      if (scope) params.set('scope', scope);
+      if (projectId) params.set('projectId', projectId);
+      const search = params.toString();
+      // Use pathname which already includes the locale prefix
+      router.replace(search ? `${pathname}?${search}` : pathname);
+    },
+    [router, pathname]
+  );
 
-  const handleSearch = useCallback(async (searchOffset = 0) => {
-    if (!query.trim()) return;
+  const handleSearch = useCallback(
+    async (searchOffset = 0) => {
+      if (!query.trim()) return;
 
-    const isLoadMore = searchOffset > 0;
-    if (isLoadMore) {
-      setLoadingMore(true);
-    } else {
-      setSearching(true);
-    }
-
-    try {
-      const body: Record<string, unknown> = {
-        query: query.trim(),
-        limit: SEARCH_PAGE_SIZE,
-        offset: searchOffset,
-      };
-
-      if (activeType) body.type = activeType;
-      if (activeScope) body.scope = activeScope;
-      if (activeProject) body.projectId = activeProject;
-
-      const res = await fetch('/api/observations/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-
+      const isLoadMore = searchOffset > 0;
       if (isLoadMore) {
-        const existingIds = new Set(results.map((r) => r.id));
-        const newObs = data.observations.filter((o: Observation) => !existingIds.has(o.id));
-        setResults((prev) => [...prev, ...newObs]);
+        setLoadingMore(true);
       } else {
-        setResults(data.observations);
+        setSearching(true);
       }
 
-      setTotal(data.total);
-      setOffset(searchOffset);
+      try {
+        const body: Record<string, unknown> = {
+          query: query.trim(),
+          limit: SEARCH_PAGE_SIZE,
+          offset: searchOffset,
+        };
 
-      // Update URL with query + active filters (only on new search, not load more)
-      if (!isLoadMore) {
-        updateURL(query.trim(), activeType, activeScope, activeProject);
+        if (activeType) body.type = activeType;
+        if (activeScope) body.scope = activeScope;
+        if (activeProject) body.projectId = activeProject;
+
+        const res = await fetch('/api/observations/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+
+        if (isLoadMore) {
+          const existingIds = new Set(results.map((r) => r.id));
+          const newObs = data.observations.filter((o: Observation) => !existingIds.has(o.id));
+          setResults((prev) => [...prev, ...newObs]);
+        } else {
+          setResults(data.observations);
+        }
+
+        setTotal(data.total);
+        setOffset(searchOffset);
+
+        // Update URL with query + active filters (only on new search, not load more)
+        if (!isLoadMore) {
+          updateURL(query.trim(), activeType, activeScope, activeProject);
+        }
+      } finally {
+        setSearching(false);
+        setLoadingMore(false);
+        setSearched(true);
       }
-    } finally {
-      setSearching(false);
-      setLoadingMore(false);
-      setSearched(true);
-    }
-  }, [query, results, activeType, activeScope, activeProject, updateURL]);
+    },
+    [query, results, activeType, activeScope, activeProject, updateURL]
+  );
 
   // Auto-search on mount when arriving with ?q= param (from header or shared URL)
   useEffect(() => {
@@ -143,21 +158,25 @@ export function SearchPage() {
     handleSearch(offset + SEARCH_PAGE_SIZE);
   }, [handleSearch, offset]);
 
-  const handleQueryChange = useCallback((value: string) => {
-    setQuery(value);
-    if (value.trim() !== query.trim()) {
-      setResults([]);
-      setTotal(0);
-      setOffset(0);
-      setSearched(false);
-    }
-  }, [query]);
+  const handleQueryChange = useCallback(
+    (value: string) => {
+      setQuery(value);
+      if (value.trim() !== query.trim()) {
+        setResults([]);
+        setTotal(0);
+        setOffset(0);
+        setSearched(false);
+      }
+    },
+    [query]
+  );
 
   const hasMore = results.length < total;
 
-  const resultsLabel = total === 1
-    ? t.searchPage.results.replace('{total}', String(total)).replace('{query}', query)
-    : t.searchPage.results.replace('{total}', String(total)).replace('{query}', query);
+  const resultsLabel =
+    total === 1
+      ? t.searchPage.results.replace('{total}', String(total)).replace('{query}', query)
+      : t.searchPage.results.replace('{total}', String(total)).replace('{query}', query);
 
   return (
     <div className="space-y-6">
@@ -208,7 +227,9 @@ export function SearchPage() {
           >
             <option value="">{t.common.allScopes}</option>
             {SCOPES.map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>
+                {s}
+              </option>
             ))}
           </select>
 
@@ -220,7 +241,9 @@ export function SearchPage() {
             >
               <option value="">{t.common.allProjects}</option>
               {projects.map((p) => (
-                <option key={p} value={p}>{p}</option>
+                <option key={p} value={p}>
+                  {p}
+                </option>
               ))}
             </select>
           )}
@@ -230,8 +253,9 @@ export function SearchPage() {
       {/* Initial empty state with hint */}
       {!searched && (
         <EmptyState
-          title={t.searchPage.hintTitle}
+          title={t.searchPage.noResults}
           description={t.searchPage.hintDescription}
+          icon={<SearchIcon size={48} />}
         />
       )}
 
@@ -241,7 +265,12 @@ export function SearchPage() {
           <p className="mb-3 text-[13px] text-[var(--color-tertiary)]">
             {resultsLabel}
             {hasMore && (
-              <> {t.searchPage.showing.replace('{shown}', String(results.length)).replace('{total}', String(total))}</>
+              <>
+                {' '}
+                {t.searchPage.showing
+                  .replace('{shown}', String(results.length))
+                  .replace('{total}', String(total))}
+              </>
             )}
           </p>
           {results.length === 0 ? (
