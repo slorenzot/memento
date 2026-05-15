@@ -8,6 +8,7 @@ export interface Observation {
   topicKey: string | null;
   projectId: string;
   createdAt: Date;
+  updatedAt: Date;
   deletedAt: Date | null;
   metadata: Record<string, unknown>;
   scope: 'project' | 'personal';
