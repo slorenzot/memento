@@ -317,6 +317,25 @@
   },
   "sync": {
     "connectCloud": "Sync with Cloud",
-    "openHub": "memento-hub.com"
+    "openHub": "memento-hub.com",
+    "pageTitle": "Connect to Memento Hub",
+    "pageDescription": "Sync your local memories with the cloud to access them from anywhere.",
+    "startButton": "Connect to Cloud",
+    "requestingCode": "Requesting authorization code...",
+    "enterCodeLabel": "Enter this code when prompted:",
+    "copyCode": "Copy code",
+    "openVerification": "Open memento-hub to authorize",
+    "waitingForAuth": "Waiting for authorization...",
+    "expiresIn": "Expires in {seconds}:00",
+    "successTitle": "Connected!",
+    "successDescription": "Your local memories are now linked to Memento Hub.",
+    "connectedTitle": "Already Connected",
+    "connectedDescription": "Your local memories are synced with Memento Hub.",
+    "disconnect": "Disconnect from Cloud",
+    "goBack": "Go back",
+    "retryButton": "Try Again",
+    "errorNetwork": "Could not connect to Memento Hub. Check your internet connection.",
+    "errorExpired": "The authorization code expired. Please try again.",
+    "errorDenied": "Authorization was denied. Please try again if you want to connect."
   }
 }

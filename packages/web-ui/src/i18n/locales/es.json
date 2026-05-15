@@ -317,6 +317,25 @@
   },
   "sync": {
     "connectCloud": "Sincronizar",
-    "openHub": "memento-hub.com"
+    "openHub": "memento-hub.com",
+    "pageTitle": "Conectar con Memento Hub",
+    "pageDescription": "Sincroniza tus memorias locales con la nube para acceder desde cualquier lugar.",
+    "startButton": "Conectar con la nube",
+    "requestingCode": "Solicitando código de autorización...",
+    "enterCodeLabel": "Ingresa este código cuando se te solicite:",
+    "copyCode": "Copiar código",
+    "openVerification": "Abrir memento-hub para autorizar",
+    "waitingForAuth": "Esperando autorización...",
+    "expiresIn": "Expira en {seconds}:00",
+    "successTitle": "¡Conectado!",
+    "successDescription": "Tus memorias locales ahora están vinculadas con Memento Hub.",
+    "connectedTitle": "Ya conectado",
+    "connectedDescription": "Tus memorias locales están sincronizadas con Memento Hub.",
+    "disconnect": "Desconectar de la nube",
+    "goBack": "Volver",
+    "retryButton": "Intentar de nuevo",
+    "errorNetwork": "No se pudo conectar con Memento Hub. Verifica tu conexión a internet.",
+    "errorExpired": "El código de autorización expiró. Por favor intenta de nuevo.",
+    "errorDenied": "La autorización fue denegada. Intenta de nuevo si deseas conectarte."
   }
 }
