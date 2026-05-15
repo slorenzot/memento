@@ -32,12 +32,12 @@ export interface DeviceCodeResponse {
   interval: number;
 }
 
-/** Response from POST /api/oauth/token — RFC 8628 §3.4 */
+/** Response from POST /api/v1/auth/device/token */
 export interface TokenResponse {
   access_token: string;
-  token_type: 'Bearer';
-  /** Seconds until expiry */
-  expires_in: number;
+  token_type: string;
+  /** Seconds until expiry (optional — device flow tokens may not expire) */
+  expires_in?: number;
   refresh_token?: string;
   scope?: string;
   /** User info included in token response */

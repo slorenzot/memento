@@ -81,8 +81,10 @@ export class TokenStore {
     const auth: StoredAuth = {
       accessToken: token.access_token,
       refreshToken: token.refresh_token,
-      tokenType: token.token_type,
-      expiresAt: Date.now() + token.expires_in * 1000,
+      tokenType: (token.token_type || 'Bearer') as 'Bearer',
+      expiresAt: token.expires_in
+        ? Date.now() + token.expires_in * 1000
+        : Date.now() + 365 * 24 * 60 * 60 * 1000, // Default 1 year if no expiry
       user: token.user,
       serverUrl,
       storedAt: Date.now(),

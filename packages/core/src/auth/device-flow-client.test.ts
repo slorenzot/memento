@@ -15,7 +15,7 @@ function createMockFetch(responses: {
   let callCount = 0;
 
   return async function mockFetch(url: string, options: any): Promise<Response> {
-    if (url.endsWith('/api/oauth/device')) {
+    if (url.endsWith('/api/v1/auth/device')) {
       if (responses.deviceCode) {
         return new Response(JSON.stringify(responses.deviceCode), {
           status: 200,
@@ -25,7 +25,7 @@ function createMockFetch(responses: {
       return new Response('Not found', { status: 404 });
     }
 
-    if (url.endsWith('/api/oauth/token')) {
+    if (url.endsWith('/api/v1/auth/device/token')) {
       callCount++;
 
       // Allow dynamic responses for token endpoint
@@ -117,11 +117,11 @@ describe('DeviceFlowClient', () => {
       expect(client.requestDeviceCode()).rejects.toThrow('Failed to request device code');
     });
 
-    it('sends client_id in request body', async () => {
-      let capturedBody: any = null;
+    it('sends request without body to device endpoint', async () => {
+      let capturedOptions: any = null;
 
       const mockFetch = async (url: string, options: any) => {
-        capturedBody = JSON.parse(options.body);
+        capturedOptions = options;
         return new Response(
           JSON.stringify(makeDeviceCodeResponse()),
           { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -135,7 +135,8 @@ describe('DeviceFlowClient', () => {
       });
 
       await client.requestDeviceCode();
-      expect(capturedBody.client_id).toBe('custom-client-id');
+      // Device endpoint no longer requires client_id or scope
+      expect(capturedOptions.body).toBeUndefined();
     });
   });
 
@@ -164,7 +165,7 @@ describe('DeviceFlowClient', () => {
       const token = makeTokenResponse();
 
       const mockFetch = async (url: string) => {
-        if (url.endsWith('/api/oauth/token')) {
+        if (url.endsWith('/api/v1/auth/device/token')) {
           callCount++;
           if (callCount <= 2) {
             return new Response(
@@ -197,7 +198,7 @@ describe('DeviceFlowClient', () => {
       const token = makeTokenResponse();
 
       const mockFetch = async (url: string) => {
-        if (url.endsWith('/api/oauth/token')) {
+        if (url.endsWith('/api/v1/auth/device/token')) {
           callCount++;
           if (callCount === 1) {
             return new Response(
@@ -226,7 +227,7 @@ describe('DeviceFlowClient', () => {
 
     it('returns expired_token error', async () => {
       const mockFetch = async (url: string) => {
-        if (url.endsWith('/api/oauth/token')) {
+        if (url.endsWith('/api/v1/auth/device/token')) {
           return new Response(
             JSON.stringify({ error: 'expired_token', error_description: 'code expired' }),
             { status: 400, headers: { 'Content-Type': 'application/json' } },
@@ -250,7 +251,7 @@ describe('DeviceFlowClient', () => {
 
     it('returns access_denied error', async () => {
       const mockFetch = async (url: string) => {
-        if (url.endsWith('/api/oauth/token')) {
+        if (url.endsWith('/api/v1/auth/device/token')) {
           return new Response(
             JSON.stringify({ error: 'access_denied', error_description: 'user said no' }),
             { status: 400, headers: { 'Content-Type': 'application/json' } },

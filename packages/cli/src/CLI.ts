@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { MemoryEngine, loadConfig, resolveDbPath, getProjectId, normalizeProjectId } from '@slorenzot/memento-core';
-import { SyncEngine, TokenStore } from '@slorenzot/memento-core';
+import { SyncEngine, TokenStore, DeviceFlowClient } from '@slorenzot/memento-core';
 import type { Observation } from '@slorenzot/memento-core';
 
 // @ts-ignore
@@ -402,10 +402,8 @@ export class CLI {
 
     this.program
       .command('login')
-      .description('Authenticate with a Memento server (email + password)')
-      .option('-s, --server <url>', 'Server URL', 'http://localhost:8086')
-      .option('-e, --email <email>', 'Email address')
-      .option('-p, --password <password>', 'Password')
+      .description('Authenticate with a Memento server (OAuth Device Flow)')
+      .option('-s, --server <url>', 'Server URL', 'https://memento-hub.vercel.app')
       .action(async (options) => {
         const tokenStore = new TokenStore();
 
@@ -419,78 +417,62 @@ export class CLI {
         }
 
         const serverUrl = options.server.replace(/\/+$/, '');
-        let email = options.email;
-        let password = options.password;
-
-        // Interactive prompt if not provided
-        if (!email) {
-          const readline = await import('readline');
-          const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-          email = await new Promise<string>((resolve) => {
-            rl.question('Email: ', (answer: string) => {
-              rl.close();
-              resolve(answer.trim());
-            });
-          });
-        }
-
-        if (!password) {
-          const readline = await import('readline');
-          const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-          password = await new Promise<string>((resolve) => {
-            rl.question('Password: ', (answer: string) => {
-              rl.close();
-              resolve(answer);
-            });
-          });
-        }
-
-        if (!email || !password) {
-          console.error('Email and password are required.');
-          return;
-        }
 
         try {
-          console.log(`Authenticating with ${serverUrl}...`);
-          const response = await fetch(`${serverUrl}/api/auth/token`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-          });
+          const client = new DeviceFlowClient({ serverUrl });
 
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-            console.error(`✗ Authentication failed: ${(errorData as any).message || response.statusText}`);
+          console.log(`\nRequesting device code from ${serverUrl}...\n`);
+
+          const codeResponse = await client.requestDeviceCode();
+
+          const verificationUrl = codeResponse.verification_uri_complete
+            || `${serverUrl}${codeResponse.verification_uri}?user_code=${codeResponse.user_code}`;
+
+          console.log('── Memento Login ──\n');
+          console.log(`  1. Open this URL in your browser:`);
+          console.log(`     ${verificationUrl}\n`);
+          console.log(`  2. Enter the code: ${codeResponse.user_code}\n`);
+
+          // Try to open browser automatically
+          try {
+            const { exec } = await import('child_process');
+            const openCmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
+            exec(`${openCmd} "${verificationUrl}"`);
+          } catch {
+            // Browser couldn't be opened — user can copy the URL
+          }
+
+          console.log('  Waiting for authorization...');
+
+          const result = await client.pollForToken(
+            codeResponse.device_code,
+            (attempt) => {
+              if (attempt > 1 && attempt % 6 === 0) {
+                console.log(`  Still waiting... (attempt ${attempt})`);
+              }
+            },
+          );
+
+          if (!result.success) {
+            console.error(`\n✗ Authentication failed: ${result.errorDescription || result.error}`);
             return;
           }
 
-          const tokenData = await response.json() as {
-            access_token: string;
-            token_type: string;
-            expires_in: number;
-            user: { id: string; email: string; name: string | null };
-          };
+          // Save token
+          tokenStore.setToken(result.token!, serverUrl);
 
-          // Save token using TokenStore
-          tokenStore.setToken({
-            access_token: tokenData.access_token,
-            token_type: tokenData.token_type as 'Bearer',
-            expires_in: tokenData.expires_in,
-            user: {
-              email: tokenData.user.email,
-              name: tokenData.user.name ?? undefined,
-            },
-          }, serverUrl);
-
-          console.log(`✅ Authenticated as ${tokenData.user.email}`);
-          if (tokenData.user.name) {
-            console.log(`   Name: ${tokenData.user.name}`);
+          console.log(`\n✅ Authenticated!`);
+          if (result.token?.user) {
+            console.log(`   User: ${result.token.user.email}`);
+            if (result.token.user.name) {
+              console.log(`   Name: ${result.token.user.name}`);
+            }
           }
-          console.log(`   Token expires in ${Math.floor(tokenData.expires_in / 86400)} days`);
-          console.log(`   Server: ${serverUrl}`);
+          console.log(`   Server: ${serverUrl}\n`);
+
         } catch (err) {
-          console.error(`✗ Connection failed: ${err instanceof Error ? err.message : err}`);
-          console.error('   Check that the server URL is correct and the server is running.');
+          console.error(`\n✗ Connection failed: ${err instanceof Error ? err.message : err}`);
+          console.error('   Check that the server URL is correct and the server is running.\n');
         }
       });
 
@@ -548,7 +530,7 @@ export class CLI {
           const status = await syncEngine.getStatus(this.memory);
 
           if (status.remote) {
-            console.log(`  Remote: ${status.remote.activeObservations} active, ${status.remote.totalObservations} total`);
+            console.log(`  Remote: ${status.remote.totalMementos} mementos`);
           } else {
             console.log('  Remote: ❌ Unreachable');
           }
@@ -645,7 +627,7 @@ export class CLI {
         console.log(`  Conflicts: ${result.conflicts.length}`);
         if (result.conflicts.length > 0) {
           result.conflicts.forEach(c => {
-            console.log(`    ${c.uuid}: ${c.resolution} (${new Date(c.remoteUpdatedAt).toISOString()} vs ${new Date(c.localUpdatedAt).toISOString()})`);
+            console.log(`    ${c.uuid}: ${c.resolution} (v${c.localVersion} vs v${c.serverVersion})`);
           });
         }
         if (result.errors.length > 0) {
