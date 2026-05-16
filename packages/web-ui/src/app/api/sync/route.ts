@@ -120,15 +120,19 @@ export async function POST(request: Request) {
     // Each observation carries its own projectId in the wire format — the server
     // handles multi-project pushes. Filtering by a fixed env-var projectId would
     // silently exclude observations from other projects (see #243).
+    const HUB_PUSH_MAX_ITEMS = 500;
     try {
       const active = await engine.search({
         limit: 100000,
       });
 
-      const projectItems = active.observations.filter(obs => obs.scope === 'project');
+      // Filter: scope=project, non-empty title and content (hub Zod validation)
+      const projectItems = active.observations.filter(obs =>
+        obs.scope === 'project' && obs.title && obs.title.trim() && obs.content,
+      );
 
       if (projectItems.length > 0) {
-        const items = projectItems.map(obs => ({
+        const allItems = projectItems.map(obs => ({
           uuid: obs.uuid,
           title: obs.title,
           content: obs.content,
@@ -146,15 +150,18 @@ export async function POST(request: Request) {
           deletedAt: obs.deletedAt ? obs.deletedAt.toISOString() : null,
         }));
 
-        const result = await client.push({
-          projectId,
-          cursor: null,
-          deviceFingerprint: 'web-ui',
-          clientVersion: '1.0.0',
-          items,
-        });
-
-        totalPushed = result.synced;
+        // Push in batches — hub limits to HUB_PUSH_MAX_ITEMS per request
+        for (let i = 0; i < allItems.length; i += HUB_PUSH_MAX_ITEMS) {
+          const batch = allItems.slice(i, i + HUB_PUSH_MAX_ITEMS);
+          const result = await client.push({
+            projectId,
+            cursor: null,
+            deviceFingerprint: 'web-ui',
+            clientVersion: '1.0.0',
+            items: batch,
+          });
+          totalPushed += result.synced;
+        }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
