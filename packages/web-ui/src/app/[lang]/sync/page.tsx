@@ -20,6 +20,20 @@ import { SyncSprite } from '@/components/layout/Sprite';
 const HUB_URL = 'https://memento-hub.vercel.app';
 const SYNC_TOKEN_KEY = 'memento-sync-token';
 
+/**
+ * Extract OAuth error code from server response.
+ * Handles both flat format { error: "code" } and nested { error: { code: "..." } }.
+ */
+function extractErrorCode(body: unknown): string | undefined {
+  if (!body || typeof body !== 'object') return undefined;
+  const obj = body as Record<string, unknown>;
+  if (typeof obj.error === 'string') return obj.error;
+  if (obj.error && typeof obj.error === 'object') {
+    return (obj.error as Record<string, unknown>).code as string | undefined;
+  }
+  return undefined;
+}
+
 type SyncState = 'idle' | 'requesting' | 'authorizing' | 'success' | 'error';
 
 interface DeviceCodeData {
@@ -108,9 +122,10 @@ export default function SyncPage() {
             return;
           }
 
-          const err = await res.json().catch(() => ({ error: 'server_error' }));
+          const errBody = await res.json().catch(() => null);
+          const errorCode = extractErrorCode(errBody) ?? 'server_error';
 
-          switch (err.error) {
+          switch (errorCode) {
             case 'authorization_pending':
               consecutiveServerErrors = 0;
               continue;
@@ -224,7 +239,31 @@ export default function SyncPage() {
         setState('success');
         return;
       }
-      // Not authorized yet — auto-polling will handle the rest
+
+      // Parse error — handle "already used" (auto-polling already got the token)
+      const errBody = await res.json().catch(() => null);
+      const errorCode = extractErrorCode(errBody);
+
+      if (errorCode === 'expired_token') {
+        // Device code was consumed — check if token was already stored
+        const existingToken = localStorage.getItem(SYNC_TOKEN_KEY);
+        if (existingToken) {
+          setState('success');
+          return;
+        }
+        // Code expired without token — show error
+        setState('error');
+        setError(t.sync.errorExpired);
+        return;
+      }
+
+      if (errorCode === 'access_denied') {
+        setState('error');
+        setError(t.sync.errorDenied);
+        return;
+      }
+
+      // Other errors (not authorized yet, server error) — auto-polling handles it
     } catch {
       // Network error — auto-polling will retry
     } finally {
