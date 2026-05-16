@@ -185,6 +185,55 @@ describe('Sync API Route Logic', () => {
 
       expect(projectItems).toHaveLength(0);
     });
+
+    it('should exclude items with empty title (hub Zod validation)', () => {
+      const observations = [
+        { scope: 'project', title: 'Valid obs', content: 'content' },
+        { scope: 'project', title: '', content: 'content' },
+        { scope: 'project', title: '   ', content: 'content' },
+        { scope: 'project', title: 'Another valid', content: 'content' },
+        { scope: 'project', title: 'No content', content: '' },
+        { scope: 'project', title: null, content: 'content' },
+      ] as Array<{ scope: string; title: string | null; content: string }>;
+
+      const validItems = observations.filter(obs =>
+        obs.scope === 'project' && obs.title && obs.title.trim() && obs.content,
+      );
+
+      expect(validItems).toHaveLength(2);
+      expect(validItems[0].title).toBe('Valid obs');
+      expect(validItems[1].title).toBe('Another valid');
+    });
+
+    it('should batch items in groups of 500 (hub limit)', () => {
+      const HUB_PUSH_MAX_ITEMS = 500;
+      const totalItems = 1200;
+      const items = Array.from({ length: totalItems }, (_, i) => ({ id: i }));
+
+      const batches: typeof items[] = [];
+      for (let i = 0; i < items.length; i += HUB_PUSH_MAX_ITEMS) {
+        batches.push(items.slice(i, i + HUB_PUSH_MAX_ITEMS));
+      }
+
+      expect(batches).toHaveLength(3);
+      expect(batches[0]).toHaveLength(500);
+      expect(batches[1]).toHaveLength(500);
+      expect(batches[2]).toHaveLength(200);
+    });
+
+    it('should not batch when items fit in single request', () => {
+      const HUB_PUSH_MAX_ITEMS = 500;
+      const totalItems = 144;
+      const items = Array.from({ length: totalItems }, (_, i) => ({ id: i }));
+
+      const batches: typeof items[] = [];
+      for (let i = 0; i < items.length; i += HUB_PUSH_MAX_ITEMS) {
+        batches.push(items.slice(i, i + HUB_PUSH_MAX_ITEMS));
+      }
+
+      expect(batches).toHaveLength(1);
+      expect(batches[0]).toHaveLength(144);
+    });
   });
 
   describe('individual change application errors', () => {
