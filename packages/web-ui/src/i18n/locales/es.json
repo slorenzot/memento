@@ -325,6 +325,7 @@
     "enterCodeLabel": "Ingresa este código cuando se te solicite:",
     "copyCode": "Copiar código",
     "openVerification": "Abrir memento-hub para autorizar",
+    "checkAuth": "Comprobar autorización",
     "waitingForAuth": "Esperando autorización...",
     "expiresIn": "Expira en {seconds}:00",
     "successTitle": "¡Conectado!",

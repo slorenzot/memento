@@ -325,6 +325,7 @@
     "enterCodeLabel": "Enter this code when prompted:",
     "copyCode": "Copy code",
     "openVerification": "Open memento-hub to authorize",
+    "checkAuth": "Check authorization",
     "waitingForAuth": "Waiting for authorization...",
     "expiresIn": "Expires in {seconds}:00",
     "successTitle": "Connected!",
