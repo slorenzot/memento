@@ -313,7 +313,9 @@
   "footer": {
     "database": "Base de datos",
     "healthy": "saludable",
-    "unhealthy": "con errores"
+    "unhealthy": "con errores",
+    "connected": "conectado",
+    "disconnected": "desconectado"
   },
   "sync": {
     "connectCloud": "Sincronizar",
