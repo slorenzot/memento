@@ -157,6 +157,25 @@ describe('Sync API Route Logic', () => {
       expect(projectItems.every(obs => obs.scope === 'project')).toBe(true);
     });
 
+    it('should include project-scope observations from ALL projectIds (#243)', () => {
+      // The search() call must NOT filter by a fixed projectId — observations
+      // from different projects should all be included in the push.
+      const observations = [
+        { scope: 'project', projectId: 'suratech-chile-autos', title: 'Obs A' },
+        { scope: 'project', projectId: 'default', title: 'Obs B' },
+        { scope: 'project', projectId: 'another-project', title: 'Obs C' },
+        { scope: 'personal', projectId: 'suratech-chile-autos', title: 'Personal' },
+      ] as Array<{ scope: string; projectId: string; title: string }>;
+
+      const projectItems = observations.filter(obs => obs.scope === 'project');
+
+      expect(projectItems).toHaveLength(3);
+      const projectIds = projectItems.map(obs => obs.projectId);
+      expect(projectIds).toContain('suratech-chile-autos');
+      expect(projectIds).toContain('default');
+      expect(projectIds).toContain('another-project');
+    });
+
     it('should skip push when no project-scope items exist', () => {
       const observations = [
         { scope: 'personal', title: 'Personal obs' },

@@ -115,9 +115,12 @@ export async function POST(request: Request) {
     }
 
     // Phase 2: Push local changes
+    // Push ALL project-scope observations regardless of their individual projectId.
+    // Each observation carries its own projectId in the wire format — the server
+    // handles multi-project pushes. Filtering by a fixed env-var projectId would
+    // silently exclude observations from other projects (see #243).
     try {
       const active = await engine.search({
-        projectId,
         limit: 100000,
       });
 
