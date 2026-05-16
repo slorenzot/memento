@@ -19,7 +19,12 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
   const prefix = useLocalePrefix();
 
   const navItems = [
-    { href: `${prefix}/dashboard`, label: t.nav.dashboard, icon: LayoutDashboard, rawPath: '/dashboard' },
+    {
+      href: `${prefix}/dashboard`,
+      label: t.nav.dashboard,
+      icon: LayoutDashboard,
+      rawPath: '/dashboard',
+    },
     { href: `${prefix}/mementos`, label: t.nav.observations, icon: FileText, rawPath: '/mementos' },
     { href: `${prefix}/search`, label: t.nav.search, icon: Search, rawPath: '/search' },
     { href: `${prefix}/timeline`, label: t.nav.timeline, icon: Clock, rawPath: '/timeline' },
@@ -50,7 +55,8 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
         {/* Navigation */}
         <nav className="flex-1 py-4 px-2 space-y-1">
           {navItems.map(({ href, label, icon: Icon, rawPath }) => {
-            const isActive = pathname === `${prefix}${rawPath}` || pathname.startsWith(`${prefix}${rawPath}/`);
+            const isActive =
+              pathname === `${prefix}${rawPath}` || pathname.startsWith(`${prefix}${rawPath}/`);
             return (
               <Link
                 key={rawPath}

@@ -5,7 +5,7 @@
   },
   "nav": {
     "dashboard": "Panel",
-    "observations": "Observaciones",
+    "observations": "Mementos",
     "search": "Buscar",
     "timeline": "Línea de tiempo",
     "sessions": "Sesiones",
@@ -276,7 +276,7 @@
     "nav": {
       "quickstart": "Inicio rápido",
       "coreConcepts": "Conceptos clave",
-    "observations": "Mementos",
+      "observations": "Mementos",
       "sessions": "Sesiones",
       "projects": "Proyectos",
       "journal": "Journal",
