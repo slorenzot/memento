@@ -100,12 +100,20 @@ export function SyncButton() {
       }
 
       const result = await res.json();
-      setSyncState('success');
-      setSyncMessage(
-        t.sync.syncResult
-          .replace('{pulled}', String(result.pulled))
-          .replace('{pushed}', String(result.pushed))
-      );
+
+      // Show errors even on 200 OK (partial failure)
+      if (result.errors && result.errors.length > 0 && result.pulled === 0 && result.pushed === 0) {
+        setSyncState('error');
+        setSyncMessage(result.errors[0]);
+      } else {
+        setSyncState('success');
+        const parts: string[] = [];
+        if (result.pulled > 0) parts.push(`${result.pulled} ↓`);
+        if (result.pushed > 0) parts.push(`${result.pushed} ↑`);
+        setSyncMessage(parts.length > 0 ? parts.join(' · ') : t.sync.syncResult
+          .replace('{pulled}', '0')
+          .replace('{pushed}', '0'));
+      }
     } catch (err) {
       setSyncState('error');
       setSyncMessage(
