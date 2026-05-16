@@ -41,6 +41,7 @@ export default function SyncPage() {
   const [copied, setCopied] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [tokenAlreadyExists, setTokenAlreadyExists] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
   const abortRef = useRef(false);
 
   // Check if already has token
@@ -188,13 +189,47 @@ export default function SyncPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  function openVerificationUrl() {
-    if (!deviceCodeData) return;
-    // Server returns relative path like "/auth/device"
-    const url = deviceCodeData.verification_uri.startsWith('http')
+  function getVerificationUrl() {
+    if (!deviceCodeData) return HUB_URL;
+    return deviceCodeData.verification_uri.startsWith('http')
       ? deviceCodeData.verification_uri
       : `${HUB_URL}${deviceCodeData.verification_uri}`;
-    window.open(url, '_blank');
+  }
+
+  function openVerificationUrl() {
+    window.open(getVerificationUrl(), '_blank');
+  }
+
+  async function checkAuthorization() {
+    if (!deviceCodeData || isChecking) return;
+    setIsChecking(true);
+    try {
+      const res = await fetch(`${HUB_URL}/api/v1/auth/device/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_code: deviceCodeData.device_code }),
+      });
+
+      if (res.ok) {
+        const token = await res.json();
+        localStorage.setItem(
+          SYNC_TOKEN_KEY,
+          JSON.stringify({
+            accessToken: token.access_token,
+            tokenType: token.token_type,
+            storedAt: Date.now(),
+            serverUrl: HUB_URL,
+          })
+        );
+        setState('success');
+        return;
+      }
+      // Not authorized yet — auto-polling will handle the rest
+    } catch {
+      // Network error — auto-polling will retry
+    } finally {
+      setIsChecking(false);
+    }
   }
 
   function goBack() {
@@ -376,12 +411,28 @@ export default function SyncPage() {
               </div>
 
               {/* Verification link */}
-              <button
-                onClick={openVerificationUrl}
-                className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-[var(--radius-sm)] bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+              <a
+                href={getVerificationUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1.5 text-[14px] text-[var(--color-primary)] hover:underline"
               >
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink className="w-3.5 h-3.5" />
                 {t.sync.openVerification}
+              </a>
+
+              {/* Manual check button */}
+              <button
+                onClick={checkAuthorization}
+                disabled={isChecking}
+                className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-[var(--radius-sm)] bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isChecking ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                {t.sync.checkAuth}
               </button>
 
               {/* Polling status */}
