@@ -74,6 +74,8 @@ export default function SyncPage() {
   const pollForToken = useCallback(
     async (deviceCode: string, interval: number) => {
       let pollInterval = interval;
+      let consecutiveServerErrors = 0;
+      const MAX_CONSECUTIVE_SERVER_ERRORS = 10;
 
       for (let attempt = 0; attempt < 200; attempt++) {
         if (abortRef.current) return;
@@ -109,8 +111,10 @@ export default function SyncPage() {
 
           switch (err.error) {
             case 'authorization_pending':
+              consecutiveServerErrors = 0;
               continue;
             case 'slow_down':
+              consecutiveServerErrors = 0;
               pollInterval += 5;
               continue;
             case 'expired_token':
@@ -122,12 +126,25 @@ export default function SyncPage() {
               setError(t.sync.errorDenied);
               return;
             default:
-              setState('error');
-              setError(err.error_description || t.sync.errorNetwork);
-              return;
+              // Transient server errors — keep polling with backoff
+              consecutiveServerErrors++;
+              if (consecutiveServerErrors >= MAX_CONSECUTIVE_SERVER_ERRORS) {
+                setState('error');
+                setError(t.sync.errorNetwork);
+                return;
+              }
+              // Add progressive backoff for server errors (cap at 30s)
+              pollInterval = Math.min(pollInterval + 2, 30);
+              continue;
           }
         } catch {
-          // Network error — retry
+          // Network error — retry with backoff
+          consecutiveServerErrors++;
+          if (consecutiveServerErrors >= MAX_CONSECUTIVE_SERVER_ERRORS) {
+            setState('error');
+            setError(t.sync.errorNetwork);
+            return;
+          }
           continue;
         }
       }
