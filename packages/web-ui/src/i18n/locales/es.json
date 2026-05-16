@@ -320,6 +320,11 @@
   "sync": {
     "connectCloud": "Sincronizar",
     "openHub": "memento-hub.com",
+    "syncNow": "Sincronizar",
+    "syncing": "Sincronizando...",
+    "syncSuccess": "Listo",
+    "syncError": "Error",
+    "syncResult": "{pulled} bajados, {pushed} subidos",
     "pageTitle": "Conectar con Memento Hub",
     "pageDescription": "Sincroniza tus memorias locales con la nube para acceder desde cualquier lugar.",
     "startButton": "Conectar con la nube",
