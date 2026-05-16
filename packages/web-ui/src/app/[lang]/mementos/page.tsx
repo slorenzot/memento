@@ -2,8 +2,8 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { getEngine } from '@/lib/engine';
 import { PAGE_SIZE } from '@/lib/constants';
-import { ObservationCard } from '@/components/observations/ObservationCard';
-import { ObservationFilters } from '@/components/observations/ObservationFilters';
+import { MementoCard } from '@/components/mementos/MementoCard';
+import { MementoFilters } from '@/components/mementos/MementoFilters';
 import { Pagination } from '@/components/shared/Pagination';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { getDictionary } from '@/i18n/get-dictionary';
@@ -11,12 +11,12 @@ import type { Locale } from '@/i18n/config';
 
 export const dynamic = 'force-dynamic';
 
-interface LangObservationsPageProps {
+interface LangMementosPageProps {
   params: Promise<{ lang: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function LangObservationsPage({ params, searchParams }: LangObservationsPageProps) {
+export default async function LangMementosPage({ params, searchParams }: LangMementosPageProps) {
   const { lang } = await params;
   const sp = await searchParams;
   const engine = getEngine();
@@ -52,7 +52,7 @@ export default async function LangObservationsPage({ params, searchParams }: Lan
             {t.observations.title}
           </h1>
           <Link
-            href={`${prefix}/observations/new`}
+            href={`${prefix}/mementos/new`}
             className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-[14px] font-medium text-[var(--color-on-primary)] hover:bg-[var(--color-accent-hover)] transition-colors"
           >
             {t.observations.newObservation}
@@ -78,7 +78,7 @@ export default async function LangObservationsPage({ params, searchParams }: Lan
           )}
         </h1>
         <Link
-          href={`${prefix}/observations/new`}
+          href={`${prefix}/mementos/new`}
           className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-[14px] font-medium text-[var(--color-on-primary)] hover:bg-[var(--color-accent-hover)] transition-colors"
         >
           {t.observations.newObservation}
@@ -86,7 +86,7 @@ export default async function LangObservationsPage({ params, searchParams }: Lan
       </div>
 
       <Suspense fallback={null}>
-        <ObservationFilters projects={projects.map((p) => p.name)} />
+        <MementoFilters projects={projects.map((p) => p.name)} />
       </Suspense>
 
       {result.observations.length === 0 ? (
@@ -96,7 +96,7 @@ export default async function LangObservationsPage({ params, searchParams }: Lan
       ) : (
         <div className="grid gap-3">
           {result.observations.map((obs) => (
-            <ObservationCard key={obs.id} observation={obs} />
+            <MementoCard key={obs.id} observation={obs} />
           ))}
         </div>
       )}
@@ -105,7 +105,7 @@ export default async function LangObservationsPage({ params, searchParams }: Lan
         currentPage={page}
         totalItems={result.total}
         pageSize={PAGE_SIZE}
-        basePath={`${prefix}/observations`}
+        basePath={`${prefix}/mementos`}
         queryParams={queryParams}
       />
     </div>

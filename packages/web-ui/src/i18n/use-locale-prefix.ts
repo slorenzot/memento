@@ -11,7 +11,7 @@ import { LOCALES } from './config';
  *
  * @example
  * const prefix = useLocalePrefix();
- * <Link href={`${prefix}/observations`}>Observations</Link>
+ * <Link href={`${prefix}/mementos`}>Mementos</Link>
  */
 export function useLocalePrefix(): string {
   const pathname = usePathname();

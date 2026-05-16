@@ -9,19 +9,19 @@ import { ClockIcon, EyeIcon, FolderIcon, PinIcon, TagsIcon, MessageSquareIcon } 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-interface ObservationCardProps {
+interface MementoCardProps {
   observation: Observation;
   session?: Session;
 }
 
-export function ObservationCard({ observation, session }: ObservationCardProps) {
+export function MementoCard({ observation, session }: MementoCardProps) {
   const prefix = useLocalePrefix();
   const t = useT();
   const router = useRouter();
 
   return (
     <Link
-      href={`${prefix}/observations/${observation.id}`}
+      href={`${prefix}/mementos/${observation.id}`}
       className="block rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-4 transition-colors hover:border-[var(--color-border-strong)] hover:bg-[var(--color-surface-hover)]"
     >
       <div className="flex items-start justify-between gap-3">

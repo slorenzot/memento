@@ -108,11 +108,11 @@ export function getTypeMeta(type: string): TypeMeta & { typeKey: string } {
   };
 }
 
-interface ObservationTypeIconProps extends LucideProps {
+interface MementoTypeIconProps extends LucideProps {
   type: string;
 }
 
-export function ObservationTypeIcon({ type, ...props }: ObservationTypeIconProps) {
+export function ObservationTypeIcon({ type, ...props }: MementoTypeIconProps) {
   const { icon: Icon } = getTypeMeta(type);
   return <Icon {...props} />;
 }

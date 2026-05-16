@@ -26,7 +26,7 @@ export function DeleteConfirmation({
     setError(null);
 
     try {
-      const res = await fetch(`/api/observations/${observationId}`, {
+      const res = await fetch(`/api/mementos/${observationId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: reason.trim() || undefined }),

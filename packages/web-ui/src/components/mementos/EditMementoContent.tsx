@@ -1,14 +1,14 @@
 'use client';
 
-import { ObservationEditor } from '@/components/observations/ObservationEditor';
+import { MementoEditor } from '@/components/mementos/MementoEditor';
 import { useT } from '@/i18n/translation-context';
 import type { Observation } from '@slorenzot/memento-core';
 
-interface EditObservationContentProps {
+interface EditMementoContentProps {
   observation: Observation;
 }
 
-export function EditObservationContent({ observation }: EditObservationContentProps) {
+export function EditMementoContent({ observation }: EditMementoContentProps) {
   const t = useT();
 
   if (observation.readOnly) {
@@ -26,7 +26,7 @@ export function EditObservationContent({ observation }: EditObservationContentPr
       <h1 className="text-[20px] font-medium text-[var(--color-text-primary)]">
         {t.observationEditor.editTitle}
       </h1>
-      <ObservationEditor
+      <MementoEditor
         mode="edit"
         observationId={observation.id}
         initialData={{

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { ObservationCard } from '@/components/observations/ObservationCard';
+import { MementoCard } from '@/components/mementos/MementoCard';
 import { Badge } from '@/components/shared/Badge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useT } from '@/i18n/translation-context';
@@ -115,7 +115,7 @@ export function SearchPage() {
         if (activeScope) body.scope = activeScope;
         if (activeProject) body.projectId = activeProject;
 
-        const res = await fetch('/api/observations/search', {
+        const res = await fetch('/api/mementos/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
@@ -281,7 +281,7 @@ export function SearchPage() {
             <>
               <div className="grid gap-3">
                 {results.map((obs) => (
-                  <ObservationCard key={obs.id} observation={obs} />
+                  <MementoCard key={obs.id} observation={obs} />
                 ))}
               </div>
 

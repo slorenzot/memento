@@ -10,7 +10,7 @@ interface PaginationProps {
   totalItems: number;
   /** Items per page */
   pageSize: number;
-  /** Base path for links (e.g. '/observations') */
+  /** Base path for links (e.g. '/mementos') */
   basePath: string;
   /** Additional query params to preserve (e.g. 'type=bug&scope=project') */
   queryParams?: Record<string, string | undefined>;
