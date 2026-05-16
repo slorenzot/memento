@@ -1,11 +1,11 @@
 import { getEngine } from '@/lib/engine';
 import { notFound } from 'next/navigation';
-import ObservationDetailClient from '@/components/observations/ObservationDetail';
+import MementoDetailClient from '@/components/mementos/MementoDetail';
 import type { Session } from '@slorenzot/memento-core';
 
 export const dynamic = 'force-dynamic';
 
-export default async function LangObservationPage({
+export default async function LangMementoPage({
   params,
 }: {
   params: Promise<{ id: string; lang: string }>;
@@ -21,5 +21,5 @@ export default async function LangObservationPage({
   // Fetch session for status badge (graceful fallback if not found)
   const session: Session | null = await engine.getSession(observation.sessionId);
 
-  return <ObservationDetailClient observation={observation} session={session} />;
+  return <MementoDetailClient observation={observation} session={session} />;
 }

@@ -20,7 +20,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
 
   const navItems = [
     { href: `${prefix}/dashboard`, label: t.nav.dashboard, icon: LayoutDashboard, rawPath: '/dashboard' },
-    { href: `${prefix}/observations`, label: t.nav.observations, icon: FileText, rawPath: '/observations' },
+    { href: `${prefix}/mementos`, label: t.nav.observations, icon: FileText, rawPath: '/mementos' },
     { href: `${prefix}/search`, label: t.nav.search, icon: Search, rawPath: '/search' },
     { href: `${prefix}/timeline`, label: t.nav.timeline, icon: Clock, rawPath: '/timeline' },
     { href: `${prefix}/sessions`, label: t.nav.sessions, icon: Activity, rawPath: '/sessions' },

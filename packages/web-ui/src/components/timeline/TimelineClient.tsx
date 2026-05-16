@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { ObservationCard } from '@/components/observations/ObservationCard';
+import { MementoCard } from '@/components/mementos/MementoCard';
 import { useT } from '@/i18n/translation-context';
 import type { Observation, Session } from '@slorenzot/memento-core';
 import type { Locale } from 'date-fns';
@@ -97,7 +97,7 @@ export function TimelineClient({
       if (scope) params.set('scope', scope);
       if (projectId) params.set('projectId', projectId);
 
-      const res = await fetch(`/api/observations/timeline?${params}`);
+      const res = await fetch(`/api/mementos/timeline?${params}`);
       const data = await res.json() as {
         observations: Observation[];
         total: number;
@@ -187,7 +187,7 @@ export function TimelineClient({
             </h2>
             <div className="grid gap-3">
               {dayObservations.map((obs) => (
-                <ObservationCard
+                <MementoCard
                   key={obs.id}
                   observation={obs}
                   session={sessions[obs.sessionId]}

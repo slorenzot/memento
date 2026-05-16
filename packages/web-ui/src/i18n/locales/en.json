@@ -58,17 +58,17 @@
     "revisions_other": "{count} revisions"
   },
   "header": {
-    "searchPlaceholder": "Search observations..."
+    "searchPlaceholder": "Search mementos..."
   },
   "searchPage": {
     "title": "Search",
-    "placeholder": "Search observations with FTS5...",
+    "placeholder": "Search mementos with FTS5...",
     "results": "{total} result for \"{query}\" | {total} results for \"{query}\"",
     "showing": "— showing {shown} of {total}",
-    "noResults": "No observations found.",
+    "noResults": "No mementos found.",
     "loadEarlier": "Load earlier",
-    "hintTitle": "Search observations",
-    "hintDescription": "Type terms to search across all your observations",
+    "hintTitle": "Search mementos",
+    "hintDescription": "Type terms to search across all your mementos",
     "filterByType": "Filter by type",
     "filterByScope": "Scope",
     "filterByProject": "Project"
@@ -94,7 +94,7 @@
   "dataManagement": {
     "title": "Data Management",
     "exportTitle": "Export",
-    "exportDescription": "Download all project data as a JSON file. Includes observations, sessions, journal entries, and prompts.",
+    "exportDescription": "Download all project data as a JSON file. Includes mementos, sessions, journal entries, and prompts.",
     "exportButton": "Export",
     "exporting": "Exporting...",
     "selectProject": "Project",
@@ -108,7 +108,7 @@
     "dataToImport": "Data to import",
     "projects": "Projects",
     "sessions": "Sessions",
-    "observations": "Observations",
+    "observations": "Mementos",
     "prompts": "Prompts",
     "journal": "Journal",
     "conflictStrategy": "On duplicate",
@@ -127,11 +127,11 @@
     "previewFailed": "Failed to read file preview."
   },
   "observations": {
-    "title": "Observations",
-    "newObservation": "New observation",
-    "noObservations": "No observations yet",
-    "noObservationsDescription": "Create your first observation to start building your persistent memory.",
-    "noMatch": "No observations match these filters."
+    "title": "Mementos",
+    "newObservation": "New memento",
+    "noObservations": "No mementos yet",
+    "noObservationsDescription": "Create your first memento to start building your persistent memory.",
+    "noMatch": "No mementos match these filters."
   },
   "observationEditor": {
     "title": "Title",
@@ -145,21 +145,21 @@
     "project": "Project",
     "projectPlaceholder": "e.g. my-project",
     "saveFailed": "Save failed",
-    "editTitle": "Edit observation",
-    "readOnly": "This observation is read-only and cannot be edited."
+    "editTitle": "Edit memento",
+    "readOnly": "This memento is read-only and cannot be edited."
   },
   "deleteConfirmation": {
     "title": "Delete \"{title}\"?",
-    "description": "This is a soft delete. The observation can be restored later.",
+    "description": "This is a soft delete. The memento can be restored later.",
     "reasonPlaceholder": "Reason for deletion (optional)",
     "deleteFailed": "Delete failed"
   },
   "sessions": {
     "title": "Sessions",
     "noSessions": "No sessions yet",
-    "noSessionsDescription": "Sessions are created automatically when you create observations.",
-    "observationSingular": "observation",
-    "observationPlural": "observations"
+    "noSessionsDescription": "Sessions are created automatically when you create mementos.",
+    "observationSingular": "memento",
+    "observationPlural": "mementos"
   },
   "sessionDetail": {
     "session": "Session #{id}",
@@ -167,25 +167,25 @@
     "started": "Started",
     "endedAt": "Ended",
     "endSession": "End session",
-    "observations": "Observations ({count})",
-    "noObservations": "No observations in this session."
+    "observations": "Mementos ({count})",
+    "noObservations": "No mementos in this session."
   },
   "timeline": {
     "title": "Timeline",
-    "noObservations": "No observations yet",
-    "noObservationsDescription": "Your timeline will appear here once you create observations.",
+    "noObservations": "No mementos yet",
+    "noObservationsDescription": "Your timeline will appear here once you create mementos.",
     "loadEarlier": "Load earlier",
     "sessionLabel": "Session #{id}",
     "sessionActive": "Active",
     "sessionClosed": "Closed"
   },
   "dashboard": {
-    "totalObservations": "Total observations",
+    "totalObservations": "Total mementos",
     "active": "Active",
     "sessions": "Sessions",
     "projects": "Projects",
     "byType": "By type",
-    "noObservations": "No observations yet",
+    "noObservations": "No mementos yet",
     "recentActivity": "Recent activity",
     "noObservationsDescription": "Start using Memento to capture decisions, discoveries, and patterns from your coding sessions."
   },
@@ -214,7 +214,7 @@
     "cards": {
       "quickstart": {
         "title": "Quickstart",
-        "description": "Get up and running with your first observation in 5 minutes"
+        "description": "Get up and running with your first memento in 5 minutes"
       },
       "cliReference": {
         "title": "CLI Reference",
@@ -230,7 +230,7 @@
       },
       "core": {
         "title": "Core",
-        "description": "Database engine, observations, sessions, and search"
+        "description": "Database engine, mementos, sessions, and search"
       },
       "mcpServer": {
         "title": "MCP Server",
@@ -250,7 +250,7 @@
       },
       "coreConcepts": {
         "title": "Core Concepts",
-        "description": "Observations, sessions, projects, journal, and search"
+        "description": "Mementos, sessions, projects, journal, and search"
       },
       "architecture": {
         "title": "Architecture",
@@ -276,7 +276,7 @@
     "nav": {
       "quickstart": "Quickstart",
       "coreConcepts": "Core Concepts",
-      "observations": "Observations",
+    "observations": "Mementos",
       "sessions": "Sessions",
       "projects": "Projects",
       "journal": "Journal",

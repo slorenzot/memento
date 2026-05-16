@@ -1,10 +1,10 @@
 import { getEngine } from '@/lib/engine';
 import { notFound } from 'next/navigation';
-import { EditObservationContent } from '@/components/observations/EditObservationContent';
+import { EditMementoContent } from '@/components/mementos/EditMementoContent';
 
 export const dynamic = 'force-dynamic';
 
-export default async function LangEditObservationPage({
+export default async function LangEditMementoPage({
   params,
 }: {
   params: Promise<{ id: string; lang: string }>;
@@ -17,5 +17,5 @@ export default async function LangEditObservationPage({
     notFound();
   }
 
-  return <EditObservationContent observation={observation} />;
+  return <EditMementoContent observation={observation} />;
 }

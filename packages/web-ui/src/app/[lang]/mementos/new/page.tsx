@@ -1,8 +1,8 @@
-import { ObservationEditor } from '@/components/observations/ObservationEditor';
+import { MementoEditor } from '@/components/mementos/MementoEditor';
 import { getDictionary } from '@/i18n/get-dictionary';
 import type { Locale } from '@/i18n/config';
 
-export default async function LangNewObservationPage({
+export default async function LangNewMementoPage({
   params,
 }: {
   params: Promise<{ lang: string }>;
@@ -15,7 +15,7 @@ export default async function LangNewObservationPage({
       <h1 className="text-[20px] font-medium text-[var(--color-text-primary)]">
         {t.observations.newObservation}
       </h1>
-      <ObservationEditor mode="create" />
+      <MementoEditor mode="create" />
     </div>
   );
 }

@@ -38,7 +38,7 @@ export function RecentActivity({ observations }: RecentActivityProps) {
         {observations.map((obs) => (
           <Link
             key={obs.id}
-            href={`${prefix}/observations/${obs.id}`}
+            href={`${prefix}/mementos/${obs.id}`}
             className="block rounded-[var(--radius-2xl)] border border-[var(--color-border)] p-4 transition-colors hover:border-[var(--color-border-strong)]"
           >
             <div className="flex items-start justify-between gap-4">

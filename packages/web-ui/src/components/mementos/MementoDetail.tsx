@@ -1,6 +1,6 @@
 'use client';
 
-import { DeleteConfirmation } from '@/components/observations/DeleteConfirmation';
+import { DeleteConfirmation } from '@/components/mementos/DeleteConfirmation';
 import { Badge } from '@/components/shared/Badge';
 import { MarkdownContent } from '@/components/shared/MarkdownContent';
 import { RelativeTime } from '@/components/shared/RelativeTime';
@@ -12,12 +12,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-interface ObservationDetailProps {
+interface MementoDetailProps {
   observation: Observation;
   session?: Session | null;
 }
 
-export default function ObservationDetailPage({ observation, session }: ObservationDetailProps) {
+export default function MementoDetailPage({ observation, session }: MementoDetailProps) {
   const router = useRouter();
   const t = useT();
   const prefix = useLocalePrefix();
@@ -86,7 +86,7 @@ export default function ObservationDetailPage({ observation, session }: Observat
         <div className="flex items-center gap-2">
           {!observation.deletedAt && !observation.readOnly && (
             <Link
-              href={`${prefix}/observations/${observation.id}/edit`}
+              href={`${prefix}/mementos/${observation.id}/edit`}
               className="rounded-full border border-[var(--color-border)] px-4 py-1.5 text-[13px] text-[var(--color-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
             >
               {t.common.edit}
@@ -103,7 +103,7 @@ export default function ObservationDetailPage({ observation, session }: Observat
           {observation.deletedAt && (
             <button
               onClick={async () => {
-                await fetch(`/api/observations/${observation.id}/restore`, { method: 'POST' });
+                await fetch(`/api/mementos/${observation.id}/restore`, { method: 'POST' });
                 router.refresh();
               }}
               className="rounded-full bg-green-600 px-4 py-1.5 text-[13px] text-white hover:bg-green-700 transition-colors"
@@ -120,7 +120,7 @@ export default function ObservationDetailPage({ observation, session }: Observat
           observationId={observation.id}
           observationTitle={observation.title}
           onCancel={() => setShowDelete(false)}
-          onDeleted={() => router.push(`${prefix}/observations`)}
+          onDeleted={() => router.push(`${prefix}/mementos`)}
         />
       )}
 

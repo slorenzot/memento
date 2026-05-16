@@ -1,7 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
-import { getTypeMeta } from './ObservationTypeIcon';
+import { getTypeMeta } from './MementoTypeIcon';
 import { useT } from '@/i18n/translation-context';
 
 interface BadgeProps {

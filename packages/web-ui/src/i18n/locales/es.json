@@ -58,17 +58,17 @@
     "revisions_other": "{count} revisiones"
   },
   "header": {
-    "searchPlaceholder": "Buscar observaciones..."
+    "searchPlaceholder": "Buscar mementos..."
   },
   "searchPage": {
     "title": "Buscar",
-    "placeholder": "Buscar observaciones con FTS5...",
+    "placeholder": "Buscar mementos con FTS5...",
     "results": "{total} resultado para \"{query}\" | {total} resultados para \"{query}\"",
     "showing": "— mostrando {shown} de {total}",
-    "noResults": "No se encontraron observaciones.",
+    "noResults": "No se encontraron mementos.",
     "loadEarlier": "Cargar anteriores",
-    "hintTitle": "Buscar observaciones",
-    "hintDescription": "Escribe términos para buscar en todas tus observaciones",
+    "hintTitle": "Buscar mementos",
+    "hintDescription": "Escribe términos para buscar en todos tus mementos",
     "filterByType": "Filtrar por tipo",
     "filterByScope": "Ámbito",
     "filterByProject": "Proyecto"
@@ -94,7 +94,7 @@
   "dataManagement": {
     "title": "Gestión de Datos",
     "exportTitle": "Exportar",
-    "exportDescription": "Descarga todos los datos del proyecto como archivo JSON. Incluye observaciones, sesiones, entradas de journal y prompts.",
+    "exportDescription": "Descarga todos los datos del proyecto como archivo JSON. Incluye mementos, sesiones, entradas de journal y prompts.",
     "exportButton": "Exportar",
     "exporting": "Exportando...",
     "selectProject": "Proyecto",
@@ -108,7 +108,7 @@
     "dataToImport": "Datos a importar",
     "projects": "Proyectos",
     "sessions": "Sesiones",
-    "observations": "Observaciones",
+    "observations": "Mementos",
     "prompts": "Prompts",
     "journal": "Journal",
     "conflictStrategy": "En duplicados",
@@ -127,15 +127,15 @@
     "previewFailed": "Error al leer vista previa del archivo."
   },
   "observations": {
-    "title": "Observaciones",
-    "newObservation": "Nueva observación",
-    "noObservations": "Sin observaciones aún",
-    "noObservationsDescription": "Crea tu primera observación para empezar a construir tu memoria persistente.",
-    "noMatch": "No hay observaciones que coincidan con estos filtros."
+    "title": "Mementos",
+    "newObservation": "Nuevo memento",
+    "noObservations": "Sin mementos aún",
+    "noObservationsDescription": "Crea tu primer memento para empezar a construir tu memoria persistente.",
+    "noMatch": "No hay mementos que coincidan con estos filtros."
   },
   "observationEditor": {
     "title": "Título",
-    "titlePlaceholder": "¿Qué observaste?",
+    "titlePlaceholder": "¿Qué descubriste?",
     "content": "Contenido",
     "contentPlaceholder": "Describe qué/por qué/dónde/aprendido...",
     "type": "Tipo",
@@ -145,21 +145,21 @@
     "project": "Proyecto",
     "projectPlaceholder": "ej. mi-proyecto",
     "saveFailed": "Error al guardar",
-    "editTitle": "Editar observación",
-    "readOnly": "Esta observación es de solo lectura y no puede ser editada."
+    "editTitle": "Editar memento",
+    "readOnly": "Este memento es de solo lectura y no puede ser editado."
   },
   "deleteConfirmation": {
     "title": "¿Eliminar \"{title}\"?",
-    "description": "Esta es una eliminación suave. La observación puede ser restaurada después.",
+    "description": "Esta es una eliminación suave. El memento puede ser restaurado después.",
     "reasonPlaceholder": "Razón de eliminación (opcional)",
     "deleteFailed": "Error al eliminar"
   },
   "sessions": {
     "title": "Sesiones",
     "noSessions": "Sin sesiones aún",
-    "noSessionsDescription": "Las sesiones se crean automáticamente cuando creas observaciones.",
-    "observationSingular": "observación",
-    "observationPlural": "observaciones"
+    "noSessionsDescription": "Las sesiones se crean automáticamente cuando creas mementos.",
+    "observationSingular": "memento",
+    "observationPlural": "mementos"
   },
   "sessionDetail": {
     "session": "Sesión #{id}",
@@ -167,25 +167,25 @@
     "started": "Inicio",
     "endedAt": "Fin",
     "endSession": "Finalizar sesión",
-    "observations": "Observaciones ({count})",
-    "noObservations": "Sin observaciones en esta sesión."
+    "observations": "Mementos ({count})",
+    "noObservations": "Sin mementos en esta sesión."
   },
   "timeline": {
     "title": "Línea de tiempo",
-    "noObservations": "Sin observaciones aún",
-    "noObservationsDescription": "Tu línea de tiempo aparecerá aquí cuando crees observaciones.",
+    "noObservations": "Sin mementos aún",
+    "noObservationsDescription": "Tu línea de tiempo aparecerá aquí cuando crees mementos.",
     "loadEarlier": "Cargar anteriores",
     "sessionLabel": "Sesión #{id}",
     "sessionActive": "Activa",
     "sessionClosed": "Cerrada"
   },
   "dashboard": {
-    "totalObservations": "Total observaciones",
+    "totalObservations": "Total mementos",
     "active": "Activas",
     "sessions": "Sesiones",
     "projects": "Proyectos",
     "byType": "Por tipo",
-    "noObservations": "Sin observaciones aún",
+    "noObservations": "Sin mementos aún",
     "recentActivity": "Actividad reciente",
     "noObservationsDescription": "Empieza a usar Memento para capturar decisiones, descubrimientos y patrones de tus sesiones de código."
   },
@@ -214,7 +214,7 @@
     "cards": {
       "quickstart": {
         "title": "Inicio rápido",
-        "description": "Ponte en marcha con tu primera observación en 5 minutos"
+        "description": "Ponte en marcha con tu primer memento en 5 minutos"
       },
       "cliReference": {
         "title": "Referencia CLI",
@@ -230,7 +230,7 @@
       },
       "core": {
         "title": "Core",
-        "description": "Motor de base de datos, observaciones, sesiones y búsqueda"
+        "description": "Motor de base de datos, mementos, sesiones y búsqueda"
       },
       "mcpServer": {
         "title": "Servidor MCP",
@@ -250,7 +250,7 @@
       },
       "coreConcepts": {
         "title": "Conceptos clave",
-        "description": "Observaciones, sesiones, proyectos, journal y búsqueda"
+        "description": "Mementos, sesiones, proyectos, journal y búsqueda"
       },
       "architecture": {
         "title": "Arquitectura",
@@ -276,7 +276,7 @@
     "nav": {
       "quickstart": "Inicio rápido",
       "coreConcepts": "Conceptos clave",
-      "observations": "Observaciones",
+    "observations": "Mementos",
       "sessions": "Sesiones",
       "projects": "Proyectos",
       "journal": "Journal",

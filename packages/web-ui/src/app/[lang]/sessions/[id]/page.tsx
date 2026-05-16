@@ -2,7 +2,7 @@ import { getEngine } from '@/lib/engine';
 import { notFound } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { RelativeTime } from '@/components/shared/RelativeTime';
-import { ObservationCard } from '@/components/observations/ObservationCard';
+import { MementoCard } from '@/components/mementos/MementoCard';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { getDictionary } from '@/i18n/get-dictionary';
 import type { Locale } from '@/i18n/config';
@@ -107,7 +107,7 @@ export default async function LangSessionDetailPage({
         ) : (
           <div className="grid gap-3">
             {sessionObs.map((obs) => (
-              <ObservationCard key={obs.id} observation={obs} />
+              <MementoCard key={obs.id} observation={obs} />
             ))}
           </div>
         )}

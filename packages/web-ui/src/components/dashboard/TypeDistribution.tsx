@@ -1,6 +1,6 @@
 'use client';
 
-import { OBSERVATION_TYPES, ObservationTypeIcon } from '@/components/shared/ObservationTypeIcon';
+import { OBSERVATION_TYPES, ObservationTypeIcon } from '@/components/shared/MementoTypeIcon';
 import { useT } from '@/i18n/translation-context';
 
 interface TypeDistributionProps {

@@ -12,11 +12,11 @@ const TYPES = [
 
 const SCOPES = ['project', 'personal'] as const;
 
-interface ObservationFiltersProps {
+interface MementoFiltersProps {
   projects: string[];
 }
 
-export function ObservationFilters({ projects }: ObservationFiltersProps) {
+export function MementoFilters({ projects }: MementoFiltersProps) {
   const t = useT();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -35,7 +35,7 @@ export function ObservationFilters({ projects }: ObservationFiltersProps) {
     }
     // Reset to page 1 when changing filters
     params.delete('page');
-    router.push(`${prefix}/observations?${params.toString()}`);
+    router.push(`${prefix}/mementos?${params.toString()}`);
   }
 
   return (

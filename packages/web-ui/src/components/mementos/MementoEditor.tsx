@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
-import { OBSERVATION_TYPES, ObservationTypeIcon } from '@/components/shared/ObservationTypeIcon';
+import { OBSERVATION_TYPES, ObservationTypeIcon } from '@/components/shared/MementoTypeIcon';
 import { useT } from '@/i18n/translation-context';
 import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 
-interface ObservationEditorProps {
+interface MementoEditorProps {
   mode: 'create' | 'edit';
   initialData?: {
     title: string;
@@ -20,7 +20,7 @@ interface ObservationEditorProps {
   observationId?: number;
 }
 
-export function ObservationEditor({ mode, initialData, observationId }: ObservationEditorProps) {
+export function MementoEditor({ mode, initialData, observationId }: MementoEditorProps) {
   const router = useRouter();
   const t = useT();
   const prefix = useLocalePrefix();
@@ -43,8 +43,8 @@ export function ObservationEditor({ mode, initialData, observationId }: Observat
 
     try {
       const url = mode === 'create'
-        ? '/api/observations'
-        : `/api/observations/${observationId}`;
+        ? '/api/mementos'
+        : `/api/mementos/${observationId}`;
 
       const method = mode === 'create' ? 'POST' : 'PATCH';
 
@@ -69,7 +69,7 @@ export function ObservationEditor({ mode, initialData, observationId }: Observat
       }
 
       const obs = await res.json();
-      router.push(`${prefix}/observations/${obs.id}`);
+      router.push(`${prefix}/mementos/${obs.id}`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : t.observationEditor.saveFailed);

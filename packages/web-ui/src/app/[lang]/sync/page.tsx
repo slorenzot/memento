@@ -15,6 +15,7 @@ import {
   AlertCircle,
   CheckCircle2,
 } from 'lucide-react';
+import { SyncSprite } from '@/components/layout/Sprite';
 
 const HUB_URL = 'https://memento-hub.vercel.app';
 const SYNC_TOKEN_KEY = 'memento-sync-token';
@@ -98,7 +99,7 @@ export default function SyncPage() {
                 tokenType: token.token_type,
                 storedAt: Date.now(),
                 serverUrl: HUB_URL,
-              }),
+              })
             );
             setState('success');
             return;
@@ -134,7 +135,7 @@ export default function SyncPage() {
       setState('error');
       setError(t.sync.errorExpired);
     },
-    [t],
+    [t]
   );
 
   async function startDeviceFlow() {
@@ -259,9 +260,7 @@ export default function SyncPage() {
             <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">
               {t.sync.successTitle}
             </h1>
-            <p className="text-[14px] text-[var(--color-secondary)]">
-              {t.sync.successDescription}
-            </p>
+            <p className="text-[14px] text-[var(--color-secondary)]">{t.sync.successDescription}</p>
 
             <a
               href={HUB_URL}
@@ -290,10 +289,14 @@ export default function SyncPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--color-bg)] px-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
+        <div className="flex justify-center">
+          <SyncSprite />
+        </div>
+        {/*
         <div className="flex justify-center mb-8">
           <MementoLogo size={48} showText={false} />
         </div>
+        */}
 
         {/* Card */}
         <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-8">
@@ -327,9 +330,7 @@ export default function SyncPage() {
           {state === 'requesting' && (
             <div className="flex flex-col items-center gap-3 py-4">
               <Loader2 className="w-6 h-6 text-[var(--color-primary)] animate-spin" />
-              <p className="text-[14px] text-[var(--color-secondary)]">
-                {t.sync.requestingCode}
-              </p>
+              <p className="text-[14px] text-[var(--color-secondary)]">{t.sync.requestingCode}</p>
             </div>
           )}
 
@@ -338,9 +339,7 @@ export default function SyncPage() {
             <div className="space-y-5">
               {/* User code */}
               <div className="text-center space-y-2">
-                <p className="text-[13px] text-[var(--color-secondary)]">
-                  {t.sync.enterCodeLabel}
-                </p>
+                <p className="text-[13px] text-[var(--color-secondary)]">{t.sync.enterCodeLabel}</p>
                 <div className="flex items-center justify-center gap-2">
                   <code className="text-2xl font-mono font-bold tracking-[0.2em] text-[var(--color-text-primary)] bg-[var(--color-neutral-bg)] px-4 py-2 rounded-[var(--radius-sm)]">
                     {deviceCodeData.user_code}
@@ -376,7 +375,8 @@ export default function SyncPage() {
 
               {/* Countdown */}
               <p className="text-center text-[12px] text-[var(--color-tertiary)]">
-                {t.sync.expiresIn.replace('{seconds}', String(Math.floor(secondsLeft / 60)))}:{String(secondsLeft % 60).padStart(2, '0')}
+                {t.sync.expiresIn.replace('{seconds}', String(Math.floor(secondsLeft / 60)))}:
+                {String(secondsLeft % 60).padStart(2, '0')}
               </p>
             </div>
           )}
