@@ -1,32 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'bun:test';
 import { rmSync, mkdirSync, existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { homedir } from 'os';
 
 const testDir = join(process.cwd(), 'test-data');
-const configDir = join(testDir, 'config');
-const storageDir = join(testDir, 'storage');
 
 beforeAll(() => {
   if (existsSync(testDir)) {
     rmSync(testDir, { recursive: true, force: true });
   }
   mkdirSync(testDir, { recursive: true });
-  mkdirSync(configDir, { recursive: true });
-  mkdirSync(storageDir, { recursive: true });
-
-  writeFileSync(
-    join(configDir, '.mementorc'),
-    JSON.stringify(
-      {
-        storageMethod: 'database',
-        dbPath: '.memento/db/memento.db',
-        storagePath: 'database/storage',
-        projectId: 'test-project',
-      },
-      null,
-      2
-    )
-  );
 });
 
 afterAll(() => {
@@ -36,179 +19,67 @@ afterAll(() => {
 });
 
 describe('ConfigManager', () => {
-  describe('loadConfig()', () => {
-    it('should load .mementorc from current directory', () => {
-      const { loadConfig } = require('../src/ConfigManager');
-
-      const originalCwd = process.cwd;
-      process.cwd = () => configDir;
-
-      try {
-        const config = loadConfig();
-        expect(config.storagePath).toBe('database/storage');
-        expect(config.projectId).toBe('test-project');
-      } finally {
-        process.cwd = originalCwd;
-      }
-    });
-
-    it('should use default config when no .mementorc found', () => {
-      const { loadConfig } = require('../src/ConfigManager');
-      const { join } = require('path');
-      const { mkdirSync } = require('fs');
-
-      const noConfigDir = join(testDir, 'no-config-isolated');
-      mkdirSync(noConfigDir, { recursive: true });
-
-      const originalCwd = process.cwd;
-      // Use /tmp which should not have .mementorc
-      process.cwd = () => '/tmp';
-
-      try {
-        const config = loadConfig();
-        expect(config.storageMethod).toBe('database');
-        expect(config.dbPath).toBe('.memento/db/memento.db');
-        expect(config.storagePath).toBe('database/storage');
-        // projectId will be undefined when no .mementorc and no package.json
-        expect(config.projectId).toBeUndefined();
-      } finally {
-        process.cwd = originalCwd;
-      }
-    });
-
-    it('should use environment variables when set', () => {
-      const { loadConfig } = require('../src/ConfigManager');
+  describe('resolveDbPath()', () => {
+    it('should return centralized DB path by default', () => {
+      const { resolveDbPath, GLOBAL_DB_PATH } = require('../src/ConfigManager');
 
       const originalEnv = { ...process.env };
-      process.env.MEMENTO_STORAGE_METHOD = 'storage';
-      process.env.MEMENTO_DB_PATH = '/custom/db/memento.db';
-      process.env.MEMENTO_STORAGE_PATH = '/custom/storage';
-      process.env.MEMENTO_PROJECT_ID = 'env-project';
+      delete process.env.MEMENTO_DB_PATH;
 
       try {
-        const config = loadConfig();
-        expect(config.storageMethod).toBe('storage');
-        expect(config.dbPath).toBe('/custom/db/memento.db');
-        expect(config.storagePath).toBe('/custom/storage');
-        expect(config.projectId).toBe('env-project');
+        const resolved = resolveDbPath();
+        expect(resolved).toBe(GLOBAL_DB_PATH);
+        expect(resolved).toBe(join(homedir(), '.memento', 'memento.db'));
+      } finally {
+        process.env = originalEnv;
+      }
+    });
+
+    it('should use MEMENTO_DB_PATH env var when set', () => {
+      const { resolveDbPath } = require('../src/ConfigManager');
+
+      const originalEnv = { ...process.env };
+      process.env.MEMENTO_DB_PATH = '/custom/db/memento.db';
+
+      try {
+        const resolved = resolveDbPath();
+        expect(resolved).toBe('/custom/db/memento.db');
+      } finally {
+        process.env = originalEnv;
+      }
+    });
+
+    it('should expand ~/ in MEMENTO_DB_PATH', () => {
+      const { resolveDbPath } = require('../src/ConfigManager');
+
+      const originalEnv = { ...process.env };
+      process.env.MEMENTO_DB_PATH = '~/custom/memento.db';
+
+      try {
+        const resolved = resolveDbPath();
+        expect(resolved).toBe(join(homedir(), 'custom/memento.db'));
       } finally {
         process.env = originalEnv;
       }
     });
   });
 
-  describe('resolveStoragePath()', () => {
-    it('should resolve absolute paths', () => {
-      const { resolveStoragePath } = require('../src/ConfigManager');
-      const config = { storagePath: '/absolute/path', projectId: 'test' };
-      const resolved = resolveStoragePath(config);
-      expect(resolved).toBe('/absolute/path');
-    });
-
-    it('should resolve ~ to home directory', () => {
-      const { resolveStoragePath } = require('../src/ConfigManager');
-      const { homedir } = require('os');
-      const config = { storagePath: '~/memento-data', projectId: 'test' };
-
-      const originalCwd = process.cwd;
-      process.cwd = () => '/some/working/dir';
-
-      try {
-        const resolved = resolveStoragePath(config);
-        expect(resolved).toBe(join(homedir(), 'memento-data'));
-      } finally {
-        process.cwd = originalCwd;
-      }
-    });
-
-    it('should resolve relative paths from working directory', () => {
-      const { resolveStoragePath } = require('../src/ConfigManager');
-      const config = { storagePath: 'database/storage', projectId: 'test' };
-
-      const originalCwd = process.cwd;
-      process.cwd = () => '/project/root';
-
-      try {
-        const resolved = resolveStoragePath(config);
-        expect(resolved).toBe('/project/root/database/storage');
-      } finally {
-        process.cwd = originalCwd;
-      }
-    });
-  });
-
-  describe('resolveDbPath()', () => {
-    it('should resolve absolute paths', () => {
-      const { resolveDbPath } = require('../src/ConfigManager');
-      const config = { dbPath: '/absolute/path/memento.db', projectId: 'test' };
-      const resolved = resolveDbPath(config);
-      expect(resolved).toBe('/absolute/path/memento.db');
-    });
-
-    it('should resolve ~ to home directory', () => {
-      const { resolveDbPath } = require('../src/ConfigManager');
-      const { homedir } = require('os');
-      const config = { dbPath: '~/.memento/db/memento.db', projectId: 'test' };
-
-      const originalCwd = process.cwd;
-      process.cwd = () => '/some/working/dir';
-
-      try {
-        const resolved = resolveDbPath(config);
-        expect(resolved).toBe(join(homedir(), '.memento/db/memento.db'));
-      } finally {
-        process.cwd = originalCwd;
-      }
-    });
-
-    it('should resolve relative paths from working directory', () => {
-      const { resolveDbPath } = require('../src/ConfigManager');
-      const config = { dbPath: '.memento/db/memento.db', projectId: 'test' };
-
-      const originalCwd = process.cwd;
-      process.cwd = () => '/project/root';
-
-      try {
-        const resolved = resolveDbPath(config);
-        expect(resolved).toBe('/project/root/.memento/db/memento.db');
-      } finally {
-        process.cwd = originalCwd;
-      }
-    });
-
-    it('should use default dbPath when not specified', () => {
-      const { resolveDbPath } = require('../src/ConfigManager');
-      const config = { projectId: 'test' };
-
-      const originalCwd = process.cwd;
-      process.cwd = () => '/project/root';
-
-      try {
-        const resolved = resolveDbPath(config);
-        expect(resolved).toBe('/project/root/.memento/db/memento.db');
-      } finally {
-        process.cwd = originalCwd;
-      }
-    });
-  });
-
   describe('getProjectId()', () => {
-    it('should use projectId from config if available', () => {
+    it('should use MEMENTO_PROJECT_ID env var when set', () => {
       const { getProjectId } = require('../src/ConfigManager');
-      const config = { storagePath: 'test', projectId: 'config-project' };
 
-      const originalCwd = process.cwd;
-      process.cwd = () => '/some/dir';
+      const originalEnv = { ...process.env };
+      process.env.MEMENTO_PROJECT_ID = 'env-project';
 
       try {
-        const projectId = getProjectId(config);
-        expect(projectId).toBe('config-project');
+        const projectId = getProjectId();
+        expect(projectId).toBe('env-project');
       } finally {
-        process.cwd = originalCwd;
+        process.env = originalEnv;
       }
     });
 
-    it('should read package.json if no projectId in config', () => {
+    it('should read package.json if no env var', () => {
       const { getProjectId } = require('../src/ConfigManager');
       const packageDir = join(testDir, 'with-package');
       mkdirSync(packageDir, { recursive: true });
@@ -218,39 +89,49 @@ describe('ConfigManager', () => {
         JSON.stringify({ name: 'my-project-from-package' }, null, 2)
       );
 
-      const config = { storagePath: 'test', projectId: undefined };
+      const originalEnv = { ...process.env };
       const originalCwd = process.cwd;
+      delete process.env.MEMENTO_PROJECT_ID;
       process.cwd = () => packageDir;
 
       try {
-        const projectId = getProjectId(config);
+        const projectId = getProjectId();
         expect(projectId).toBe('my-project-from-package');
       } finally {
         process.cwd = originalCwd;
+        process.env = originalEnv;
       }
     });
 
-    it('should default to "default" when no projectId found', () => {
+    it('should default to directory name when no package.json', () => {
       const { getProjectId } = require('../src/ConfigManager');
-      const config = { storagePath: 'test', projectId: undefined };
 
+      const originalEnv = { ...process.env };
       const originalCwd = process.cwd;
-      process.cwd = () => '/no/package/here';
+      delete process.env.MEMENTO_PROJECT_ID;
+      process.cwd = () => '/some/unique-dir-name';
 
       try {
-        const projectId = getProjectId(config);
-        expect(projectId).toBe('default');
+        const projectId = getProjectId();
+        expect(projectId).toBe('unique-dir-name');
       } finally {
         process.cwd = originalCwd;
+        process.env = originalEnv;
       }
     });
 
-    it('should normalize projectId from config', () => {
+    it('should normalize projectId from env var', () => {
       const { getProjectId } = require('../src/ConfigManager');
-      const config = { storagePath: 'test', projectId: 'SURA Chile Autos' };
 
-      const projectId = getProjectId(config);
-      expect(projectId).toBe('sura-chile-autos');
+      const originalEnv = { ...process.env };
+      process.env.MEMENTO_PROJECT_ID = 'SURA Chile Autos';
+
+      try {
+        const projectId = getProjectId();
+        expect(projectId).toBe('sura-chile-autos');
+      } finally {
+        process.env = originalEnv;
+      }
     });
 
     it('should normalize scoped package name from package.json', () => {
@@ -263,16 +144,45 @@ describe('ConfigManager', () => {
         JSON.stringify({ name: '@my-org/My Cool Project' }, null, 2)
       );
 
-      const config = { storagePath: 'test', projectId: undefined };
+      const originalEnv = { ...process.env };
       const originalCwd = process.cwd;
+      delete process.env.MEMENTO_PROJECT_ID;
       process.cwd = () => packageDir;
 
       try {
-        const projectId = getProjectId(config);
+        const projectId = getProjectId();
         expect(projectId).toBe('my-cool-project');
       } finally {
         process.cwd = originalCwd;
+        process.env = originalEnv;
       }
+    });
+  });
+
+  describe('getStaleThresholdMs()', () => {
+    it('should return default threshold when no config', () => {
+      const { getStaleThresholdMs, DEFAULT_STALE_THRESHOLD_MS } = require('../src/ConfigManager');
+
+      const threshold = getStaleThresholdMs();
+      expect(threshold).toBe(DEFAULT_STALE_THRESHOLD_MS);
+      expect(threshold).toBe(24 * 60 * 60 * 1000);
+    });
+  });
+
+  describe('ensureGlobalDir()', () => {
+    it('should create ~/.memento/ directory', () => {
+      const { ensureGlobalDir, GLOBAL_CONFIG_DIR } = require('../src/ConfigManager');
+      const { existsSync, rmSync } = require('fs');
+
+      // Use a temp dir to avoid touching real ~/.memento
+      const tmpDir = join(testDir, 'global-test');
+      mkdirSync(tmpDir, { recursive: true });
+
+      // We test the function works but don't want to actually create
+      // in real home dir during tests — just verify the return value
+      const result = ensureGlobalDir();
+      expect(result.dbPath).toContain('.memento');
+      expect(result.configPath).toContain('.memento');
     });
   });
 

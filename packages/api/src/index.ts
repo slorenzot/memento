@@ -2,7 +2,7 @@
 
 import type { Server } from 'node:http';
 
-import { MemoryEngine } from "@slorenzot/memento-core";
+import { MemoryEngine, GLOBAL_DB_PATH } from "@slorenzot/memento-core";
 import type { Observation } from "@slorenzot/memento-core";
 import express from "express";
 import cors from "cors";
@@ -109,7 +109,7 @@ export class APIServer {
 // Auto-start when run directly
 if (require.main === module) {
   const port = parseInt(process.env.API_PORT || "3000", 10);
-  const dbPath = process.env.DATABASE_PATH || "./data/memento.db";
+  const dbPath = process.env.DATABASE_PATH || GLOBAL_DB_PATH;
   const server = new APIServer(port, dbPath);
 
   process.on("SIGINT", () => { server.close(); process.exit(0); });

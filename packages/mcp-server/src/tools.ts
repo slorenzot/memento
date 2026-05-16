@@ -10,7 +10,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { MemoryEngine, getStaleThresholdMs, normalizeProjectId } from '@slorenzot/memento-core';
+import { MemoryEngine, getStaleThresholdMs, normalizeProjectId, GLOBAL_DB_PATH } from '@slorenzot/memento-core';
 import type { ExportFormat, MergeStrategy, Observation } from '@slorenzot/memento-core';
 import { existsSync } from 'fs';
 import { join } from 'path';
@@ -914,7 +914,7 @@ export function registerTools(server: McpServer, ctx: McpServerContext): void {
               storagePath: currentDbPath,
               projectId: ctx.projectId,
               projectRoot: process.cwd(),
-              hasConfigFile: existsSync(join(process.cwd(), '.mementorc')),
+              hasGlobalDb: existsSync(currentDbPath),
             },
             storage: {
               type: 'SQLite Persistent',

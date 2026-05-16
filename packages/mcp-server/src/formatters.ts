@@ -249,7 +249,7 @@ export function formatConfig(data: {
     storagePath: string;
     projectId: string;
     projectRoot: string;
-    hasConfigFile: boolean;
+    hasGlobalDb: boolean;
   };
   storage: {
     type: string;

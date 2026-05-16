@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { MemoryEngine, loadConfig, resolveDbPath, getProjectId, normalizeProjectId } from '@slorenzot/memento-core';
+import { MemoryEngine, resolveDbPath, getProjectId, normalizeProjectId, ensureGlobalDir } from '@slorenzot/memento-core';
 import { SyncEngine, TokenStore, DeviceFlowClient } from '@slorenzot/memento-core';
 import type { Observation } from '@slorenzot/memento-core';
 
@@ -11,9 +11,9 @@ export class CLI {
   private projectId: string;
 
   constructor() {
-    const config = loadConfig();
-    const dbPath = resolveDbPath(config);
-    this.projectId = getProjectId(config);
+    ensureGlobalDir();
+    const dbPath = resolveDbPath();
+    this.projectId = getProjectId();
 
     this.program = new Command();
     this.memory = new MemoryEngine(dbPath);

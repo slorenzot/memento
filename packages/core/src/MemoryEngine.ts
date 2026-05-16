@@ -47,7 +47,12 @@ export class MemoryEngine {
   private initError: Error | null = null;
   private embeddingService: EmbeddingService;
 
-  constructor(dbPath: string = './data/memento.db') {
+  constructor(dbPath?: string) {
+    // Default to centralized DB at ~/.memento/memento.db
+    if (!dbPath) {
+      const { resolveDbPath } = require('./ConfigManager');
+      dbPath = resolveDbPath() as string;
+    }
     this.dbPath = resolve(dbPath);
     this.embeddingService = new EmbeddingService();
 
