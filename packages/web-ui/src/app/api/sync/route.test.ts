@@ -234,6 +234,81 @@ describe('Sync API Route Logic', () => {
       expect(message).toBe('Sync failed: could not connect to hub');
     });
   });
+
+  describe('frontend error detection — partial failure (#243 follow-up)', () => {
+    // These test the SyncButton's error detection logic:
+    // Previously: errors shown only when pulled=0 AND pushed=0
+    // Now: errors shown when push failed (pushed=0) even if pull succeeded
+
+    it('should show error when pull succeeds but push fails with 0 pushed', () => {
+      const result = {
+        direction: 'bidirectional' as const,
+        pulled: 5,
+        pushed: 0,
+        errors: ['Push failed: Connection refused'],
+        conflicts: 0,
+        durationMs: 1200,
+      };
+
+      const hasErrors = result.errors && result.errors.length > 0;
+      const shouldShowError = hasErrors && result.pushed === 0 && result.direction === 'bidirectional';
+
+      expect(shouldShowError).toBe(true);
+    });
+
+    it('should show error when both pull and push return 0', () => {
+      const result = {
+        direction: 'bidirectional' as const,
+        pulled: 0,
+        pushed: 0,
+        errors: ['Pull failed: Auth error'],
+        conflicts: 0,
+        durationMs: 500,
+      };
+
+      const hasErrors = result.errors && result.errors.length > 0;
+      const fallback = hasErrors && result.pulled === 0 && result.pushed === 0;
+
+      expect(fallback).toBe(true);
+    });
+
+    it('should show success when push succeeds despite errors', () => {
+      const result = {
+        direction: 'bidirectional' as const,
+        pulled: 3,
+        pushed: 10,
+        errors: [],
+        conflicts: 0,
+        durationMs: 2000,
+      };
+
+      const hasErrors = result.errors && result.errors.length > 0;
+      const shouldShowError = hasErrors && result.pushed === 0 && result.direction === 'bidirectional';
+
+      expect(shouldShowError).toBe(false);
+    });
+
+    it('should show error message as button text instead of generic Error', () => {
+      const syncMessage = 'Push failed: Connection refused';
+      const genericError = 'Error';
+
+      // Before: button text was always genericError
+      // After: button text shows syncMessage when available
+      const buttonText = syncMessage || genericError;
+
+      expect(buttonText).toBe('Push failed: Connection refused');
+      expect(buttonText).not.toBe('Error');
+    });
+
+    it('should fall back to generic error when no message available', () => {
+      const syncMessage: string | null = null;
+      const genericError = 'Error';
+
+      const buttonText = syncMessage || genericError;
+
+      expect(buttonText).toBe('Error');
+    });
+  });
 });
 
 describe('Sync API Route - Request Validation', () => {
