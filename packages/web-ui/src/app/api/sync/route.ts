@@ -1,7 +1,6 @@
 import { getEngine } from '@/lib/engine';
-import { ok, badRequest, handleRoute } from '@/lib/api-helpers';
+import { ok, badRequest, error, handleRoute } from '@/lib/api-helpers';
 import { SyncClient } from '@slorenzot/memento-core';
-import type { SyncResult } from '@slorenzot/memento-core';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +36,8 @@ export async function POST(request: Request) {
     const errors: string[] = [];
     let totalPulled = 0;
     let totalPushed = 0;
+    let pullFailed = false;
+    let pushFailed = false;
 
     // Phase 1: Pull remote changes
     try {
@@ -108,7 +109,9 @@ export async function POST(request: Request) {
         hasMore = response.hasMore;
       }
     } catch (err) {
-      errors.push(`Pull failed: ${err instanceof Error ? err.message : String(err)}`);
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`Pull failed: ${msg}`);
+      pullFailed = true;
     }
 
     // Phase 2: Push local changes
@@ -150,25 +153,24 @@ export async function POST(request: Request) {
         totalPushed = result.synced;
       }
     } catch (err) {
-      errors.push(`Push failed: ${err instanceof Error ? err.message : String(err)}`);
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`Push failed: ${msg}`);
+      pushFailed = true;
     }
 
-    const result: SyncResult = {
+    // If BOTH phases failed completely (0 pulled, 0 pushed), return error
+    // so the frontend can show a meaningful error message
+    if (pullFailed && pushFailed && totalPulled === 0 && totalPushed === 0) {
+      return error(errors.join('; ') || 'Sync failed: could not connect to hub', 502);
+    }
+
+    return ok({
       direction: 'bidirectional',
       pulled: totalPulled,
       pushed: totalPushed,
-      conflicts: [],
+      conflicts: 0,
       errors,
       durationMs: Date.now() - start,
-    };
-
-    return ok({
-      direction: result.direction,
-      pulled: result.pulled,
-      pushed: result.pushed,
-      conflicts: result.conflicts.length,
-      errors: result.errors,
-      durationMs: result.durationMs,
     });
   });
 }
