@@ -101,8 +101,14 @@ export function SyncButton() {
 
       const result = await res.json();
 
-      // Show errors even on 200 OK (partial failure)
-      if (result.errors && result.errors.length > 0 && result.pulled === 0 && result.pushed === 0) {
+      const hasErrors = result.errors && result.errors.length > 0;
+
+      // Show error when push failed (even if pull succeeded) — this is a partial failure
+      // the user needs to know about. Previously, errors were hidden when pulled > 0.
+      if (hasErrors && result.pushed === 0 && result.direction === 'bidirectional') {
+        setSyncState('error');
+        setSyncMessage(result.errors[0]);
+      } else if (hasErrors && result.pulled === 0 && result.pushed === 0) {
         setSyncState('error');
         setSyncMessage(result.errors[0]);
       } else {
@@ -171,7 +177,7 @@ export function SyncButton() {
             : syncState === 'success'
               ? t.sync.syncSuccess
               : syncState === 'error'
-                ? t.sync.syncError
+                ? (syncMessage || t.sync.syncError)
                 : t.sync.syncNow}
         </span>
       </button>

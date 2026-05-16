@@ -110,6 +110,7 @@ export async function POST(request: Request) {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Sync] Pull phase failed:', msg);
       errors.push(`Pull failed: ${msg}`);
       pullFailed = true;
     }
@@ -157,6 +158,7 @@ export async function POST(request: Request) {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Sync] Push phase failed:', msg);
       errors.push(`Push failed: ${msg}`);
       pushFailed = true;
     }
