@@ -313,7 +313,9 @@
   "footer": {
     "database": "Database",
     "healthy": "healthy",
-    "unhealthy": "unhealthy"
+    "unhealthy": "unhealthy",
+    "connected": "connected",
+    "disconnected": "disconnected"
   },
   "sync": {
     "connectCloud": "Sync with Cloud",
