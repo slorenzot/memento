@@ -11,10 +11,11 @@
  * Graceful degradation: if DB unavailable, injects nothing (doesn't break session).
  */
 
+import { join, basename } from 'path';
 import { existsSync } from 'fs';
-import { join } from 'path';
+import { homedir } from 'os';
 import type { Plugin, Hooks } from '@opencode-ai/plugin';
-import { MemoryEngine } from '@slorenzot/memento-core';
+import { MemoryEngine, GLOBAL_DB_PATH } from '@slorenzot/memento-core';
 import { resolveConfig } from './config.js';
 import { renderContext } from './renderer.js';
 
@@ -24,33 +25,28 @@ export type { MementoPluginConfig, PromptInjectionStrategy } from './config.js';
 export type { RenderedContext } from './renderer.js';
 
 /**
- * Resolve database path from project directory.
- * Checks for .memento/memento.db, data/memento.db, or falls back to .memento/memento.db
+ * Resolve database path.
+ * Priority: plugin config > MEMENTO_DB_PATH env > centralized ~/.memento/memento.db
  */
-function resolveDatabasePath(projectDir: string, configPath: string | null): string {
+function resolveDatabasePath(configPath: string | null): string {
   if (configPath) return configPath;
 
-  // Check common locations
-  const candidates = [
-    join(projectDir, '.memento', 'memento.db'),
-    join(projectDir, 'data', 'memento.db'),
-  ];
-
-  for (const candidate of candidates) {
-    try {
-      if (existsSync(candidate)) return candidate;
-    } catch {
-      // ignore
+  // Check MEMENTO_DB_PATH env var
+  if (process.env.MEMENTO_DB_PATH) {
+    const envPath = process.env.MEMENTO_DB_PATH;
+    if (envPath.startsWith('~/')) {
+      return join(homedir(), envPath.slice(2));
     }
+    return envPath;
   }
 
-  // Default: create in .memento directory
-  return join(projectDir, '.memento', 'memento.db');
+  // Default: centralized DB
+  return GLOBAL_DB_PATH;
 }
 
 export const MementoPlugin: Plugin = async (input, options) => {
   const config = resolveConfig(options as Record<string, unknown> | undefined);
-  const dbPath = resolveDatabasePath(input.directory, config.database.path);
+  const dbPath = resolveDatabasePath(config.database.path);
 
   // Initialize engine — if DB fails, we degrade gracefully
   let engine: MemoryEngine | null = null;

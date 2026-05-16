@@ -2,15 +2,17 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { MemoryEngine, loadConfig, resolveDbPath, getProjectId, normalizeProjectId } from '@slorenzot/memento-core';
+import { MemoryEngine, resolveDbPath, getProjectId, normalizeProjectId, ensureGlobalDir } from '@slorenzot/memento-core';
 import { registerTools } from './tools.js';
 import type { McpServerContext } from './tools.js';
 
 // ─── Configuration ──────────────────────────────────────────
 
-const config = loadConfig();
-const dbPath = resolveDbPath(config);
-const projectId = getProjectId(config);
+// Ensure global dir exists
+ensureGlobalDir();
+
+const dbPath = resolveDbPath();
+const projectId = getProjectId();
 
 const engine = new MemoryEngine(dbPath);
 if (engine.isHealthy()) {
@@ -46,7 +48,7 @@ const BANNER = `
  ║     Version: 1.0.0                               ║
  ║     MCP Server: memento                          ║
  ║     Storage: SQLite Persistent                   ║
- ║     Tools: mem_*                         ║
+ ║     Tools: mem_*                                 ║
  ║                                                  ║
  ╚══════════════════════════════════════════════════╝
 `;

@@ -290,7 +290,7 @@ describe('formatConfig', () => {
         storagePath: '/home/.memento/memento.db',
         projectId: 'my-project',
         projectRoot: '/home/project',
-        hasConfigFile: false,
+        hasGlobalDb: false,
       },
       storage: {
         type: 'SQLite Persistent',
@@ -339,7 +339,7 @@ describe('formatConfig', () => {
         storagePath: '/tmp/test.db',
         projectId: 'test',
         projectRoot: '/tmp',
-        hasConfigFile: false,
+        hasGlobalDb: false,
       },
       storage: {
         type: 'SQLite Persistent',

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { MemoryEngine, loadConfig, resolveDbPath, getProjectId, createConfig, migrateConfig, findConfigPath, NEW_CONFIG_DIR, getStaleThresholdMs, DEFAULT_STALE_THRESHOLD_MS, normalizeProjectId, DeviceFlowClient, TokenStore } from '@slorenzot/memento-core';
-import type { Observation, ExportFormat, CreateConfigResult, MigrateConfigResult } from '@slorenzot/memento-core';
+import { MemoryEngine, resolveDbPath, getProjectId, getStaleThresholdMs, DEFAULT_STALE_THRESHOLD_MS, normalizeProjectId, DeviceFlowClient, TokenStore, ensureGlobalDir, GLOBAL_DB_PATH } from '@slorenzot/memento-core';
+import type { Observation, ExportFormat } from '@slorenzot/memento-core';
 import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, writeFileSync, readFileSync, appendFileSync } from 'fs';
 import { join, dirname, basename } from 'path';
 import { homedir } from 'os';
@@ -13,23 +13,17 @@ import { execSync } from 'child_process';
 // `memento init` can run before any DB exists.
 
 let _memory: MemoryEngine | null = null;
-let _config: ReturnType<typeof loadConfig> | null = null;
 let _dbPath: string | null = null;
 let _projectId: string | null = null;
 let activeSessionId: number | null = null;
 
-function getConfig(): ReturnType<typeof loadConfig> {
-  if (!_config) _config = loadConfig();
-  return _config;
-}
-
 function getDbPath(): string {
-  if (!_dbPath) _dbPath = resolveDbPath(getConfig());
+  if (!_dbPath) _dbPath = resolveDbPath();
   return _dbPath;
 }
 
 function getProjectIdCached(): string {
-  if (!_projectId) _projectId = getProjectId(getConfig());
+  if (!_projectId) _projectId = getProjectId();
   return _projectId;
 }
 
@@ -47,7 +41,6 @@ function getMemory(): MemoryEngine {
 }
 
 function resetState(): void {
-  _config = null;
   _dbPath = null;
   _projectId = null;
   _memory = null;
@@ -781,71 +774,35 @@ projectCommand
 
 program
   .command('init [path]')
-  .description('Initialize Memento for a project (config, database, seed observations)')
-  .option('--project <name>', 'Project identifier (default: directory or package name)')
-  .option('--db <path>', 'Database path (default: .memento/memento.db)')
+  .description('Initialize Memento (creates centralized DB at ~/.memento/memento.db)')
   .option('--no-seed', 'Skip seed observations')
-  .option('--force', 'Overwrite existing config')
-  .option('--migrate', 'Migrate from .mementorc to .memento/config.json')
-  .option('--global', 'Create global config in ~/.memento/')
   .action(async (path: string | undefined, options: any) => {
-    const targetDir = path ? join(process.cwd(), path) : process.cwd();
     const seed = options.seed !== false; // --no-seed → options.seed = false
     const steps: { label: string; status: 'ok' | 'skip' | 'error'; detail?: string }[] = [];
 
-    // ── Step 0: --migrate mode ──────────────────────────────
-    if (options.migrate) {
-      if (options.global) {
-        console.error('Cannot use --migrate with --global');
-        process.exit(1);
-      }
-
-      const result = migrateConfig(targetDir);
-      if (!result.success) {
-        console.error(`Migration failed: ${result.error}`);
-        process.exit(1);
-      }
-
-      steps.push({ label: 'Migrated .mementorc → .memento/config.json', status: 'ok' });
-      steps.push({ label: `Backup: ${result.backupPath}`, status: 'ok', detail: result.backupPath });
-      steps.push({ label: `Project: ${result.config.project}`, status: 'ok' });
-      steps.push({ label: `Database: ${result.config.database.path}`, status: 'ok' });
-
-      printInitSummary(steps, targetDir, options.global);
-      return;
-    }
-
-    // ── Step 1: Create config ───────────────────────────────
     try {
-      const result = createConfig({
-        project: options.project,
-        dbPath: options.db,
-        targetDir: options.global ? undefined : targetDir,
-        force: options.force,
-        global: options.global,
+      // ── Step 1: Ensure global dir ────────────────────────
+      const initResult = ensureGlobalDir();
+      steps.push({
+        label: `Global dir: ${join(homedir(), '.memento')}`,
+        status: 'ok',
+        detail: initResult.created ? 'created' : 'already exists',
       });
 
-      steps.push({ label: `Config: ${result.configPath}`, status: 'ok' });
-
-      if (result.migrated) {
-        steps.push({ label: 'Migrated settings from .mementorc', status: 'ok' });
-      }
-
-      // ── Step 2: Initialize database ───────────────────────
-      const dbDir = dirname(result.dbPath);
-      mkdirSync(dbDir, { recursive: true });
-      const engine = new MemoryEngine(result.dbPath);
+      // ── Step 2: Initialize centralized database ──────────
+      const dbPath = resolveDbPath();
+      const engine = new MemoryEngine(dbPath);
 
       if (engine.isHealthy()) {
-        steps.push({ label: `Database: ${result.dbPath}`, status: 'ok' });
+        steps.push({ label: `Database: ${dbPath}`, status: 'ok' });
       } else {
         const err = engine.getInitError();
-        steps.push({ label: `Database: ${result.dbPath}`, status: 'error', detail: err?.message });
+        steps.push({ label: `Database: ${dbPath}`, status: 'error', detail: err?.message });
       }
 
       // ── Step 3: Seed observations ─────────────────────────
       if (seed && engine.isHealthy()) {
-        const projectName = options.project || basename(targetDir);
+        const projectName = getProjectId();
         const session = await engine.createSession({
           projectId: projectName,
           endedAt: null,
@@ -861,7 +818,7 @@ program
         ).length;
 
         if (seedCount > 0) {
-          steps.push({ label: `Seeded ${seedCount} observations`, status: 'ok' });
+          steps.push({ label: `Seeded ${seedCount} observations for project "${projectName}"`, status: 'ok' });
         } else {
           steps.push({ label: 'Seeded observations (project already has data)', status: 'skip' });
         }
@@ -871,37 +828,7 @@ program
 
       engine.close();
 
-      // ── Step 4: Update .gitignore ─────────────────────────
-      if (!options.global) {
-        const gitignorePath = join(targetDir, '.gitignore');
-        const mementoEntry = NEW_CONFIG_DIR + '/';
-        const dbEntry = '*.db';
-
-        let gitignoreContent = '';
-        if (existsSync(gitignorePath)) {
-          gitignoreContent = readFileSync(gitignorePath, 'utf-8');
-        }
-
-        const entriesToAdd: string[] = [];
-        if (!gitignoreContent.split('\n').some(line => line.trim() === mementoEntry)) {
-          entriesToAdd.push(mementoEntry);
-        }
-        if (!gitignoreContent.split('\n').some(line => line.trim() === dbEntry)) {
-          entriesToAdd.push(dbEntry);
-        }
-
-        if (entriesToAdd.length > 0) {
-          const addition = (gitignoreContent.endsWith('\n') ? '' : '\n') +
-            '\n# Memento\n' +
-            entriesToAdd.join('\n') + '\n';
-          appendFileSync(gitignorePath, addition, 'utf-8');
-          steps.push({ label: `.gitignore updated (${entriesToAdd.length} entries)`, status: 'ok' });
-        } else {
-          steps.push({ label: '.gitignore already up to date', status: 'skip' });
-        }
-      }
-
-      printInitSummary(steps, targetDir, options.global);
+      printInitSummary(steps);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`\n  ✗ Init failed: ${message}`);
@@ -910,9 +837,7 @@ program
   });
 
 function printInitSummary(
-  steps: { label: string; status: 'ok' | 'skip' | 'error'; detail?: string }[],
-  targetDir: string,
-  isGlobal: boolean
+  steps: { label: string; status: 'ok' | 'skip' | 'error'; detail?: string }[]
 ): void {
   console.log('');
   const W = 54;
@@ -921,9 +846,9 @@ function printInitSummary(
   const border = (l: string, r: string) => '  ' + l + '─'.repeat(W - 2) + r;
 
   console.log(border('╭', '╮'));
-  console.log(line('MEMENTO INIT' + (isGlobal ? ' (global)' : '')));
+  console.log(line('MEMENTO INIT'));
   console.log(border('├', '┤'));
-  console.log(line(`Directory: ${targetDir.substring(0, W - 14)}`));
+  console.log(line(`Database: ~/.memento/memento.db`));
   console.log(border('├', '┤'));
 
   for (const step of steps) {
