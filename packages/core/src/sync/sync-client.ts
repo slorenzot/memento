@@ -126,8 +126,26 @@ export class SyncClient {
 
     if (!response.ok) {
       const text = await response.text().catch(() => 'Unknown error');
+
+      // Try to extract a more specific error message from the response body.
+      // The memento-hub API returns { error: { code, message } } for validation errors.
+      let detail = '';
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed?.error?.message) {
+          detail = ` — ${parsed.error.message}`;
+        } else if (parsed?.message) {
+          detail = ` — ${parsed.message}`;
+        }
+      } catch {
+        // Not JSON — use raw text if it's short enough
+        if (text && text.length < 500) {
+          detail = ` — ${text}`;
+        }
+      }
+
       throw new SyncApiError(
-        `Sync API error: ${response.status} ${response.statusText}`,
+        `Sync API error: ${response.status} ${response.statusText}${detail}`,
         response.status,
         undefined,
         text,
