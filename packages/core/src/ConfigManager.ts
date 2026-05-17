@@ -12,6 +12,10 @@ export interface MementoConfig {
   version?: number;
   defaults?: {
     scope?: 'project' | 'personal';
+    tokenSavings?: {
+      /** Report estimated token savings in search/context responses. Default: true */
+      enabled?: boolean;
+    };
     session?: {
       /** Max ms a session can be active before considered stale. Default: 86400000 (24h) */
       staleThresholdMs?: number;
@@ -154,6 +158,28 @@ export function getStaleThresholdMs(): number {
   }
 
   return DEFAULT_STALE_THRESHOLD_MS;
+}
+
+/**
+ * Check if token savings reporting is enabled.
+ * Priority: MEMENTO_TOKEN_SAVINGS env var > config file > default (true)
+ */
+export function isTokenSavingsEnabled(): boolean {
+  // Env var override (highest priority)
+  const envVal = process.env.MEMENTO_TOKEN_SAVINGS;
+  if (envVal !== undefined) {
+    return envVal === 'true' || envVal === '1';
+  }
+
+  // Config file
+  const config = loadConfig();
+  const configVal = config?.defaults?.tokenSavings?.enabled;
+  if (configVal !== undefined) {
+    return configVal;
+  }
+
+  // Default: enabled
+  return true;
 }
 
 // ─── Initialization ─────────────────────────────────────────

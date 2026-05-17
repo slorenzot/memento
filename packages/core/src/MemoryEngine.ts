@@ -1072,15 +1072,29 @@ export class MemoryEngine {
       return this.searchKeyword(params);
     }
 
+    let result: SearchResult;
     switch (mode) {
       case 'semantic':
-        return this.searchSemantic(params);
+        result = await this.searchSemantic(params);
+        break;
       case 'hybrid':
-        return this.searchHybrid(params);
+        result = await this.searchHybrid(params);
+        break;
       case 'keyword':
       default:
-        return this.searchKeyword(params);
+        result = await this.searchKeyword(params);
+        break;
     }
+
+    // Add token savings estimation
+    const { isTokenSavingsEnabled } = require('./ConfigManager');
+    if (isTokenSavingsEnabled() && result.observations.length > 0) {
+      const { estimateTotalSavings } = require('./token-savings');
+      const savings = estimateTotalSavings(result.observations);
+      result.estimatedTokensSaved = savings.estimatedTokensSaved;
+    }
+
+    return result;
   }
 
   /**
@@ -1901,7 +1915,7 @@ export class MemoryEngine {
     projectId?: string;
     limit?: number;
     scope?: 'project' | 'personal';
-  }): Promise<{ observations: Observation[]; total: number }> {
+  }): Promise<{ observations: Observation[]; total: number; estimatedTokensSaved?: number }> {
     this.checkHealth();
     const { projectId, limit = 20, scope } = params;
 
@@ -1931,7 +1945,16 @@ export class MemoryEngine {
     const countResult = this.db.prepare(countSql).get(...countValues) as { count: number } | undefined;
     const total = countResult?.count ?? 0;
 
-    return { observations, total };
+    // Token savings estimation
+    let estimatedTokensSaved: number | undefined;
+    const { isTokenSavingsEnabled } = require('./ConfigManager');
+    if (isTokenSavingsEnabled() && observations.length > 0) {
+      const { estimateTotalSavings } = require('./token-savings');
+      const savings = estimateTotalSavings(observations);
+      estimatedTokensSaved = savings.estimatedTokensSaved;
+    }
+
+    return { observations, total, estimatedTokensSaved };
   }
 
   // ─── TUI Explorer API ──────────────────────────────────────

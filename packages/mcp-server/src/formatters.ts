@@ -111,7 +111,7 @@ export function formatObservationShort(obs: Observation): string {
  * Format a list of observations.
  * Used by: mem_search, mem_context, mem_timeline, mem_list_deleted
  */
-export function formatObservationList(result: { total: number; observations: Observation[] }): string {
+export function formatObservationList(result: { total: number; observations: Observation[]; estimatedTokensSaved?: number }): string {
   const lines: string[] = [];
 
   lines.push(`Found ${result.total} observation${result.total !== 1 ? 's' : ''}`);
@@ -124,6 +124,25 @@ export function formatObservationList(result: { total: number; observations: Obs
     }
     // Remove trailing ---
     lines.pop();
+
+    // Token savings line
+    if (result.estimatedTokensSaved && result.estimatedTokensSaved > 0) {
+      const count = result.observations.length;
+      const avg = Math.round(result.estimatedTokensSaved / count);
+      const explorationMinutes = Math.max(1, Math.round(result.estimatedTokensSaved / 100));
+
+      lines.push('');
+      lines.push(`📊 Token savings: ~${result.estimatedTokensSaved.toLocaleString()} tokens (${count} observation${count !== 1 ? 's' : ''}, avg ~${avg.toLocaleString()} tokens each)`);
+
+      if (explorationMinutes >= 60) {
+        const hours = Math.floor(explorationMinutes / 60);
+        const mins = explorationMinutes % 60;
+        lines.push(`   Without Memento: ~${hours}-${hours + 1}h${mins > 0 ? ` ${mins}m` : ''} of codebase exploration`);
+      } else {
+        const upper = Math.min(explorationMinutes * 2, explorationMinutes + 10);
+        lines.push(`   Without Memento: ~${explorationMinutes}-${upper} min of codebase exploration`);
+      }
+    }
   }
 
   return lines.join('\n');
