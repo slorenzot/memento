@@ -62,6 +62,8 @@ export interface SearchResult {
   observations: Observation[];
   total: number;
   scores?: Map<number, number>; // observation id → relevance score (for semantic/hybrid)
+  /** Estimated tokens saved by retrieving these observations instead of re-exploring. 0 when disabled. */
+  estimatedTokensSaved?: number;
 }
 
 // --- Merge types ---
