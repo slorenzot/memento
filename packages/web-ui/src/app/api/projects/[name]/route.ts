@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/projects/[name] — Project detail with stats, recent observations, sessions, aliases
+ * Query param: ?preview=true → returns deletion preview counts
  */
 export async function GET(
   request: Request,
@@ -14,6 +15,16 @@ export async function GET(
     const { name } = await params;
     const engine = getEngine();
     const decodedName = decodeURIComponent(name);
+
+    // Preview mode: return deletion counts
+    const { searchParams } = new URL(request.url);
+    if (searchParams.get('preview') === 'true') {
+      const preview = engine.getProjectDeletionPreview(decodedName);
+      if (preview.observations === 0 && preview.sessions === 0 && preview.prompts === 0 && preview.journalEntries === 0 && !preview.hasRegistration) {
+        return notFound('Project not found');
+      }
+      return ok(preview);
+    }
 
     // Get project stats (async)
     const projects = await engine.listProjects();
@@ -49,5 +60,23 @@ export async function GET(
       sessions: sessionsResult.sessions,
       sessionsTotal: sessionsResult.total,
     });
+  });
+}
+
+/**
+ * DELETE /api/projects/[name] — Permanently delete all project data
+ */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ name: string }> },
+) {
+  return handleRoute(async () => {
+    const { name } = await params;
+    const engine = getEngine();
+    const decodedName = decodeURIComponent(name);
+
+    const result = engine.deleteProject(decodedName);
+
+    return ok(result);
   });
 }
