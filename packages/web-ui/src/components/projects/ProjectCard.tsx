@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { RelativeTime } from '@/components/shared/RelativeTime';
+import { Badge } from '../shared/Badge';
+import { FolderKanbanIcon, HistoryIcon } from 'lucide-react';
 
 interface ProjectCardProps {
   project: {
@@ -28,22 +30,24 @@ export function ProjectCard({ project, lang, labels }: ProjectCardProps) {
       href={`/${lang}/projects/${encodeURIComponent(project.name)}`}
       className="block rounded-[var(--radius-2xl)] border border-[var(--color-border)] p-5 hover:bg-[var(--color-surface-hover)] transition-colors"
     >
+      <FolderKanbanIcon />
       <h3 className="text-[16px] font-medium text-[var(--color-text-primary)] truncate">
         {project.name}
       </h3>
-      <div className="mt-1 flex items-center gap-2 text-[13px] text-[var(--color-tertiary)]">
-        <span>
-          {labels.observations.replace('{count}', String(totalObs))}
-        </span>
-        {project.lastActivity && (
-          <>
-            <span>·</span>
-            <span>
-              {labels.lastActivity}:{' '}
-              <RelativeTime date={project.lastActivity} />
-            </span>
-          </>
-        )}
+      <div className="mt-1 gap-2 text-[13px] text-[var(--color-tertiary)]">
+        <div>
+          <span>{labels.observations.replace('{count}', String(totalObs))} mementos</span>
+        </div>
+        <div>
+          {project.lastActivity && (
+            <div className="flex justify-start">
+              <HistoryIcon className="size-4 mr-1" />
+              <div>
+                {labels.lastActivity}: <RelativeTime date={project.lastActivity} />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       {sortedTypes.length > 0 && (
         <div className="mt-3 space-y-1.5">
@@ -51,15 +55,7 @@ export function ProjectCard({ project, lang, labels }: ProjectCardProps) {
             const pct = (count / maxCount) * 100;
             return (
               <div key={type} className="flex items-center gap-2 text-[12px]">
-                <span className="w-16 truncate capitalize text-[var(--color-secondary)]">
-                  {type}
-                </span>
-                <div className="flex-1 h-1 rounded-full bg-[var(--color-surface-hover)]">
-                  <div
-                    className="h-full rounded-full bg-[var(--color-primary)]"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
+                <Badge type={type} />
                 <span className="text-[var(--color-tertiary)]">{count}</span>
               </div>
             );
