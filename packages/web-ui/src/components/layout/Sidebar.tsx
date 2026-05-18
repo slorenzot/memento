@@ -8,6 +8,7 @@ import {
   Search,
   Clock,
   Activity,
+  FolderKanban,
   PanelLeftClose,
   PanelLeft,
   Settings,
@@ -32,6 +33,7 @@ export function Sidebar() {
     { href: `${prefix}/search`, label: t.nav.search, icon: Search, rawPath: '/search' },
     { href: `${prefix}/timeline`, label: t.nav.timeline, icon: Clock, rawPath: '/timeline' },
     { href: `${prefix}/sessions`, label: t.nav.sessions, icon: Activity, rawPath: '/sessions' },
+    { href: `${prefix}/projects`, label: t.nav.projects, icon: FolderKanban, rawPath: '/projects' },
   ];
 
   const bottomItems = [
