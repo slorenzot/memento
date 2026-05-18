@@ -234,6 +234,80 @@ describe('Sync API Route Logic', () => {
       expect(batches).toHaveLength(1);
       expect(batches[0]).toHaveLength(144);
     });
+
+    it('should group observations by projectId for push (#264)', () => {
+      // Each push request must use the correct projectId — the hub resolves
+      // the request-level projectId, NOT the individual item.projectId.
+      // If all items are sent with projectId='default', they all end up
+      // stored under "default" regardless of their actual project.
+      const observations = [
+        { scope: 'project', projectId: 'suratech-chile-autos', title: 'Obs A' },
+        { scope: 'project', projectId: 'memento', title: 'Obs B' },
+        { scope: 'project', projectId: 'suratech-chile-autos', title: 'Obs C' },
+        { scope: 'project', projectId: 'default', title: 'Obs D' },
+        { scope: 'project', projectId: 'memento', title: 'Obs E' },
+      ] as Array<{ scope: string; projectId: string; title: string }>;
+
+      const projectItems = observations.filter(obs => obs.scope === 'project');
+
+      // Group by projectId
+      const grouped = new Map<string, typeof projectItems>();
+      for (const obs of projectItems) {
+        const items = grouped.get(obs.projectId) ?? [];
+        items.push(obs);
+        grouped.set(obs.projectId, items);
+      }
+
+      expect(grouped.size).toBe(3);
+      expect(grouped.get('suratech-chile-autos')).toHaveLength(2);
+      expect(grouped.get('memento')).toHaveLength(2);
+      expect(grouped.get('default')).toHaveLength(1);
+    });
+
+    it('should push each project group with its own projectId (#264)', () => {
+      // Verify that push calls use the grouped projectId, not 'default'
+      const grouped = new Map<string, Array<{ id: number }>>([
+        ['suratech-chile-autos', [{ id: 1 }, { id: 2 }]],
+        ['memento', [{ id: 3 }]],
+        ['default', [{ id: 4 }, { id: 5 }, { id: 6 }]],
+      ]);
+
+      const pushCalls: Array<{ projectId: string; itemCount: number }> = [];
+      for (const [projectId, items] of grouped) {
+        pushCalls.push({ projectId, itemCount: items.length });
+      }
+
+      expect(pushCalls).toHaveLength(3);
+      expect(pushCalls.find(c => c.projectId === 'suratech-chile-autos')?.itemCount).toBe(2);
+      expect(pushCalls.find(c => c.projectId === 'memento')?.itemCount).toBe(1);
+      expect(pushCalls.find(c => c.projectId === 'default')?.itemCount).toBe(3);
+    });
+
+    it('should batch within each project group when items exceed 500 (#264)', () => {
+      const HUB_PUSH_MAX_ITEMS = 500;
+
+      // Project with 700 items — should split into 2 batches
+      const grouped = new Map<string, Array<{ id: number }>>([
+        ['project-a', Array.from({ length: 700 }, (_, i) => ({ id: i }))],
+        ['project-b', Array.from({ length: 200 }, (_, i) => ({ id: i }))],
+      ]);
+
+      const allBatches: Array<{ projectId: string; batchSize: number }> = [];
+      for (const [projectId, items] of grouped) {
+        for (let i = 0; i < items.length; i += HUB_PUSH_MAX_ITEMS) {
+          const batch = items.slice(i, i + HUB_PUSH_MAX_ITEMS);
+          allBatches.push({ projectId, batchSize: batch.length });
+        }
+      }
+
+      // project-a: 500 + 200, project-b: 200
+      expect(allBatches).toHaveLength(3);
+      expect(allBatches.filter(b => b.projectId === 'project-a')).toHaveLength(2);
+      expect(allBatches.filter(b => b.projectId === 'project-b')).toHaveLength(1);
+      expect(allBatches[0].batchSize).toBe(500);
+      expect(allBatches[1].batchSize).toBe(200);
+      expect(allBatches[2].batchSize).toBe(200);
+    });
   });
 
   describe('individual change application errors', () => {

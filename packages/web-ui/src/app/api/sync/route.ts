@@ -121,10 +121,10 @@ export async function POST(request: Request) {
     }
 
     // Phase 2: Push local changes
-    // Push ALL project-scope observations regardless of their individual projectId.
-    // Each observation carries its own projectId in the wire format — the server
-    // handles multi-project pushes. Filtering by a fixed env-var projectId would
-    // silently exclude observations from other projects (see #243).
+    // Group observations by projectId and push each group separately.
+    // The hub resolves the request-level projectId to determine which project
+    // to store mementos under — sending all items with projectId='default'
+    // would incorrectly store everything under "default" (#264).
     const HUB_PUSH_MAX_ITEMS = 500;
     try {
       const active = await engine.search({
@@ -137,36 +137,45 @@ export async function POST(request: Request) {
       );
 
       if (projectItems.length > 0) {
-        const allItems = projectItems.map(obs => ({
-          uuid: obs.uuid,
-          title: obs.title,
-          content: obs.content,
-          type: obs.type,
-          topicKey: obs.topicKey,
-          scope: obs.scope as 'project' | 'personal',
-          pinned: obs.pinned,
-          readOnly: obs.readOnly,
-          revisionCount: obs.revisionCount,
-          projectId: obs.projectId,
-          metadata: obs.metadata,
-          localCreatedAt: obs.createdAt.toISOString(),
-          localUpdatedAt: obs.updatedAt.toISOString(),
-          version: obs.revisionCount + 1,
-          deletedAt: obs.deletedAt ? obs.deletedAt.toISOString() : null,
-        }));
+        // Group by projectId so each push request targets the correct project
+        const grouped = new Map<string, typeof projectItems>();
+        for (const obs of projectItems) {
+          const items = grouped.get(obs.projectId) ?? [];
+          items.push(obs);
+          grouped.set(obs.projectId, items);
+        }
 
-        // Push in batches — hub limits to HUB_PUSH_MAX_ITEMS per request
-        // Use 'default' as the request-level projectId; each item carries its own
-        for (let i = 0; i < allItems.length; i += HUB_PUSH_MAX_ITEMS) {
-          const batch = allItems.slice(i, i + HUB_PUSH_MAX_ITEMS);
-          const result = await client.push({
-            projectId: 'default',
-            cursor: null,
-            deviceFingerprint: 'web-ui',
-            clientVersion: '1.0.0',
-            items: batch,
-          });
-          totalPushed += result.synced;
+        for (const [projectId, items] of grouped) {
+          const syncItems = items.map(obs => ({
+            uuid: obs.uuid,
+            title: obs.title,
+            content: obs.content,
+            type: obs.type,
+            topicKey: obs.topicKey,
+            scope: obs.scope as 'project' | 'personal',
+            pinned: obs.pinned,
+            readOnly: obs.readOnly,
+            revisionCount: obs.revisionCount,
+            projectId: obs.projectId,
+            metadata: obs.metadata,
+            localCreatedAt: obs.createdAt.toISOString(),
+            localUpdatedAt: obs.updatedAt.toISOString(),
+            version: obs.revisionCount + 1,
+            deletedAt: obs.deletedAt ? obs.deletedAt.toISOString() : null,
+          }));
+
+          // Push in batches — hub limits to HUB_PUSH_MAX_ITEMS per request
+          for (let i = 0; i < syncItems.length; i += HUB_PUSH_MAX_ITEMS) {
+            const batch = syncItems.slice(i, i + HUB_PUSH_MAX_ITEMS);
+            const result = await client.push({
+              projectId,
+              cursor: null,
+              deviceFingerprint: 'web-ui',
+              clientVersion: '1.0.0',
+              items: batch,
+            });
+            totalPushed += result.synced;
+          }
         }
       }
     } catch (err) {

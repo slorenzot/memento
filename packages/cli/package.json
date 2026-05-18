@@ -25,7 +25,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@slorenzot/memento-core": "^2.0.0",
+    "@slorenzot/memento-core": "workspace:*",
     "commander": "^12.0.0"
   },
   "devDependencies": {
