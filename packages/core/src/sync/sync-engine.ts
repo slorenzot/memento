@@ -234,14 +234,12 @@ export class SyncEngine {
 
     const all = [...active.observations, ...deleted.observations];
 
-    // Filter: only scope=project items get pushed
-    const projectItems = all.filter(obs => obs.scope === 'project');
-
+    // All items (project + personal scope) get pushed
     // Filter: only items modified since cursor
-    let itemsToSync = projectItems;
+    let itemsToSync = all;
     if (cursor) {
       const cursorDate = new Date(cursor);
-      itemsToSync = projectItems.filter(obs => obs.updatedAt > cursorDate);
+      itemsToSync = all.filter(obs => obs.updatedAt > cursorDate);
     }
 
     if (itemsToSync.length === 0) {
