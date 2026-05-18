@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@opencode-ai/plugin": "^1.14.0",
-    "@slorenzot/memento-core": "^1.0.0"
+    "@slorenzot/memento-core": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0",

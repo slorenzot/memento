@@ -240,3 +240,49 @@ Dependency flow: `core → mcp-server → cli / api / tui → web-ui`
 - **ALWAYS** use `mem_session_summary` NATIVE tool, not `mem_save` with type "summary"
 - Document what was **actually tested** vs what was **assumed from specs**
 - If a tool is marked ✅ in the capability matrix, it MUST have been executed in at least one run
+
+---
+
+## OpenCode Multi-Agent Architecture
+
+memento usa arquitectura multi-agente Plan & Build para coordinación eficiente del desarrollo.
+
+### Agentes Principales
+
+| Agente | Modelo | Temp | Responsabilidad |
+|--------|--------|------|-----------------|
+| plan | glm-5.1 | 0.3 | Planificación y coordinación |
+| build | glm-5.1 | 0.3 | Ejecución y delegación |
+
+### Subagentes Especializados
+
+| Subagente | Modelo | Temp | Expertise |
+|-----------|--------|------|-----------|
+| backend-specialist | glm-5 | 0.3 | MemoryEngine, API logic, core services |
+| auth-expert | glm-5 | 0.3 | Auth, tokens, Device Auth |
+| database-expert | glm-5 | 0.1 | SQLite schema, migraciones, FTS5 |
+| ui-developer | glm-5 | 0.4 | React + Vite (web-ui), Ink (tui) |
+| testing-agent | glm-5 | 0.2 | bun:test unit/integration tests |
+| ux-specialist | glm-5 | 0.4 | Accesibilidad, UX |
+| i18n-expert | glm-5 | 0.2 | Traducciones, localización |
+| docs-expert | glm-5 | 0.3 | Documentación MDX |
+| sync-expert | glm-5 | 0.2 | Motor de sincronización push/pull |
+| code-reviewer | glm-4.7 | 0.1 | Code review (read-only) |
+| security-auditor | glm-4.7 | 0.1 | Security audit (read-only) |
+| git-expert | glm-5 | 0.2 | Git operations |
+| explore | glm-5 | 0.3 | Codebase exploration |
+| general | glm-5 | 0.3 | General purpose |
+
+### Protocolo de Delegación
+
+**Principio Core**: "¿Esta tarea inflama mi contexto sin necesidad? Si sí → delega"
+
+Ver `.opencode/DELEGATION-WORKFLOW.md` para el protocolo completo.
+
+### Regla Crítica de Modelos
+
+**Los subagentes DEBEN usar SU PROPIO modelo definido, NO el del invocador.**
+
+Ejemplo: Cuando Build (glm-5.1) delega a database-expert, database-expert usa glm-5.
+
+Ver `.opencode/MODEL-REFERENCE.md` para la tabla autoritaria de asignaciones.

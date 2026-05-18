@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",
-    "@slorenzot/memento-core": "^2.0.0",
+    "@slorenzot/memento-core": "workspace:*",
     "zod": "^3.22.4"
   },
   "devDependencies": {

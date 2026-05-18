@@ -1,0 +1,520 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "plan",
+  "agent": {
+    "plan": {
+      "description": "Plan - Planning and coordination agent",
+      "mode": "primary",
+      "prompt": "{file:./.opencode/agents/plan.md}",
+      "tools": {
+        "bash": true,
+        "delegate": true,
+        "delegation_list": true,
+        "delegation_read": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true,
+        "webfetch": true,
+        "websearch": true
+      },
+      "permission": {
+        "bash": "allow",
+        "delegate": {
+          "backend-specialist": "allow",
+          "database-expert": "allow",
+          "auth-expert": "allow",
+          "ui-developer": "allow",
+          "testing-agent": "allow",
+          "i18n-expert": "allow",
+          "docs-expert": "allow",
+          "sync-expert": "allow",
+          "performance-opt": "allow",
+          "ux-specialist": "allow",
+          "code-reviewer": "allow",
+          "security-auditor": "allow",
+          "git-expert": "allow",
+          "explore": "allow",
+          "general": "allow",
+          "*": "deny"
+        },
+        "delegation_list": "allow",
+        "delegation_read": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow",
+        "webfetch": "allow",
+        "websearch": "allow"
+      },
+      "options": {}
+    },
+    "build": {
+      "description": "Build - Orchestrates parallel implementation via specialized sub-agents",
+      "mode": "primary",
+      "prompt": "{file:./.opencode/agents/build.md}",
+      "tools": {
+        "bash": true,
+        "delegate": true,
+        "delegation_list": true,
+        "delegation_read": true,
+        "edit": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true,
+        "write": true
+      },
+      "permission": {
+        "bash": "allow",
+        "delegate": {
+          "backend-specialist": "allow",
+          "database-expert": "allow",
+          "auth-expert": "allow",
+          "ui-developer": "allow",
+          "testing-agent": "allow",
+          "i18n-expert": "allow",
+          "docs-expert": "allow",
+          "sync-expert": "allow",
+          "performance-opt": "allow",
+          "ux-specialist": "allow",
+          "code-reviewer": "allow",
+          "security-auditor": "allow",
+          "git-expert": "allow",
+          "explore": "allow",
+          "general": "allow",
+          "*": "deny"
+        },
+        "delegation_list": "allow",
+        "delegation_read": "allow",
+        "edit": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow"
+      },
+      "options": {}
+    },
+    "backend-specialist": {
+      "description": "Backend specialist - Drizzle queries, API routes, Server Actions",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agents/backend-specialist.md}",
+      "tools": {
+        "bash": true,
+        "edit": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true,
+        "write": true
+      },
+      "permission": {
+        "bash": "allow",
+        "edit": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow"
+      },
+      "options": {}
+    },
+    "database-expert": {
+      "description": "Database expert - Drizzle schema, migrations, Neon",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agents/database-expert.md}",
+      "tools": {
+        "bash": true,
+        "edit": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true,
+        "write": true
+      },
+      "permission": {
+        "bash": "allow",
+        "edit": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow"
+      },
+      "options": {}
+    },
+    "auth-expert": {
+      "description": "Auth expert - NextAuth v5, Device Flow RFC 8628",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agents/auth-expert.md}",
+      "tools": {
+        "bash": true,
+        "edit": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true,
+        "write": true
+      },
+      "permission": {
+        "bash": "allow",
+        "edit": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow"
+      },
+      "options": {}
+    },
+    "ui-developer": {
+      "description": "UI developer - Tailwind CSS 4, React components",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agents/ui-developer.md}",
+      "tools": {
+        "bash": true,
+        "edit": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true,
+        "write": true
+      },
+      "permission": {
+        "bash": "allow",
+        "edit": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow"
+      },
+      "options": {}
+    },
+    "testing-agent": {
+      "description": "Testing agent - bun:test / Vitest",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agents/testing-agent.md}",
+      "tools": {
+        "bash": true,
+        "edit": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true,
+        "write": true
+      },
+      "permission": {
+        "bash": "allow",
+        "edit": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow"
+      },
+      "options": {}
+    },
+    "i18n-expert": {
+      "description": "i18n expert - Custom i18n context",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agents/i18n-expert.md}",
+      "tools": {
+        "bash": true,
+        "edit": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true,
+        "write": true
+      },
+      "permission": {
+        "bash": "allow",
+        "edit": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow"
+      },
+      "options": {}
+    },
+    "docs-expert": {
+      "description": "Docs expert - MDX documentation",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agents/docs-expert.md}",
+      "tools": {
+        "bash": true,
+        "edit": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true,
+        "write": true
+      },
+      "permission": {
+        "bash": "allow",
+        "edit": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow"
+      },
+      "options": {}
+    },
+    "sync-expert": {
+      "description": "Sync expert - Sync engine, push/pull",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agents/sync-expert.md}",
+      "tools": {
+        "bash": true,
+        "edit": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true,
+        "write": true
+      },
+      "permission": {
+        "bash": "allow",
+        "edit": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow"
+      },
+      "options": {}
+    },
+    "ux-specialist": {
+      "description": "UX specialist - Accessibility, WCAG",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agents/ux-specialist.md}",
+      "tools": {
+        "bash": true,
+        "edit": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true,
+        "write": true
+      },
+      "permission": {
+        "bash": "allow",
+        "edit": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow"
+      },
+      "options": {}
+    },
+    "code-reviewer": {
+      "description": "Code reviewer - Code review (read-only)",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agents/code-reviewer.md}",
+      "tools": {
+        "bash": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true
+      },
+      "permission": {
+        "bash": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow"
+      },
+      "options": {}
+    },
+    "security-auditor": {
+      "description": "Security auditor - Security audit (read-only)",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agents/security-auditor.md}",
+      "tools": {
+        "bash": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true
+      },
+      "permission": {
+        "bash": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow"
+      },
+      "options": {}
+    },
+    "git-expert": {
+      "description": "Git expert - Git operations",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agents/git-expert.md}",
+      "tools": {
+        "bash": true,
+        "edit": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true,
+        "write": true
+      },
+      "permission": {
+        "bash": "allow",
+        "edit": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow"
+      },
+      "options": {}
+    },
+    "explore": {
+      "description": "Explore - Codebase exploration",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agents/explore.md}",
+      "tools": {
+        "bash": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true
+      },
+      "permission": {
+        "bash": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow"
+      },
+      "options": {}
+    },
+    "general": {
+      "description": "General purpose agent",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agents/general.md}",
+      "tools": {
+        "bash": true,
+        "edit": true,
+        "fetch": true,
+        "glob": true,
+        "grep": true,
+        "mcp": true,
+        "read": true,
+        "skill": true,
+        "write": true
+      },
+      "permission": {
+        "bash": "allow",
+        "edit": "allow",
+        "fetch": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "read": "allow",
+        "skill": "allow"
+      },
+      "options": {}
+    }
+  },
+  "mcp": {
+    "memento": {
+      "command": [
+        "bun",
+        "run",
+        "/Users/slorenzot/Desktop/Personal/memento/packages/mcp-server/src/index.ts"
+      ],
+      "type": "local"
+    }
+  },
+  "permission": {
+    "bash": {
+      "*": "allow",
+      "git commit *": "ask",
+      "git push": "ask",
+      "git push *": "ask",
+      "git push --force *": "ask",
+      "git rebase *": "ask",
+      "git reset --hard *": "ask"
+    },
+    "read": {
+      "*": "allow",
+      "**/.env": "deny",
+      "**/.env.*": "deny",
+      "**/credentials.json": "deny",
+      "**/secrets/**": "deny",
+      "*.env": "deny",
+      "*.env.*": "deny"
+    }
+  }
+}
