@@ -1,4 +1,4 @@
-import { MemoryEngine } from '@slorenzot/memento-core';
+import { MemoryEngine, resolveDbPath } from '@slorenzot/memento-core';
 
 export interface MementoConnection {
   engine: MemoryEngine;
@@ -13,12 +13,13 @@ export interface MementoConnection {
  * MemoryEngine initializes synchronously, so no async/state needed.
  *
  * Usage:
- *   const memento = createMementoConnection({ dbPath: './data/memento.db' });
+ *   const memento = createMementoConnection(); // uses ~/.memento/memento.db
+ *   const memento = createMementoConnection({ dbPath: './custom.db' }); // override
  *   const stats = await memento.engine.getDashboardStats();
  *   memento.close();
  */
 export function createMementoConnection(options?: { dbPath?: string }): MementoConnection {
-  const dbPath = options?.dbPath ?? './data/memento.db';
+  const dbPath = options?.dbPath ?? resolveDbPath();
   const engine = new MemoryEngine(dbPath);
   const isReady = engine.isHealthy();
 
