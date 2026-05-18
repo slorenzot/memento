@@ -25,7 +25,6 @@ export async function POST(request: Request) {
     }
 
     const engine = getEngine();
-    const projectId = process.env.MEMENTO_PROJECT_ID || 'default';
 
     const client = new SyncClient({
       serverUrl: serverUrl || DEFAULT_HUB_URL,
@@ -39,74 +38,80 @@ export async function POST(request: Request) {
     let pullFailed = false;
     let pushFailed = false;
 
-    // Phase 1: Pull remote changes
+    // Collect all project IDs to sync — include every local project plus "default"
+    const projects = await engine.listProjects();
+    const projectIds = [...new Set([...projects.map(p => p.name), 'default'])];
+
+    // Phase 1: Pull remote changes for ALL projects
     try {
-      let hasMore = true;
-      let cursor: string | null = null;
+      for (const projectId of projectIds) {
+        let hasMore = true;
+        let cursor: string | null = null;
 
-      while (hasMore) {
-        const response = await client.pull({
-          projectId,
-          cursor,
-          limit: 100,
-        });
+        while (hasMore) {
+          const response = await client.pull({
+            projectId,
+            cursor,
+            limit: 100,
+          });
 
-        for (const change of response.changes) {
-          try {
-            // Try to find existing by uuid
-            const existing = engine.getObservationByUuid(change.uuid);
-            if (existing) {
-              if (!existing.readOnly) {
-                await engine.updateObservation(existing.id, {
+          for (const change of response.changes) {
+            try {
+              // Try to find existing by uuid
+              const existing = engine.getObservationByUuid(change.uuid);
+              if (existing) {
+                if (!existing.readOnly) {
+                  await engine.updateObservation(existing.id, {
+                    title: change.title,
+                    content: change.content,
+                    type: change.type as 'decision' | 'bug' | 'discovery' | 'note' | 'summary' | 'learning' | 'pattern' | 'architecture' | 'config' | 'preference',
+                    topicKey: change.topicKey,
+                    pinned: change.pinned,
+                    readOnly: change.readOnly,
+                  });
+                }
+              } else {
+                // Find or create session
+                const sessions = await engine.listSessions({
+                  projectId: change.projectId,
+                  limit: 1,
+                  activeOnly: false,
+                });
+
+                let sessionId: number;
+                if (sessions.sessions.length > 0) {
+                  sessionId = sessions.sessions[0].id;
+                } else {
+                  const session = await engine.createSession({
+                    projectId: change.projectId,
+                    endedAt: null,
+                    metadata: { source: 'sync', syncedAt: Date.now() },
+                  });
+                  sessionId = session.id;
+                }
+
+                await engine.createObservation({
+                  sessionId,
                   title: change.title,
                   content: change.content,
                   type: change.type as 'decision' | 'bug' | 'discovery' | 'note' | 'summary' | 'learning' | 'pattern' | 'architecture' | 'config' | 'preference',
                   topicKey: change.topicKey,
+                  projectId: change.projectId,
+                  scope: change.scope,
                   pinned: change.pinned,
                   readOnly: change.readOnly,
+                  metadata: { ...change.metadata, syncedUuid: change.uuid },
                 });
               }
-            } else {
-              // Find or create session
-              const sessions = await engine.listSessions({
-                projectId: change.projectId,
-                limit: 1,
-                activeOnly: false,
-              });
-
-              let sessionId: number;
-              if (sessions.sessions.length > 0) {
-                sessionId = sessions.sessions[0].id;
-              } else {
-                const session = await engine.createSession({
-                  projectId: change.projectId,
-                  endedAt: null,
-                  metadata: { source: 'sync', syncedAt: Date.now() },
-                });
-                sessionId = session.id;
-              }
-
-              await engine.createObservation({
-                sessionId,
-                title: change.title,
-                content: change.content,
-                type: change.type as 'decision' | 'bug' | 'discovery' | 'note' | 'summary' | 'learning' | 'pattern' | 'architecture' | 'config' | 'preference',
-                topicKey: change.topicKey,
-                projectId: change.projectId,
-                scope: change.scope,
-                pinned: change.pinned,
-                readOnly: change.readOnly,
-                metadata: { ...change.metadata, syncedUuid: change.uuid },
-              });
+              totalPulled++;
+            } catch (err) {
+              errors.push(`Failed to apply ${change.uuid}: ${err}`);
             }
-            totalPulled++;
-          } catch (err) {
-            errors.push(`Failed to apply ${change.uuid}: ${err}`);
           }
-        }
 
-        cursor = response.newCursor;
-        hasMore = response.hasMore;
+          cursor = response.newCursor;
+          hasMore = response.hasMore;
+        }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -151,10 +156,11 @@ export async function POST(request: Request) {
         }));
 
         // Push in batches — hub limits to HUB_PUSH_MAX_ITEMS per request
+        // Use 'default' as the request-level projectId; each item carries its own
         for (let i = 0; i < allItems.length; i += HUB_PUSH_MAX_ITEMS) {
           const batch = allItems.slice(i, i + HUB_PUSH_MAX_ITEMS);
           const result = await client.push({
-            projectId,
+            projectId: 'default',
             cursor: null,
             deviceFingerprint: 'web-ui',
             clientVersion: '1.0.0',
