@@ -210,7 +210,19 @@
     "backToProjects": "Back to Projects",
     "observations": "{count} mementos",
     "sessionCount": "{count} sessions",
-    "none": "None"
+    "none": "None",
+    "deleteProject": "Delete",
+    "deleteProjectTitle": "Delete \"{name}\"?",
+    "deleteProjectWarning": "This action cannot be undone. All data will be permanently deleted.",
+    "deleteProjectData": "The following data will be permanently deleted:",
+    "deleteProjectExport": "Export first if you need to keep this data.",
+    "deleteProjectConfirm": "Type the project name to confirm",
+    "deleteProjectSubmit": "Delete Project",
+    "deleteProjectError": "Failed to delete project",
+    "deleteProjectPreviewObs": "{count} observations",
+    "deleteProjectPreviewSessions": "{count} sessions",
+    "deleteProjectPreviewPrompts": "{count} prompts",
+    "deleteProjectPreviewJournal": "{count} journal entries"
   },
   "timeline": {
     "title": "Timeline",

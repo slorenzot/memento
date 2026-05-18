@@ -2698,6 +2698,105 @@ export class MemoryEngine {
     };
   }
 
+  /**
+   * Get a preview of what will be deleted for a project.
+   * Used by the UI to show counts in the delete confirmation dialog.
+   */
+  getProjectDeletionPreview(projectId: string): {
+    project: string;
+    observations: number;
+    sessions: number;
+    prompts: number;
+    journalEntries: number;
+    hasRegistration: boolean;
+  } {
+    this.checkHealth();
+
+    const count = (table: string, column = 'project_id') =>
+      ((this.db
+        .prepare(`SELECT COUNT(*) as count FROM ${table} WHERE ${column} = ?`)
+        .get(projectId) as { count: number }).count);
+
+    const hasReg = this.db
+      .prepare('SELECT COUNT(*) as count FROM projects WHERE name = ?')
+      .get(projectId) as { count: number };
+
+    return {
+      project: projectId,
+      observations: count('observations'),
+      sessions: count('sessions'),
+      prompts: count('prompts'),
+      journalEntries: count('journal'),
+      hasRegistration: hasReg.count > 0,
+    };
+  }
+
+  /**
+   * Permanently delete ALL data for a project.
+   * Order: dependents first (FTS5, journal_tags), then tables, then registration.
+   * Returns counts of everything deleted.
+   */
+  deleteProject(projectId: string): {
+    observations: number;
+    sessions: number;
+    prompts: number;
+    journalEntries: number;
+    projectRegistration: boolean;
+  } {
+    this.checkHealth();
+
+    // Capture counts before deleting
+    const count = (table: string, column = 'project_id') =>
+      ((this.db
+        .prepare(`SELECT COUNT(*) as count FROM ${table} WHERE ${column} = ?`)
+        .get(projectId) as { count: number }).count);
+
+    const obsCount = count('observations');
+    const sessionCount = count('sessions');
+    const promptCount = count('prompts');
+    const journalCount = count('journal');
+    const hasReg = count('projects', 'name') > 0;
+
+    // Delete in dependency order: FTS + tags first, then main tables, then registration
+    // 1. observations_fts (by observation ids for this project)
+    this.db
+      .prepare('DELETE FROM observations_fts WHERE rowid IN (SELECT id FROM observations WHERE project_id = ?)')
+      .run(projectId);
+
+    // 2. journal_fts (by journal ids for this project)
+    this.db
+      .prepare('DELETE FROM journal_fts WHERE rowid IN (SELECT id FROM journal WHERE project_id = ?)')
+      .run(projectId);
+
+    // 3. journal_tags (by journal ids for this project)
+    this.db
+      .prepare('DELETE FROM journal_tags WHERE journal_id IN (SELECT id FROM journal WHERE project_id = ?)')
+      .run(projectId);
+
+    // 4. observations
+    this.db.prepare('DELETE FROM observations WHERE project_id = ?').run(projectId);
+
+    // 5. prompts
+    this.db.prepare('DELETE FROM prompts WHERE project_id = ?').run(projectId);
+
+    // 6. sessions
+    this.db.prepare('DELETE FROM sessions WHERE project_id = ?').run(projectId);
+
+    // 7. journal
+    this.db.prepare('DELETE FROM journal WHERE project_id = ?').run(projectId);
+
+    // 8. project registration
+    this.db.prepare('DELETE FROM projects WHERE name = ?').run(projectId);
+
+    return {
+      observations: obsCount,
+      sessions: sessionCount,
+      prompts: promptCount,
+      journalEntries: journalCount,
+      projectRegistration: hasReg,
+    };
+  }
+
   // ─── Journal (append-only evidence) ──────────────────────────
 
   async writeJournal(data: WriteJournalParams): Promise<JournalEntry> {

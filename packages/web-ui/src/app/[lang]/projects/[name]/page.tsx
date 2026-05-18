@@ -7,6 +7,7 @@ import { TypeDistribution } from '@/components/dashboard/TypeDistribution';
 import { MementoCard } from '@/components/mementos/MementoCard';
 import { SessionCard } from '@/components/sessions/SessionCard';
 import { ProjectMerge } from '@/components/projects/ProjectMerge';
+import { ProjectDelete } from '@/components/projects/ProjectDelete';
 import Link from 'next/link';
 import { ArrowLeft, FolderIcon, TagIcon } from 'lucide-react';
 
@@ -72,11 +73,17 @@ export default async function ProjectDetailPage({ params }: Props) {
             )}
           </div>
         </div>
-        <ProjectMerge
-          sourceProject={decodedName}
-          allProjects={projects}
-          lang={lang}
-        />
+        <div className="flex items-center gap-2">
+          <ProjectMerge
+            sourceProject={decodedName}
+            allProjects={projects}
+            lang={lang}
+          />
+          <ProjectDelete
+            projectName={decodedName}
+            lang={lang}
+          />
+        </div>
       </div>
 
       {/* Stats */}

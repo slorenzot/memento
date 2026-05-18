@@ -210,7 +210,19 @@
     "backToProjects": "Volver a Proyectos",
     "observations": "{count} mementos",
     "sessionCount": "{count} sesiones",
-    "none": "Ninguno"
+    "none": "Ninguno",
+    "deleteProject": "Eliminar",
+    "deleteProjectTitle": "¿Eliminar \"{name}\"?",
+    "deleteProjectWarning": "Esta acción no se puede deshacer. Todos los datos serán eliminados permanentemente.",
+    "deleteProjectData": "Los siguientes datos serán eliminados permanentemente:",
+    "deleteProjectExport": "Exporta primero si necesitas conservar estos datos.",
+    "deleteProjectConfirm": "Escribe el nombre del proyecto para confirmar",
+    "deleteProjectSubmit": "Eliminar Proyecto",
+    "deleteProjectError": "Error al eliminar el proyecto",
+    "deleteProjectPreviewObs": "{count} observaciones",
+    "deleteProjectPreviewSessions": "{count} sesiones",
+    "deleteProjectPreviewPrompts": "{count} prompts",
+    "deleteProjectPreviewJournal": "{count} entradas de journal"
   },
   "timeline": {
     "title": "Línea de tiempo",
