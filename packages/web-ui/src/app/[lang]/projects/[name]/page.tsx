@@ -105,9 +105,21 @@ export default async function ProjectDetailPage({ params }: Props) {
 
       {/* Recent Observations */}
       <div>
-        <h2 className="mb-3 text-[14px] font-medium text-[var(--color-secondary)]">
-          {t.projects.recentObservations}
-        </h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-[14px] font-medium text-[var(--color-secondary)]">
+            {t.projects.recentObservations}
+          </h2>
+          <Link
+            href={`${prefix}/mementos?projectId=${encodeURIComponent(decodedName)}`}
+            className="text-[13px] text-[var(--color-tertiary)] hover:text-[var(--color-secondary)] transition-colors"
+          >
+            {t.projects.observations.replace(
+              '{count}',
+              String(recentObs.total),
+            )}{' '}
+            →
+          </Link>
+        </div>
         {recentObs.observations.length === 0 ? (
           <p className="text-[13px] text-[var(--color-tertiary)]">
             {t.projects.none}
