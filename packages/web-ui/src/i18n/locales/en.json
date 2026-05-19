@@ -376,7 +376,7 @@
     "openHub": "memento-hub.com",
     "syncNow": "Sync Now",
     "syncing": "Syncing...",
-    "syncSuccess": "Done",
+    "syncSuccess": "Synced",
     "syncError": "Failed",
     "syncResult": "{pulled} pulled, {pushed} pushed",
     "pageTitle": "Connect to Memento Hub",
