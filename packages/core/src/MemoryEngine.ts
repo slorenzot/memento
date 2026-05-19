@@ -2112,6 +2112,36 @@ export class MemoryEngine {
   }
 
   /**
+   * Resolve a project_id through the alias registry.
+   * If the given projectId is registered as an alias of another project,
+   * returns the canonical project name. Otherwise returns null.
+   *
+   * This enables "tolerance" — even if a fragment project_id was used
+   * before alias prevention was in place, queries still find the right data.
+   */
+  resolveAlias(projectId: string): string | null {
+    this.checkHealth();
+
+    const rows = this.db
+      .prepare('SELECT name, aliases FROM projects')
+      .all() as Array<{ name: string; aliases: string | null }>;
+
+    for (const row of rows) {
+      // Already canonical — no resolution needed
+      if (row.name === projectId) {
+        return null;
+      }
+
+      const aliases: string[] = row.aliases ? JSON.parse(row.aliases) : [];
+      if (aliases.includes(projectId)) {
+        return row.name;
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Merge all observations and sessions from sourceProject into targetProject.
    * Also updates FTS index. Returns count of affected records.
    *

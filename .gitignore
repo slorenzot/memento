@@ -15,6 +15,9 @@ build/
 data/
 .memento/
 
+# Project ID marker (personal per developer)
+.memento-project
+
 # Environment
 .env
 .env.local
