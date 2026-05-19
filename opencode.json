@@ -489,11 +489,7 @@
   },
   "mcp": {
     "memento": {
-      "command": [
-        "bun",
-        "run",
-        "/Users/slorenzot/Desktop/Personal/memento/packages/mcp-server/src/index.ts"
-      ],
+      "command": ["bun", "x", "--bun", "@slorenzot/memento-mcp-server"],
       "type": "local"
     }
   },
