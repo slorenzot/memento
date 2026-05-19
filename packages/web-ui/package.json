@@ -1,6 +1,6 @@
 {
   "name": "@slorenzot/memento-web-ui",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Next.js Web UI for Memento persistent memory system",
   "type": "module",
   "scripts": {
