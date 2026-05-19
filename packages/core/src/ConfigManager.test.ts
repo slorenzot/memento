@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'bun:test';
-import { rmSync, mkdirSync, existsSync, writeFileSync } from 'fs';
+import { rmSync, mkdirSync, existsSync, writeFileSync, mkdtempSync } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
+import { homedir, tmpdir } from 'os';
 
 const testDir = join(process.cwd(), 'test-data');
 
@@ -81,7 +81,8 @@ describe('ConfigManager', () => {
 
     it('should read package.json if no env var', () => {
       const { getProjectId } = require('../src/ConfigManager');
-      const packageDir = join(testDir, 'with-package');
+      // Use tmpdir to avoid .memento-project walk-up from repo root
+      const packageDir = mkdtempSync(join(tmpdir(), 'memento-pkg-test-'));
       mkdirSync(packageDir, { recursive: true });
 
       writeFileSync(
@@ -100,6 +101,7 @@ describe('ConfigManager', () => {
       } finally {
         process.cwd = originalCwd;
         process.env = originalEnv;
+        rmSync(packageDir, { recursive: true, force: true });
       }
     });
 
@@ -136,7 +138,8 @@ describe('ConfigManager', () => {
 
     it('should normalize scoped package name from package.json', () => {
       const { getProjectId } = require('../src/ConfigManager');
-      const packageDir = join(testDir, 'scoped-package');
+      // Use tmpdir to avoid .memento-project walk-up from repo root
+      const packageDir = mkdtempSync(join(tmpdir(), 'memento-scoped-test-'));
       mkdirSync(packageDir, { recursive: true });
 
       writeFileSync(
@@ -155,6 +158,7 @@ describe('ConfigManager', () => {
       } finally {
         process.cwd = originalCwd;
         process.env = originalEnv;
+        rmSync(packageDir, { recursive: true, force: true });
       }
     });
   });
@@ -245,6 +249,276 @@ describe('ConfigManager', () => {
     it('should return default for string with only special chars', () => {
       expect(normalizeProjectId('---')).toBe('default');
       expect(normalizeProjectId('   ')).toBe('default');
+    });
+  });
+
+  // ─── Walk-Up Resolution (Issue #273) ────────────────────────
+
+  describe('findProjectRoot()', () => {
+    const { findProjectRoot } = require('../src/ConfigManager');
+    // Use tmpdir (outside repo) to avoid finding the real .memento-project
+    let walkupDir: string;
+
+    beforeEach(() => {
+      walkupDir = mkdtempSync(join(tmpdir(), 'memento-walkup-'));
+    });
+
+    afterEach(() => {
+      if (existsSync(walkupDir)) {
+        rmSync(walkupDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should find .memento-project marker in startDir', () => {
+      const projectDir = join(walkupDir, 'my-project');
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(join(projectDir, '.memento-project'), 'memento\n');
+
+      const result = findProjectRoot(projectDir);
+      expect(result).not.toBeNull();
+      expect(result!.projectId).toBe('memento');
+      expect(result!.source).toBe('marker');
+      expect(result!.rootDir).toBe(projectDir);
+    });
+
+    it('should walk up to find .memento-project in parent dir', () => {
+      const projectDir = join(walkupDir, 'root-project');
+      const subDir = join(projectDir, 'packages', 'core');
+      mkdirSync(subDir, { recursive: true });
+      writeFileSync(join(projectDir, '.memento-project'), 'my-canonical-name\n');
+
+      const result = findProjectRoot(subDir);
+      expect(result).not.toBeNull();
+      expect(result!.projectId).toBe('my-canonical-name');
+      expect(result!.source).toBe('marker');
+      expect(result!.rootDir).toBe(projectDir);
+    });
+
+    it('should walk up multiple levels to find marker', () => {
+      const rootDir = join(walkupDir, 'deep-root');
+      const deepDir = join(rootDir, 'a', 'b', 'c', 'd');
+      mkdirSync(deepDir, { recursive: true });
+      writeFileSync(join(rootDir, '.memento-project'), 'deep-project\n');
+
+      const result = findProjectRoot(deepDir);
+      expect(result).not.toBeNull();
+      expect(result!.projectId).toBe('deep-project');
+      expect(result!.rootDir).toBe(rootDir);
+    });
+
+    it('should parse marker with comments and empty lines', () => {
+      const projectDir = join(walkupDir, 'comment-project');
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(
+        join(projectDir, '.memento-project'),
+        '# This is a comment\n\n  my-comment-project  \n# Another comment\n'
+      );
+
+      const result = findProjectRoot(projectDir);
+      expect(result).not.toBeNull();
+      expect(result!.projectId).toBe('my-comment-project');
+    });
+
+    it('should skip marker file with only comments', () => {
+      const projectDir = join(walkupDir, 'only-comments');
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(join(projectDir, '.memento-project'), '# Just a comment\n# Another\n');
+
+      // Also create .git so we can test fallback
+      mkdirSync(join(projectDir, '.git'), { recursive: true });
+
+      const result = findProjectRoot(projectDir);
+      // Should NOT use marker (all comments), should fall through to git
+      expect(result).not.toBeNull();
+      expect(result!.source).toBe('git');
+    });
+
+    it('should fall back to git root when no marker exists', () => {
+      const gitDir = join(walkupDir, 'git-root-project');
+      const subDir = join(gitDir, 'src', 'lib');
+      mkdirSync(subDir, { recursive: true });
+      mkdirSync(join(gitDir, '.git'), { recursive: true });
+
+      const result = findProjectRoot(subDir);
+      expect(result).not.toBeNull();
+      expect(result!.projectId).toBe('git-root-project');
+      expect(result!.source).toBe('git');
+      expect(result!.rootDir).toBe(gitDir);
+    });
+
+    it('should fall back to monorepo root when no marker or git', () => {
+      const monoDir = join(walkupDir, 'mono-root');
+      const subDir = join(monoDir, 'packages', 'frontend');
+      mkdirSync(subDir, { recursive: true });
+      writeFileSync(
+        join(monoDir, 'package.json'),
+        JSON.stringify({ name: 'mono-root', workspaces: ['packages/*'] })
+      );
+      // Sub-package has its own package.json
+      writeFileSync(
+        join(subDir, 'package.json'),
+        JSON.stringify({ name: '@mono/frontend' })
+      );
+
+      const result = findProjectRoot(subDir);
+      expect(result).not.toBeNull();
+      expect(result!.projectId).toBe('mono-root');
+      expect(result!.source).toBe('monorepo');
+      expect(result!.rootDir).toBe(monoDir);
+    });
+
+    it('should detect bun-format workspaces', () => {
+      const monoDir = join(walkupDir, 'bun-mono');
+      const subDir = join(monoDir, 'apps', 'web');
+      mkdirSync(subDir, { recursive: true });
+      writeFileSync(
+        join(monoDir, 'package.json'),
+        JSON.stringify({ name: 'bun-mono', bun: { workspaces: ['apps/*'] } })
+      );
+
+      const result = findProjectRoot(subDir);
+      expect(result).not.toBeNull();
+      expect(result!.source).toBe('monorepo');
+    });
+
+    it('should detect object-format workspaces', () => {
+      const monoDir = join(walkupDir, 'obj-mono');
+      const subDir = join(monoDir, 'libs', 'shared');
+      mkdirSync(subDir, { recursive: true });
+      writeFileSync(
+        join(monoDir, 'package.json'),
+        JSON.stringify({ name: 'obj-mono', workspaces: { packages: ['libs/*'] } })
+      );
+
+      const result = findProjectRoot(subDir);
+      expect(result).not.toBeNull();
+      expect(result!.source).toBe('monorepo');
+    });
+
+    it('should return null when nothing found', () => {
+      // walkupDir is in tmpdir, should not have .memento-project, .git, or workspaces
+      const emptyDir = join(walkupDir, 'empty-dir');
+      mkdirSync(emptyDir, { recursive: true });
+
+      const result = findProjectRoot(emptyDir);
+      expect(result).toBeNull();
+    });
+
+    it('should prefer marker over git root', () => {
+      const dir = join(walkupDir, 'marker-over-git');
+      mkdirSync(join(dir, '.git'), { recursive: true });
+      writeFileSync(join(dir, '.memento-project'), 'canonical-name\n');
+
+      const result = findProjectRoot(dir);
+      expect(result!.source).toBe('marker');
+      expect(result!.projectId).toBe('canonical-name');
+    });
+
+    it('should prefer git root over monorepo root', () => {
+      const dir = join(walkupDir, 'git-over-mono');
+      mkdirSync(join(dir, '.git'), { recursive: true });
+      writeFileSync(
+        join(dir, 'package.json'),
+        JSON.stringify({ workspaces: ['packages/*'] })
+      );
+
+      const result = findProjectRoot(dir);
+      expect(result!.source).toBe('git');
+    });
+  });
+
+  describe('getProjectId() — walk-up behavior', () => {
+    const { getProjectId } = require('../src/ConfigManager');
+    let walkupDir: string;
+
+    beforeEach(() => {
+      walkupDir = mkdtempSync(join(tmpdir(), 'memento-getpid-'));
+    });
+
+    afterEach(() => {
+      if (existsSync(walkupDir)) {
+        rmSync(walkupDir, { recursive: true, force: true });
+      }
+    });
+
+    it('env var overrides everything including marker file', () => {
+      const projectDir = join(walkupDir, 'env-override');
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(join(projectDir, '.memento-project'), 'marker-name\n');
+
+      const originalEnv = { ...process.env };
+      const originalCwd = process.cwd;
+      process.env.MEMENTO_PROJECT_ID = 'env-project';
+      process.cwd = () => projectDir;
+
+      try {
+        expect(getProjectId()).toBe('env-project');
+      } finally {
+        process.cwd = originalCwd;
+        process.env = originalEnv;
+      }
+    });
+
+    it('marker file overrides package.json', () => {
+      const projectDir = join(walkupDir, 'marker-over-pkg');
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(join(projectDir, '.memento-project'), 'marker-name\n');
+      writeFileSync(join(projectDir, 'package.json'), JSON.stringify({ name: 'pkg-name' }));
+
+      const originalEnv = { ...process.env };
+      const originalCwd = process.cwd;
+      delete process.env.MEMENTO_PROJECT_ID;
+      process.cwd = () => projectDir;
+
+      try {
+        expect(getProjectId()).toBe('marker-name');
+      } finally {
+        process.cwd = originalCwd;
+        process.env = originalEnv;
+      }
+    });
+
+    it('git root overrides package.json when no marker', () => {
+      const projectDir = join(walkupDir, 'git-override');
+      const subDir = join(projectDir, 'packages', 'core');
+      mkdirSync(subDir, { recursive: true });
+      mkdirSync(join(projectDir, '.git'), { recursive: true });
+      // Sub-package has different name
+      writeFileSync(join(subDir, 'package.json'), JSON.stringify({ name: '@org/core' }));
+      // Root has the "real" project name
+      writeFileSync(join(projectDir, 'package.json'), JSON.stringify({ name: 'git-override' }));
+
+      const originalEnv = { ...process.env };
+      const originalCwd = process.cwd;
+      delete process.env.MEMENTO_PROJECT_ID;
+      process.cwd = () => subDir;
+
+      try {
+        const id = getProjectId();
+        // Should use git root basename, not sub-package name
+        expect(id).toBe('git-override');
+      } finally {
+        process.cwd = originalCwd;
+        process.env = originalEnv;
+      }
+    });
+
+    it('preserves fallback behavior when nothing found', () => {
+      const projectDir = join(walkupDir, 'fallback-dir');
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(join(projectDir, 'package.json'), JSON.stringify({ name: 'fallback-pkg' }));
+
+      const originalEnv = { ...process.env };
+      const originalCwd = process.cwd;
+      delete process.env.MEMENTO_PROJECT_ID;
+      process.cwd = () => projectDir;
+
+      try {
+        expect(getProjectId()).toBe('fallback-pkg');
+      } finally {
+        process.cwd = originalCwd;
+        process.env = originalEnv;
+      }
     });
   });
 });

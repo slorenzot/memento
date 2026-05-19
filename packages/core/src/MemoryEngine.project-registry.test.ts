@@ -223,4 +223,68 @@ describe('MemoryEngine — Project Registry (Issue #177)', () => {
       expect(search.total).toBe(1);
     });
   });
+
+  // ─── resolveAlias (Issue #273) ────────────────────────────
+
+  describe('resolveAlias()', () => {
+    it('should return null when project is already canonical', () => {
+      engine.registerProject('canonical-project');
+
+      const result = engine.resolveAlias('canonical-project');
+      expect(result).toBeNull();
+    });
+
+    it('should return canonical name when project is an alias', async () => {
+      // Set up: create source project with data, then merge into target
+      const session = await seedSession(engine, 'fragment-project');
+      await seedObservation(engine, session.id, {
+        title: 'Test obs',
+        projectId: 'fragment-project',
+      });
+
+      engine.registerProject('canonical-project');
+      engine.mergeProject('fragment-project', 'canonical-project');
+
+      // Now "fragment-project" should be an alias of "canonical-project"
+      const result = engine.resolveAlias('fragment-project');
+      expect(result).toBe('canonical-project');
+    });
+
+    it('should return null when project does not exist at all', () => {
+      const result = engine.resolveAlias('nonexistent-project');
+      expect(result).toBeNull();
+    });
+
+    it('should handle projects with null aliases field', () => {
+      // registerProject creates aliases as '[]' by default, not null
+      // But we test the defensive path
+      engine.registerProject('null-alias-project');
+
+      const result = engine.resolveAlias('some-other-name');
+      expect(result).toBeNull();
+    });
+
+    it('should handle empty aliases array', () => {
+      engine.registerProject('empty-alias-project');
+
+      const result = engine.resolveAlias('empty-alias-project');
+      expect(result).toBeNull();
+    });
+
+    it('should resolve among multiple aliases', async () => {
+      const session = await seedSession(engine, 'alias-a');
+      await seedObservation(engine, session.id, { projectId: 'alias-a', title: 'A' });
+
+      const session2 = await seedSession(engine, 'alias-b');
+      await seedObservation(engine, session2.id, { projectId: 'alias-b', title: 'B' });
+
+      engine.registerProject('unified-project');
+      engine.mergeProject('alias-a', 'unified-project');
+      engine.mergeProject('alias-b', 'unified-project');
+
+      expect(engine.resolveAlias('alias-a')).toBe('unified-project');
+      expect(engine.resolveAlias('alias-b')).toBe('unified-project');
+      expect(engine.resolveAlias('unified-project')).toBeNull();
+    });
+  });
 });

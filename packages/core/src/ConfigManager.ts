@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { join, basename } from 'path';
+import { join, basename, dirname } from 'path';
 import { homedir } from 'os';
 
 // ─── Config Interfaces ─────────────────────────────────────
@@ -97,6 +97,93 @@ function loadJSONFile<T>(path: string): T | null {
   }
 }
 
+// ─── Project Root Walk-Up Resolution (Issue #273) ──────────
+
+/** Result of walking up from a directory to find the project root */
+export interface ProjectRoot {
+  rootDir: string;
+  projectId: string;
+  source: 'marker' | 'git' | 'monorepo';
+}
+
+/**
+ * Walk up from startDir to find the project root.
+ *
+ * Priority:
+ *  1. `.memento-project` marker file (first non-empty, non-comment line = canonical project_id)
+ *  2. Git root (nearest `.git/` directory — uses basename)
+ *  3. Monorepo workspace root (nearest `package.json` with `workspaces` — uses basename)
+ *
+ * Returns `null` when none of the above are found (falls through to package.json / cwd / "default").
+ */
+export function findProjectRoot(startDir: string): ProjectRoot | null {
+  let currentDir = startDir;
+  let gitRoot: string | null = null;
+  let monorepoRoot: string | null = null;
+
+  while (true) {
+    // ── Check for .memento-project marker (highest priority, stops walk) ──
+    const markerPath = join(currentDir, '.memento-project');
+    if (existsSync(markerPath)) {
+      try {
+        const content = readFileSync(markerPath, 'utf-8');
+        const lines = content.split('\n');
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (line && !line.startsWith('#')) {
+            const id = normalizeProjectId(line);
+            if (id && id !== 'default') {
+              return { rootDir: currentDir, projectId: id, source: 'marker' };
+            }
+          }
+        }
+      } catch {
+        // If marker file can't be read, skip it and keep walking
+      }
+    }
+
+    // ── Track git root (first .git found wins) ──
+    if (!gitRoot && existsSync(join(currentDir, '.git'))) {
+      gitRoot = currentDir;
+    }
+
+    // ── Track monorepo root (first package.json with workspaces wins) ──
+    if (!monorepoRoot) {
+      const pkgJsonPath = join(currentDir, 'package.json');
+      const pkg = loadJSONFile<{
+        workspaces?: string[] | { packages?: string[] };
+        bun?: { workspaces?: string[] };
+      }>(pkgJsonPath);
+
+      if (pkg) {
+        const hasWorkspaces =
+          Array.isArray(pkg.workspaces) ||
+          (typeof pkg.workspaces === 'object' && pkg.workspaces !== null && Array.isArray((pkg.workspaces as { packages?: string[] }).packages)) ||
+          Array.isArray(pkg.bun?.workspaces);
+
+        if (hasWorkspaces) {
+          monorepoRoot = currentDir;
+        }
+      }
+    }
+
+    // ── Walk up ──
+    const parent = dirname(currentDir);
+    if (parent === currentDir) break; // reached filesystem root
+    currentDir = parent;
+  }
+
+  // No marker found — use tracked roots
+  if (gitRoot) {
+    return { rootDir: gitRoot, projectId: normalizeProjectId(basename(gitRoot)), source: 'git' };
+  }
+  if (monorepoRoot) {
+    return { rootDir: monorepoRoot, projectId: normalizeProjectId(basename(monorepoRoot)), source: 'monorepo' };
+  }
+
+  return null;
+}
+
 // ─── Path Resolution ────────────────────────────────────────
 
 /**
@@ -117,13 +204,21 @@ export function resolveDbPath(_config?: MementoConfig): string {
 
 /**
  * Detect project_id from the current working directory.
- * Priority: MEMENTO_PROJECT_ID env var > package.json name > directory name > "default"
+ * Priority: MEMENTO_PROJECT_ID env var > walk-up resolution > package.json name > directory name > "default"
  */
 export function getProjectId(_config?: MementoConfig): string {
+  // Priority 1: explicit env var
   if (process.env.MEMENTO_PROJECT_ID) {
     return normalizeProjectId(process.env.MEMENTO_PROJECT_ID);
   }
 
+  // Priority 2: walk-up resolution (marker file / git root / monorepo root)
+  const root = findProjectRoot(process.cwd());
+  if (root) {
+    return root.projectId;
+  }
+
+  // Priority 3-5: fallback to package.json name / directory name / "default"
   const packageJsonPath = join(process.cwd(), 'package.json');
   const packageJson = loadJSONFile<{ name?: string }>(packageJsonPath);
   const rawName = packageJson?.name || basename(process.cwd());

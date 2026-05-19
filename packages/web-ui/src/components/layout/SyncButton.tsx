@@ -1,13 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Cloud, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
+import { CheckIcon, Cloud, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
 import { useT } from '@/i18n/translation-context';
 import { useLocalePrefix } from '@/i18n/use-locale-prefix';
 import { useRouter } from 'next/navigation';
 
 const SYNC_TOKEN_KEY = 'memento-sync-token';
-const HUB_URL = 'https://memento-hub.vercel.app';
+const HUB_URL = 'https://memento-hub.vercel.app/app';
 
 type SyncState = 'idle' | 'syncing' | 'success' | 'error';
 
@@ -63,7 +63,7 @@ export function SyncButton() {
       const timer = setTimeout(() => {
         setSyncState('idle');
         setSyncMessage(null);
-      }, 4000);
+      }, 10000);
       return () => clearTimeout(timer);
     }
   }, [syncState]);
@@ -116,22 +116,20 @@ export function SyncButton() {
         const parts: string[] = [];
         if (result.pulled > 0) parts.push(`${result.pulled} ↓`);
         if (result.pushed > 0) parts.push(`${result.pushed} ↑`);
-        setSyncMessage(parts.length > 0 ? parts.join(' · ') : t.sync.syncResult
-          .replace('{pulled}', '0')
-          .replace('{pushed}', '0'));
+        setSyncMessage(
+          parts.length > 0
+            ? parts.join(' · ')
+            : t.sync.syncResult.replace('{pulled}', '0').replace('{pushed}', '0')
+        );
       }
     } catch (err) {
       setSyncState('error');
-      setSyncMessage(
-        err instanceof Error ? err.message : t.sync.syncError
-      );
+      setSyncMessage(err instanceof Error ? err.message : t.sync.syncError);
     }
   }, [t]);
 
   if (!mounted) {
-    return (
-      <div className="h-8 w-8 animate-pulse rounded-lg bg-[var(--color-neutral-bg)]" />
-    );
+    return <div className="h-8 w-8 animate-pulse rounded-full bg-[var(--color-neutral-bg)]" />;
   }
 
   // No token → show connect button
@@ -139,7 +137,7 @@ export function SyncButton() {
     return (
       <button
         onClick={() => router.push(`${prefix}/sync`)}
-        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-surface-hover)] transition-colors"
+        className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-surface-hover)] transition-colors"
       >
         <Cloud className="w-3.5 h-3.5" />
         <span className="hidden sm:inline">{t.sync.connectCloud}</span>
@@ -155,7 +153,7 @@ export function SyncButton() {
       <button
         onClick={handleSync}
         disabled={isSyncing}
-        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors ${
+        className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors ${
           syncState === 'success'
             ? 'text-green-500 border border-green-500/30 bg-green-500/5'
             : syncState === 'error'
@@ -167,7 +165,7 @@ export function SyncButton() {
         {isSyncing ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
         ) : syncState === 'success' ? (
-          <RefreshCw className="w-3.5 h-3.5" />
+          <CheckIcon className="w-3.5 h-3.5" />
         ) : (
           <RefreshCw className="w-3.5 h-3.5" />
         )}
@@ -177,7 +175,7 @@ export function SyncButton() {
             : syncState === 'success'
               ? t.sync.syncSuccess
               : syncState === 'error'
-                ? (syncMessage || t.sync.syncError)
+                ? syncMessage || t.sync.syncError
                 : t.sync.syncNow}
         </span>
       </button>

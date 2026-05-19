@@ -62,14 +62,22 @@ function handleToolError(error: unknown, ctx: McpServerContext): { content: Arra
 
 export function registerTools(server: McpServer, ctx: McpServerContext): void {
 
-  // ─── Project ID Resolution (Issue #177) ────────────────────
+  // ─── Project ID Resolution (Issue #177, #273) ────────────────
   /**
-   * Normalize an incoming project_id and fall back to the canonical
-   * project from config (ctx.projectId) when not provided.
+   * Normalize an incoming project_id, resolve it through the alias
+   * registry, and fall back to the canonical project from config
+   * (ctx.projectId) when not provided.
+   *
+   * Alias resolution (Issue #273): if the passed project_id matches an
+   * alias of another project in the DB, redirect to the canonical name.
+   * This prevents data fragmentation while still allowing cross-project
+   * queries (non-alias IDs pass through unchanged).
    */
   function resolveProjectId(projectId?: string): string {
     if (projectId) {
-      return normalizeProjectId(projectId);
+      const normalized = normalizeProjectId(projectId);
+      const canonical = ctx.engine.resolveAlias(normalized);
+      return canonical ?? normalized;
     }
     return ctx.projectId;
   }
