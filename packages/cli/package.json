@@ -1,6 +1,6 @@
 {
   "name": "@slorenzot/memento-cli",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "description": "CLI interface for Memento memory system with merge, export, soft-delete, and skill installation",
   "keywords": [
     "memento",
